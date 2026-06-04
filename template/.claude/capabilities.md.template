@@ -1,0 +1,40 @@
+# Project Capabilities
+
+> This file is auto-populated by `/sdd-doctor init` (auto-detect installed plugins
+> plus project type detection). Sections marked `<!-- user-override -->` are NEVER
+> overwritten on re-init — safe place for customizations.
+
+## Specialist agents (delegate implementation work)
+
+<!-- auto-generated -->
+<!-- /sdd-doctor init fills this in based on installed plugins -->
+
+## Skills (load into context on demand)
+
+<!-- auto-generated -->
+
+## Stack profile
+
+<!-- auto-generated -->
+
+## Task type → routing rules
+
+<!-- user-override -->
+| Task type           | Specialist agent          | Skills to load                          |
+|---------------------|---------------------------|-----------------------------------------|
+| ui-contract         | (orchestrator)            | design-system                           |
+| ui-component-test   | storybook-tester          | storybook-testing, design-system        |
+| ui-component        | (orchestrator)            | design-system                           |
+| server-action       | nextjs-backend-engineer   | server-actions, error-handling          |
+| route-handler       | nextjs-backend-engineer   | server-actions, structured-logging      |
+| unit-test           | (orchestrator)            | unit-testing                            |
+| e2e-test            | (orchestrator)            | playwright-cli                          |
+| a11y-audit          | (orchestrator)            | accessibility-audit                     |
+| test-strategy       | testing-strategist        | unit-testing, playwright-cli            |
+| refactor            | (orchestrator)            | react-doctor (post)                     |
+| generic             | (orchestrator)            | —                                       |
+
+## Custom routing rules
+
+<!-- user-override -->
+<!-- Add your own task types and routing rules. /tasks uses these alongside the defaults above. -->

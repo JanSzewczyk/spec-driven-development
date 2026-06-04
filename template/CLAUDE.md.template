@@ -1,0 +1,42 @@
+# Project Constitution
+
+> **Guidelines for Claude Code in this project.** This file must stay under 2,500 tokens.
+> If it grows beyond that, shard per module: `apps/web/CLAUDE.md`, `apps/api/CLAUDE.md`, etc.
+
+## Tech stack
+<!-- Filled by /sdd-doctor init based on auto-detection -->
+- Runtime:
+- Framework:
+- DB:
+- Tests:
+- Lint/format:
+
+## Run/build commands
+- `dev`:
+- `build`:
+- `test`:
+- `typecheck`:
+- `lint`:
+
+## Architecture (one-liner)
+<!-- One-sentence summary of repo layout -->
+
+## Code conventions
+- TypeScript strict, no `any`
+- File names: kebab-case
+- Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `docs`, `test`)
+- Errors: typed errors, no silent catch
+
+## WHAT NOT TO DO ⛔
+<!-- THE most important section. After every Claude mistake, append the lesson here. -->
+- DO NOT use `npm install` — only `pnpm`
+- DO NOT create barrel files (`index.ts` re-export aggregators)
+- DO NOT mock the database in tests — we use testcontainers
+- DO NOT commit without going through `/review`
+- DO NOT use `--dangerously-skip-permissions` outside a sandbox environment
+
+## SDD flow
+- Start with `/sdd-doctor check`
+- Per feature: `/spec` → `/clarify` → `/plan` → `/tasks` → `/implement <id>` → `/review`
+- Specifications live in `specs/<feature-slug>/`
+- Capabilities (specialist agents + skills) are defined in `.claude/capabilities.md`
