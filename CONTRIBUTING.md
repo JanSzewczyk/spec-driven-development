@@ -1,84 +1,96 @@
-# Contributing to SDD Framework
+# Contributing to the SDD Plugin
 
-Thanks for your interest in improving the SDD Framework. This document explains how to contribute changes safely.
+Thanks for your interest in improving the SDD plugin. This document explains how to contribute changes safely.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/<your-org>/sdd-template.git
-cd sdd-template
+git clone https://github.com/janszewczyk/sdd-plugin.git
+cd sdd-plugin
 ```
 
-The repository has two parts:
+The repository is a Claude Code plugin. Its layout:
 
-- **`template/`** — files that get copied into target projects. This is the framework's payload.
-- **Root files** (`README.md`, `bootstrap.sh`, `LICENSE`, …) — repo-level documentation and the installer.
-
-When you modify the framework, you almost always edit something inside `template/`.
+- **`plugin.json`** — manifest at repo root.
+- **`skills/`, `agents/`, `commands/`, `hooks/`** — framework payload, auto-discovered by Claude Code once the plugin is installed.
+- **`skills/sdd-doctor/templates/`** — per-project templates copied into target projects by `/sdd-doctor init`.
+- **Root docs** (`README.md`, `LICENSE`, `CHANGELOG.md`, `.github/`) — repo-level documentation.
 
 ## Testing your changes locally
 
 This is a documentation-and-config framework, not runtime code, so the test loop is hands-on. The recommended cycle:
 
-1. Make changes inside `template/`.
-2. Run the smoke test against the template itself:
+1. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `hooks/`, `skills/sdd-doctor/templates/`).
+2. Run the smoke test against the plugin from an empty target project:
 
    ```bash
-   python3 template/.claude/skills/sdd-doctor/check.py --root template
+   mkdir /tmp/sdd-smoke && cd /tmp/sdd-smoke && git init
+   python3 /path/to/sdd-plugin/skills/sdd-doctor/check.py --root .
    ```
 
-   Expected (since `template/` is not a real project): checks 1, 5, 7 fail; 2, 3, 4, 6 pass; 8 and 10 warn; 9 depends on your plugin marketplace. **Checks 3, 4, 6 are the framework-integrity ones** — they MUST pass.
+   Expected for an empty project: checks 1, 2, 5, 6 fail (per-project files absent); 3, 4 pass if the plugin path resolves; 7, 8, 10 warn or pass depending on environment; 9 depends on your plugin marketplace.
 
-3. Bootstrap a throwaway target and exercise the full flow:
+3. Run init to populate per-project files:
 
    ```bash
-   mkdir /tmp/sdd-test && cd /tmp/sdd-test && git init
-   bash /path/to/sdd-template/bootstrap.sh
-   # Open in Claude Code, run: /sdd-doctor check
+   python3 /path/to/sdd-plugin/skills/sdd-doctor/init.py --root .
+   python3 /path/to/sdd-plugin/skills/sdd-doctor/check.py --root .
    ```
 
-   Expected: 8-10 checks pass after `/sdd-doctor init`.
+   Expected after `init`: at most 7 + 8 + 10 still warn, the rest pass.
 
-4. Sanity-check stale references after any rename:
+4. Install the plugin into Claude Code from the local checkout and exercise the real flow:
 
    ```bash
-   grep -rnE '(?<!sdd-)\b(spec-guard|drift-detector|reviewer|ui-critic)\b' --perl-regexp template/ README.md
+   claude plugin install /path/to/sdd-plugin
+   # Open /tmp/sdd-smoke in Claude Code:
+   #   /sdd-doctor check
+   #   /sdd-doctor init
+   #   /spec feat hello world
+   ```
+
+5. Sanity-check stale references after any rename:
+
+   ```bash
+   grep -rnE '(?<!sdd-)\b(spec-guard|drift-detector|reviewer|ui-critic)\b' \
+     --perl-regexp commands/ agents/ skills/ README.md
    # Expected: empty output.
    ```
 
 ## Style guidelines
 
-- **All framework files are English-only.** The audit grep used during review will catch Polish diacritics.
-- **No new generic agents without strong justification.** The framework intentionally only adds 4 (`sdd-spec-guard`, `sdd-drift-detector`, `sdd-reviewer`, `sdd-ui-critic`). Anything else should be a plugin specialist invoked through `capabilities.md`.
+- **All framework files are English-only.** The audit grep used during review catches Polish diacritics.
+- **No new generic agents without strong justification.** The framework intentionally only adds 4 (`sdd-spec-guard`, `sdd-drift-detector`, `sdd-reviewer`, `sdd-ui-critic`). Anything else should be a plugin specialist invoked through `capabilities.md` routing.
 - **Hooks must exit 0 when nothing applies** (e.g. unknown file extension), exit 2 to block Claude.
 - **Slash commands** should declare `allowed-tools` explicitly. Avoid `"*"` unless the command genuinely needs every tool.
-- **Skills (`SKILL.md`)** must have a clear `description` frontmatter — that is what Claude uses to decide whether to auto-trigger.
+- **Skills (`SKILL.md`)** must have a clear `description` frontmatter — that is what Claude uses to decide whether to auto-trigger. Include `version`, `lastUpdated`, `tags`, `author` for marketplace consistency.
 - Conventional Commits for commit messages (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 
 ## What goes where
 
 | Change type | Location |
 |------|------|
-| New routing rule (task type → agent) | Edit `template/.claude/capabilities.md.template` AND `template/.claude/skills/sdd-doctor/init.py` (`routing_default` string) |
-| New SDD-doctor check | Add function to `template/.claude/skills/sdd-doctor/check.py`, append to `run_all_checks` |
-| New slash command | New file in `template/.claude/commands/<name>.md` + add to `REQUIRED_COMMANDS` in `check.py` |
-| New verification agent | New file in `template/.claude/agents/<name>.md` + add to `REQUIRED_AGENTS` in `check.py` + integrate via `/review` |
-| New hook | New script in `template/.claude/hooks/<name>.<ext>` + wire into `template/.claude/settings.json` |
+| New routing rule (task type → agent) | Edit `skills/sdd-doctor/templates/capabilities.md.template` |
+| New SDD-doctor check | Add function to `skills/sdd-doctor/check.py`, append to `run_all_checks` |
+| New slash command | New file in `commands/<name>.md`. Document in README. |
+| New verification agent | New file in `agents/sdd-<name>.md` + integrate via `/review` (`commands/review.md` and `agents/sdd-reviewer.md`) |
+| New hook | New script in `hooks/<name>.<ext>` + wire into `skills/sdd-doctor/templates/settings.json.template` |
+| Bundled per-project template | Place under `skills/sdd-doctor/templates/` — `init.py` will copy it |
 | Documentation | `README.md` is the single source of truth. Do not split docs into `docs/`. |
 
 ## Pull request checklist
 
 - [ ] All affected `.md` / `.py` / `.sh` files reviewed for stale references via the grep above.
-- [ ] `python3 template/.claude/skills/sdd-doctor/check.py --root template` passes the framework-integrity checks.
-- [ ] If a new agent / command / hook was added, it is registered in `check.py` constants.
-- [ ] README's File Structure section reflects the change.
-- [ ] CHANGELOG.md entry added under `[Unreleased]`.
+- [ ] Local smoke test passes: `check.py` then `init.py` against a fresh empty directory.
+- [ ] If a new command / agent / hook was added, the README's File Structure and reference sections reflect it.
+- [ ] `CHANGELOG.md` entry added under `[Unreleased]`.
+- [ ] `plugin.json` `version` bumped if there is a user-visible change.
 
 ## Reporting issues
 
 Please open a GitHub issue with:
 
-- SDD framework version (the latest commit SHA / tag you bootstrapped from).
+- Plugin version (`plugin.json` `version` or the commit SHA you installed).
 - Target project stack (Next.js / Python / etc.).
 - The output of `/sdd-doctor check` from the failing project.
 - Steps to reproduce.

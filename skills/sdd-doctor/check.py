@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""SDD Doctor — readiness check.
+"""SDD Doctor — readiness check (plugin context).
 
-Runs 10 checks and returns a JSON report on stdout.
+Runs 10 checks against the target project plus the installed plugin and returns
+a JSON report on stdout.
 
 Usage:
-    python3 .claude/skills/sdd-doctor/check.py [--json] [--root <path>]
+    python3 skills/sdd-doctor/check.py [--json] [--root <project-path>]
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -25,24 +27,31 @@ REQUIRED_TEMPLATE_FIELDS = [
     "Open questions",
     "Testing guidelines",
 ]
-REQUIRED_COMMANDS = [
-    "sdd-doctor",
-    "constitution",
-    "spec",
-    "clarify",
-    "plan",
-    "tasks",
-    "implement",
-    "review",
-    "analyze",
-]
-REQUIRED_AGENTS = ["sdd-spec-guard", "sdd-drift-detector", "sdd-reviewer", "sdd-ui-critic"]
+PLUGIN_NAME = "sdd"
 TOKEN_LIMIT_CLAUDE_MD = 2500
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Plugin root resolution
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def resolve_plugin_root() -> pathlib.Path:
+    """Return the absolute path of the installed SDD plugin."""
+    env = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if env:
+        return pathlib.Path(env).resolve()
+    return pathlib.Path(__file__).resolve().parent.parent.parent
 
 
 def estimate_tokens(text: str) -> int:
     """Rough estimate: ~4 characters per token for English/Polish prose."""
     return len(text) // 4
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Per-project checks
+# ────────────────────────────────────────────────────────────────────────────
 
 
 def check_claude_md(root: pathlib.Path) -> dict[str, Any]:
@@ -76,28 +85,6 @@ def check_specs_template(root: pathlib.Path) -> dict[str, Any]:
     return {"status": "pass", "message": "all required fields present"}
 
 
-def check_commands(root: pathlib.Path) -> dict[str, Any]:
-    cmd_dir = root / ".claude" / "commands"
-    if not cmd_dir.exists():
-        return {"status": "fail", "message": ".claude/commands/ does not exist"}
-    present = {p.stem for p in cmd_dir.glob("*.md")}
-    missing = [c for c in REQUIRED_COMMANDS if c not in present]
-    if missing:
-        return {"status": "warn", "message": f"missing: {', '.join(missing)}"}
-    return {"status": "pass", "message": f"{len(REQUIRED_COMMANDS)} commands present"}
-
-
-def check_agents(root: pathlib.Path) -> dict[str, Any]:
-    agent_dir = root / ".claude" / "agents"
-    if not agent_dir.exists():
-        return {"status": "fail", "message": ".claude/agents/ does not exist"}
-    present = {p.stem for p in agent_dir.glob("*.md")}
-    missing = [a for a in REQUIRED_AGENTS if a not in present]
-    if missing:
-        return {"status": "warn", "message": f"missing: {', '.join(missing)}"}
-    return {"status": "pass", "message": f"{len(REQUIRED_AGENTS)} generic SDD agents present"}
-
-
 def check_capabilities(root: pathlib.Path) -> dict[str, Any]:
     path = root / ".claude" / "capabilities.md"
     if not path.exists():
@@ -126,6 +113,14 @@ def check_settings_hooks(root: pathlib.Path) -> dict[str, Any]:
     hooks = data.get("hooks", {}).get("PostToolUse", [])
     if not hooks:
         return {"status": "warn", "message": "no PostToolUse hooks configured"}
+    # Verify commands reference the plugin's hook scripts.
+    flat_cmds = [
+        h.get("command", "")
+        for entry in hooks
+        for h in entry.get("hooks", [])
+    ]
+    if not any("hooks/typecheck" in c or "hooks/lint" in c for c in flat_cmds):
+        return {"status": "warn", "message": "hooks present but do not reference plugin hook scripts"}
     return {"status": "pass", "message": f"{len(hooks)} PostToolUse hook(s)"}
 
 
@@ -149,6 +144,57 @@ def check_git_gh(root: pathlib.Path) -> dict[str, Any]:
     msg_parts.append("gh CLI: " + ("ok" if gh_ok else "missing"))
     status = "warn" if (dirty or not gh_ok) else "pass"
     return {"status": status, "message": "; ".join(msg_parts)}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Plugin presence checks (replace per-project commands/agents checks)
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def check_plugin_installed() -> dict[str, Any]:
+    """Verify the SDD plugin is installed under ~/.claude/plugins/cache/."""
+    plugin_root = resolve_plugin_root()
+    manifest = plugin_root / "plugin.json"
+    if not manifest.exists():
+        return {
+            "status": "fail",
+            "message": f"plugin.json not found at {plugin_root} — is the plugin installed?",
+        }
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        return {"status": "fail", "message": f"plugin.json invalid JSON: {e}"}
+    name = data.get("name", "")
+    version = data.get("version", "?")
+    if name != PLUGIN_NAME:
+        return {"status": "warn", "message": f"plugin.json name='{name}' (expected '{PLUGIN_NAME}')"}
+    return {"status": "pass", "message": f"{name}@{version} at {plugin_root}"}
+
+
+def check_plugin_enabled() -> dict[str, Any]:
+    """Verify the plugin is enabled in the user's Claude Code settings."""
+    user_settings = pathlib.Path.home() / ".claude" / "settings.json"
+    if not user_settings.exists():
+        return {"status": "warn", "message": "~/.claude/settings.json not found"}
+    try:
+        data = json.loads(user_settings.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {"status": "warn", "message": "user settings.json invalid JSON"}
+    enabled = data.get("enabledPlugins") or data.get("plugins") or {}
+    # Different Claude Code versions use different shapes; check broadly.
+    enabled_names: set[str] = set()
+    if isinstance(enabled, dict):
+        enabled_names = {k.split("@")[0] for k in enabled.keys()}
+    elif isinstance(enabled, list):
+        enabled_names = {str(e).split("@")[0] for e in enabled}
+    if PLUGIN_NAME in enabled_names or any(PLUGIN_NAME in n for n in enabled_names):
+        return {"status": "pass", "message": "enabled in user settings"}
+    return {"status": "warn", "message": "plugin not listed in enabledPlugins (may still work if auto-loaded)"}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Stack + tooling
+# ────────────────────────────────────────────────────────────────────────────
 
 
 def detect_stack(root: pathlib.Path) -> dict[str, Any]:
@@ -198,13 +244,16 @@ def check_tooling(root: pathlib.Path, stack: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_specialist_agents() -> dict[str, Any]:
-    """Scans ~/.claude/plugins/cache/ for available sub-agents."""
+    """Scan ~/.claude/plugins/cache/ for available specialist sub-agents (excluding our own)."""
     plugins_dir = pathlib.Path.home() / ".claude" / "plugins" / "cache"
     if not plugins_dir.exists():
         return {"status": "warn", "message": "no ~/.claude/plugins/cache/ directory"}
     agents: list[str] = []
     for plugin in plugins_dir.iterdir():
         if not plugin.is_dir():
+            continue
+        # Skip our own plugin's agents — they are the verification agents, not specialists.
+        if plugin.name == PLUGIN_NAME:
             continue
         for agent_dir in plugin.rglob("agents"):
             if agent_dir.is_dir():
@@ -221,13 +270,18 @@ def check_project_type(stack: dict[str, Any]) -> dict[str, Any]:
     return {"status": "pass", "message": f"detected: {fw}"}
 
 
+# ────────────────────────────────────────────────────────────────────────────
+# Aggregate
+# ────────────────────────────────────────────────────────────────────────────
+
+
 def run_all_checks(root: pathlib.Path) -> dict[str, Any]:
     stack = detect_stack(root)
     checks = [
         {"id": 1, "name": "CLAUDE.md", **check_claude_md(root)},
         {"id": 2, "name": "specs/_template.md", **check_specs_template(root)},
-        {"id": 3, "name": ".claude/commands/", **check_commands(root)},
-        {"id": 4, "name": ".claude/agents/", **check_agents(root)},
+        {"id": 3, "name": "Plugin installed", **check_plugin_installed()},
+        {"id": 4, "name": "Plugin enabled", **check_plugin_enabled()},
         {"id": 5, "name": ".claude/capabilities.md", **check_capabilities(root)},
         {"id": 6, "name": ".claude/settings.json hooks", **check_settings_hooks(root)},
         {"id": 7, "name": "Git + gh", **check_git_gh(root)},
@@ -261,7 +315,6 @@ def main() -> int:
     if args.json:
         json.dump(report, sys.stdout, ensure_ascii=False, indent=2)
     else:
-        # Human-readable output for quick CLI usage
         print(f"Status: {report['status']}")
         for c in report["checks"]:
             icon = {"pass": "✅", "warn": "⚠️ ", "fail": "❌"}[c["status"]]

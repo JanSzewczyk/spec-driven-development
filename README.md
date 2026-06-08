@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)](https://docs.anthropic.com/claude/docs/claude-code)
-[![Status](https://img.shields.io/badge/status-v0.1.0-blue)](CHANGELOG.md)
+[![Status](https://img.shields.io/badge/status-v0.2.0-blue)](CHANGELOG.md)
 
 **Spec-Driven Development** workflow for Claude Code — a complete flow from specification through architecture to implementation, with TDD enforcement, blocking hooks, and orchestration of your existing specialized sub-agents.
 
@@ -68,76 +68,69 @@ The unique contribution of this framework: **per-task routing to your existing s
 
 ## Quick Start
 
-### Installation modes
-
-The framework supports three install modes — pick the one that matches your situation.
-
-#### A. Local mode (recommended for first-time evaluation)
-
-Clone this repository once, then `bash` the bootstrap from any project:
+### 1. Install the plugin (one-time, per machine)
 
 ```bash
-git clone https://github.com/<your-org>/sdd-template.git ~/Projects/sdd
-cd <your-empty-project>
-git init
-bash ~/Projects/sdd/bootstrap.sh
+claude plugin install https://github.com/janszewczyk/sdd-plugin
 ```
 
-The bootstrap script auto-detects that it lives next to a `template/` folder and copies from disk — no network calls.
+Then enable it in your user settings (`~/.claude/settings.json`):
 
-#### B. Remote mode (one-liner after you fork)
+```json
+{
+  "enabledPlugins": {
+    "sdd@janszewczyk": true
+  }
+}
+```
 
-After you fork this repo to your own GitHub org (see below), users can bootstrap with a single `curl`:
+(Depending on your Claude Code version, the `claude plugin install` command may handle this for you.)
+
+Verify the install:
 
 ```bash
-cd <your-empty-project>
-git init
-curl -fsSL https://raw.githubusercontent.com/<your-org>/sdd-template/main/bootstrap.sh | bash
+claude plugin list | grep sdd
 ```
 
-You can also override the source repo via env vars:
+You should see `sdd@0.2.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `sdd-doctor` skill are available in **every** project — no per-project copy required.
 
-```bash
-SDD_REPO=https://github.com/myorg/my-sdd-fork SDD_BRANCH=stable \
-  bash /path/to/bootstrap.sh
-```
+### 2. Initialize a project
 
-#### C. GitHub template repo (recommended for org-wide adoption)
-
-1. Click **Use this template** on the GitHub UI of your fork to create a new repo seeded with `template/` already in place. (Or use `gh repo create --template <your-org>/sdd-template`.)
-2. Skip `bootstrap.sh` entirely — the files are already where they should be.
-3. Open the new repo in Claude Code and run `/sdd-doctor init`.
-
-### What bootstrap copies
-
-The bootstrap copies the `template/` tree into your project:
-
-- `CLAUDE.md` (only if absent — never overwrites)
-- `specs/_template.md`
-- `.claude/` (commands, agents, hooks, skill, settings, capabilities)
-
-Executable bits on hooks and `*.py` helpers are restored automatically.
-
-### Forking for your own organization
-
-If you want your own copy (e.g. with org-specific routing rules baked into `capabilities.md.template`):
-
-1. Fork this repo to your GitHub org.
-2. Replace every `<your-org>` placeholder with your org name:
-   - `README.md` (Quick Start, badges)
-   - `bootstrap.sh` (`SDD_REPO` default)
-   - `CONTRIBUTING.md` (clone URL)
-3. (Optional) Edit `template/.claude/capabilities.md.template` to pre-populate task-type routing for your stack.
-4. (Optional) Edit `template/CLAUDE.md.template` to seed your standard "WHAT NOT TO DO" rules.
-5. Mark the repo as a **template repository** in GitHub settings to enable the "Use this template" button.
-
-### Initialize in Claude Code
+Open the target project in Claude Code and run:
 
 ```
-/sdd-doctor init       # auto-detect stack, scan installed plugins, fill capabilities.md
-/sdd-doctor check      # confirm READY status (10/10 checks)
-/constitution          # edit CLAUDE.md — must be <2,500 tokens
+/sdd-doctor init      # copies CLAUDE.md.template, specs/_template.md, capabilities.md, settings.json
+/sdd-doctor check     # confirms 10/10 — plugin found, per-project files present
+/constitution         # edit CLAUDE.md — must be <2,500 tokens
 ```
+
+What `init` does:
+
+- Copies `CLAUDE.md` and `specs/_template.md` into the project (skips if already present — never overwrites).
+- Generates `.claude/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
+- Generates `.claude/settings.json` with PostToolUse hooks pointing at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`.
+
+### 3. Build your first feature
+
+```
+/spec feat user can reset password via email
+/clarify
+/plan                 # run in Plan Mode (Shift+Tab)
+/tasks
+/implement T1.1
+...
+/review
+```
+
+### Forking the plugin for your own organization
+
+If you want a customized copy (e.g. with org-specific routing rules in `capabilities.md.template`):
+
+1. Fork this repo to your GitHub org and update the `homepage` field in `plugin.json`.
+2. (Optional) Edit `skills/sdd-doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
+3. (Optional) Edit `skills/sdd-doctor/templates/CLAUDE.md.template` to seed your standard "WHAT NOT TO DO" rules.
+4. Bump the `version` in `plugin.json` and tag a release.
+5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
 
 ### Build your first feature
 
@@ -533,11 +526,12 @@ Screenshots are saved under `./.sdd-screenshots/` — add this path to `.gitigno
 
 Feature: **"User can reset password via email"**.
 
-### Bootstrap
+### Install + initialize
+
+Install the plugin once per machine, then in any project:
 
 ```bash
 cd ~/Projects/my-app && git init
-bash ~/Projects/sdd/bootstrap.sh
 ```
 
 In Claude Code:
@@ -732,7 +726,9 @@ Without SDD a similar feature is 4-6 h with frequent rework. With SDD: 2-4 h, de
 
 ## File Structure
 
-After bootstrap, your project contains:
+### In your project (after `/sdd-doctor init`)
+
+Only per-project artifacts. Commands / agents / verification skills live in the installed plugin, not in your project.
 
 ```
 your-project/
@@ -746,44 +742,39 @@ your-project/
 │       └── review.md                      # generated by /review
 ├── .claude/
 │   ├── capabilities.md                    # hybrid: auto-generated + user-overrides
-│   ├── settings.json                      # PostToolUse hooks
-│   ├── skills/
-│   │   └── sdd-doctor/
-│   │       ├── SKILL.md                   # skill metadata + instructions
-│   │       ├── check.py                   # 10-point readiness check
-│   │       └── init.py                    # auto-init with plugin scanning
-│   ├── commands/                          # 9 slash commands
-│   │   ├── sdd-doctor.md
-│   │   ├── constitution.md
-│   │   ├── spec.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── tasks.md
-│   │   ├── implement.md
-│   │   ├── review.md
-│   │   └── analyze.md
-│   ├── agents/                            # 4 generic SDD verification agents
-│   │   ├── sdd-spec-guard.md
-│   │   ├── sdd-drift-detector.md
-│   │   ├── sdd-reviewer.md
-│   │   └── sdd-ui-critic.md               # optional — needs browser MCP
-│   └── hooks/
-│       ├── typecheck.py                   # exit 2 = blocks Claude
-│       └── lint.sh
+│   └── settings.json                      # PostToolUse hooks → plugin hook scripts
 ├── apps/web/CLAUDE.md                     # (optional) module-scoped constitution
 └── apps/api/CLAUDE.md                     # (optional) module-scoped constitution
 ```
 
-The framework's source repo (this directory) contains:
+### In the plugin (installed once per machine)
 
 ```
-sdd/
-├── README.md                              # this document
-├── bootstrap.sh                           # the only file invoked by curl
-└── template/                              # everything copied to your project
-    ├── CLAUDE.md.template
-    ├── specs/_template.md
-    └── .claude/...
+~/.claude/plugins/cache/sdd/               # or your own forked plugin path
+├── plugin.json                            # manifest
+├── README.md / LICENSE / CHANGELOG.md / CONTRIBUTING.md / .github/
+├── skills/
+│   └── sdd-doctor/
+│       ├── SKILL.md                       # skill metadata + instructions
+│       ├── check.py                       # 10-point readiness check
+│       ├── init.py                        # copies templates into target project
+│       └── templates/                     # bundled templates copied by `init`
+│           ├── CLAUDE.md.template
+│           ├── capabilities.md.template
+│           ├── settings.json.template     # ${PLUGIN_ROOT} placeholder
+│           └── specs/_template.md
+├── commands/                              # 9 slash commands (auto-discovered)
+│   ├── sdd-doctor.md
+│   ├── constitution.md / spec.md / clarify.md / plan.md
+│   ├── tasks.md / implement.md / review.md / analyze.md
+├── agents/                                # 4 verification sub-agents
+│   ├── sdd-spec-guard.md
+│   ├── sdd-drift-detector.md
+│   ├── sdd-reviewer.md
+│   └── sdd-ui-critic.md                   # optional — needs browser MCP
+└── hooks/
+    ├── typecheck.py                       # exit 2 = blocks Claude
+    └── lint.sh
 ```
 
 ---
@@ -835,7 +826,7 @@ Why this framework looks the way it does:
 | **Plan Mode before `/implement`** | Forces human review and blocks destructive changes before a plan exists. |
 | **Hybrid capabilities.md** | `<!-- auto-generated -->` sections reflect installed plugins. `<!-- user-override -->` sections preserve customizations. Re-running `init` is safe. |
 | **CLAUDE.md at root, not in .claude/** | Claude Code reads `CLAUDE.md` from the project root by default. Putting it in `.claude/` would require manual loading. |
-| **Bootstrap is the only out-of-repo artifact** | Once bootstrapped, the entire framework lives in versioned `.claude/`. The team clones the repo and SDD works immediately. |
+| **Framework lives in the plugin, project owns its specs** | Commands, agents, hooks, and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `CLAUDE.md`, `specs/`, `capabilities.md`, `settings.json`. Plugin updates roll out by reinstalling; project data is never overwritten. |
 
 ---
 
