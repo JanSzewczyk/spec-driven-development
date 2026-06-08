@@ -5,8 +5,8 @@ Thanks for your interest in improving the SDD plugin. This document explains how
 ## Quick start
 
 ```bash
-git clone https://github.com/janszewczyk/sdd-plugin.git
-cd sdd-plugin
+git clone https://github.com/JanSzewczyk/spec-driven-development.git
+cd spec-driven-development
 ```
 
 The repository is a Claude Code plugin. Its layout:
@@ -25,7 +25,7 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 
    ```bash
    mkdir /tmp/sdd-smoke && cd /tmp/sdd-smoke && git init
-   python3 /path/to/sdd-plugin/skills/sdd-doctor/check.py --root .
+   python3 /path/to/spec-driven-development/skills/sdd-doctor/check.py --root .
    ```
 
    Expected for an empty project: checks 1, 2, 5, 6 fail (per-project files absent); 3, 4 pass if the plugin path resolves; 7, 8, 10 warn or pass depending on environment; 9 depends on your plugin marketplace.
@@ -33,8 +33,8 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 3. Run init to populate per-project files:
 
    ```bash
-   python3 /path/to/sdd-plugin/skills/sdd-doctor/init.py --root .
-   python3 /path/to/sdd-plugin/skills/sdd-doctor/check.py --root .
+   python3 /path/to/spec-driven-development/skills/sdd-doctor/init.py --root .
+   python3 /path/to/spec-driven-development/skills/sdd-doctor/check.py --root .
    ```
 
    Expected after `init`: at most 7 + 8 + 10 still warn, the rest pass.
@@ -42,7 +42,7 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 4. Install the plugin into Claude Code from the local checkout and exercise the real flow:
 
    ```bash
-   claude plugin install /path/to/sdd-plugin
+   claude plugin install /path/to/spec-driven-development
    # Open /tmp/sdd-smoke in Claude Code:
    #   /sdd-doctor check
    #   /sdd-doctor init

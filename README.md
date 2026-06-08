@@ -71,7 +71,7 @@ The unique contribution of this framework: **per-task routing to your existing s
 ### 1. Install the plugin (one-time, per machine)
 
 ```bash
-claude plugin install https://github.com/janszewczyk/sdd-plugin
+claude plugin install https://github.com/JanSzewczyk/spec-driven-development
 ```
 
 Then enable it in your user settings (`~/.claude/settings.json`):
@@ -131,19 +131,6 @@ If you want a customized copy (e.g. with org-specific routing rules in `capabili
 3. (Optional) Edit `skills/sdd-doctor/templates/CLAUDE.md.template` to seed your standard "WHAT NOT TO DO" rules.
 4. Bump the `version` in `plugin.json` and tag a release.
 5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
-
-### Build your first feature
-
-```
-/spec feat user can reset password via email
-/clarify
-/plan                  # run in Plan Mode (Shift+Tab)
-/tasks
-/implement T1.1
-/implement T1.2
-...
-/review
-```
 
 ---
 

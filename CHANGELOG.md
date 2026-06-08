@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (breaking)
 
-- **Distribution model: template repo → Claude Code plugin.** SDD is now installed once per machine with `claude plugin install https://github.com/janszewczyk/sdd-plugin`. Slash commands, verification agents, hooks, and the `sdd-doctor` skill are auto-discovered in every project — no per-project copy required.
+- **Distribution model: template repo → Claude Code plugin.** SDD is now installed once per machine with `claude plugin install https://github.com/JanSzewczyk/spec-driven-development`. Slash commands, verification agents, hooks, and the `sdd-doctor` skill are auto-discovered in every project — no per-project copy required.
 - **Repo layout flattened.** `commands/`, `agents/`, `hooks/`, `skills/` are now at the plugin root (previously under `template/.claude/`). Per-project templates moved into `skills/sdd-doctor/templates/`.
 - **`/sdd-doctor init` semantics.** Now copies bundled templates from `<plugin>/skills/sdd-doctor/templates/` into the target project and renders `.claude/settings.json` with absolute paths to the plugin's hook scripts (`${PLUGIN_ROOT}` placeholder substituted at install time).
 - **Doctor checks.** Old checks 3 ("commands present") and 4 ("agents present") are replaced with "Plugin installed" and "Plugin enabled" — the per-project `.claude/commands` and `.claude/agents` directories are no longer expected.
@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 If you already bootstrapped a project with v0.1.0:
 
-1. Install the plugin: `claude plugin install https://github.com/janszewczyk/sdd-plugin`.
+1. Install the plugin: `claude plugin install https://github.com/JanSzewczyk/spec-driven-development`.
 2. (Optional) Delete the now-redundant `.claude/commands/`, `.claude/agents/`, `.claude/hooks/`, `.claude/skills/` from your project — the plugin provides them globally.
 3. Re-run `/sdd-doctor init` to regenerate `.claude/settings.json` with hook paths pointing at the plugin instead of the (now-deleted) project-local hooks.
 4. Your `CLAUDE.md`, `specs/`, and `capabilities.md` `<!-- user-override -->` sections are preserved untouched.
