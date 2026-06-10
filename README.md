@@ -1,44 +1,27 @@
-# SDD Framework for Claude Code
+<div align="center">
+
+# 🧩 SDD Framework for Claude Code
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)](https://docs.anthropic.com/claude/docs/claude-code)
-[![Status](https://img.shields.io/badge/status-v0.2.0-blue)](CHANGELOG.md)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](CHANGELOG.md)
+[![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
-**Spec-Driven Development** workflow for Claude Code — a complete flow from specification through architecture to implementation, with TDD enforcement, blocking hooks, and orchestration of your existing specialized sub-agents.
+**Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
 
-> SDD inverts traditional AI-assisted coding. Instead of "vibe coding" (vague prompt → AI guesses → fix loop), the **specification is the source of truth** and code is its mechanical consequence.
+[Features](#-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Documentation](#-table-of-contents)
 
----
-
-## Table of Contents
-
-- [Why SDD](#why-sdd)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [The SDD Flow](#the-sdd-flow)
-- [Architecture](#architecture)
-  - [Three-tier agent hierarchy](#three-tier-agent-hierarchy)
-  - [Per-task routing](#per-task-routing)
-  - [Context management](#context-management)
-  - [Verification hooks](#verification-hooks)
-  - [Capabilities registry — hybrid mode](#capabilities-registry--hybrid-mode)
-- [Slash Commands Reference](#slash-commands-reference)
-- [Sub-agents Reference](#sub-agents-reference)
-- [End-to-end Example](#end-to-end-example)
-- [File Structure](#file-structure)
-- [Best Practices](#best-practices)
-- [Anti-patterns](#anti-patterns)
-- [Design Decisions](#design-decisions)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
+</div>
 
 ---
 
-## Why SDD
+## 👋 Why SDD
 
 Vibe coding (loose prompt → AI guesses → iterate by trial and error) works for demos but produces spaghetti in production: every fix breaks something else, security gaps multiply, the codebase becomes unmaintainable.
 
 SDD fixes this by enforcing **canonical phases**: `constitution → spec → clarify → plan → tasks → implement → review`. AI is forced to read and confirm a plan before writing a single line of code. Verification agents and blocking hooks make the feedback loop tight enough that the model **cannot skip** validation steps.
+
+> SDD inverts traditional AI-assisted coding. Instead of "vibe coding" (vague prompt → AI guesses → fix loop), the **specification is the source of truth** and code is its mechanical consequence.
 
 This framework is the synthesis of:
 
@@ -52,7 +35,7 @@ The unique contribution of this framework: **per-task routing to your existing s
 
 ---
 
-## Features
+## ✨ Features
 
 - 📋 **Canonical SDD phases**: `constitution → spec → clarify → plan → tasks → implement → review`
 - 🏥 **`/sdd-doctor`** — preflight audit + one-command init
@@ -66,7 +49,35 @@ The unique contribution of this framework: **per-task routing to your existing s
 
 ---
 
-## Quick Start
+## 📖 Table of Contents
+
+- [👋 Why SDD](#-why-sdd)
+- [✨ Features](#-features)
+- [🚀 Quick Start](#-quick-start)
+- [🔄 The SDD Flow](#-the-sdd-flow)
+- [🏗️ Architecture](#-architecture)
+  - [🧱 Three-tier agent hierarchy](#-three-tier-agent-hierarchy)
+  - [🏷️ Per-task routing](#-per-task-routing)
+  - [🧠 Context management](#-context-management)
+  - [🪝 Verification hooks](#-verification-hooks)
+  - [📇 Capabilities registry — hybrid mode](#-capabilities-registry--hybrid-mode)
+- [⌨️ Slash Commands Reference](#-slash-commands-reference)
+- [🤖 Sub-agents Reference](#-sub-agents-reference)
+- [📋 End-to-end Example](#-end-to-end-example)
+- [📁 File Structure](#-file-structure)
+- [⭐ Best Practices](#-best-practices)
+- [🚫 Anti-patterns](#-anti-patterns)
+- [🧩 Design Decisions](#-design-decisions)
+- [🔧 Troubleshooting](#-troubleshooting)
+- [🤝 Contributing](#-contributing)
+- [📝 Changelog](#-changelog)
+- [📜 License](#-license)
+- [🙏 Acknowledgments](#-acknowledgments)
+- [📧 Contact & Support](#-contact--support)
+
+---
+
+## 🚀 Quick Start
 
 ### 1. Install the plugin (one-time, per machine)
 
@@ -98,7 +109,7 @@ You should see `sdd@0.2.0`. Once installed, the plugin's 9 slash commands, 4 ver
 
 Open the target project in Claude Code and run:
 
-```
+```text
 /sdd-doctor init      # copies CLAUDE.md.template, specs/_template.md, capabilities.md, settings.json
 /sdd-doctor check     # confirms 10/10 — plugin found, per-project files present
 /constitution         # edit CLAUDE.md — must be <2,500 tokens
@@ -112,7 +123,7 @@ What `init` does:
 
 ### 3. Build your first feature
 
-```
+```text
 /spec feat user can reset password via email
 /clarify
 /plan                 # run in Plan Mode (Shift+Tab)
@@ -134,7 +145,7 @@ If you want a customized copy (e.g. with org-specific routing rules in `capabili
 
 ---
 
-## The SDD Flow
+## 🔄 The SDD Flow
 
 ```mermaid
 flowchart TD
@@ -174,11 +185,11 @@ flowchart TD
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
-### Three-tier agent hierarchy
+### 🧱 Three-tier agent hierarchy
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  ORCHESTRATOR (main Claude session)                         │
 │  • Reads CLAUDE.md, capabilities.md, spec/plan/tasks        │
@@ -204,6 +215,7 @@ flowchart TD
 ```
 
 This framework adds:
+
 - 1 skill (`sdd-doctor`)
 - 9 slash commands (`sdd-doctor`, `constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `analyze`)
 - 4 verification agents (`sdd-spec-guard`, `sdd-drift-detector`, `sdd-reviewer`, `sdd-ui-critic`)
@@ -211,7 +223,7 @@ This framework adds:
 
 All **specialist agents and skills already exist** in the plugin marketplace — SDD orchestrates them, it does not duplicate them.
 
-### Per-task routing
+### 🏷️ Per-task routing
 
 Every task in `tasks.md` carries a YAML block:
 
@@ -237,7 +249,7 @@ When the user runs `/implement T1.2`:
 6. **Spec-guard** verifies the diff satisfies the AC.
 7. **Status** in `tasks.md`: `draft` → `in-progress` → `review`.
 
-### Context management
+### 🧠 Context management
 
 Three techniques prevent context bloat:
 
@@ -252,7 +264,7 @@ Three techniques prevent context bloat:
 - `apps/api/CLAUDE.md` (backend-specific)
 - `packages/ui/CLAUDE.md` (component library)
 
-### Verification hooks
+### 🪝 Verification hooks
 
 PostToolUse hooks in `.claude/settings.json` run after every `Edit`/`Write`/`MultiEdit`:
 
@@ -261,7 +273,7 @@ PostToolUse hooks in `.claude/settings.json` run after every `Edit`/`Write`/`Mul
 
 If typecheck or lint fails, the hook exits with code **2**. Claude receives the stderr output and is **forced to fix the issue** before taking the next action. There is no way to "forget" about validation.
 
-### Capabilities registry — hybrid mode
+### 📇 Capabilities registry — hybrid mode
 
 `.claude/capabilities.md` has two kinds of sections:
 
@@ -302,25 +314,26 @@ Example schema:
 
 ---
 
-## Slash Commands Reference
+## ⌨️ Slash Commands Reference
 
-### `/sdd-doctor [check|init|fix <ids>]`
+### 🏥 `/sdd-doctor [check|init|fix <ids>]`
 
-Preflight audit and auto-setup. **10 checks**: CLAUDE.md, specs/_template.md, 9 commands present, 4 agents present, capabilities.md valid, settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected.
+Preflight audit and auto-setup. **10 checks**: CLAUDE.md, specs/_template.md, plugin installed, plugin enabled, capabilities.md valid, settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected.
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
 - `init` — generate all missing files + auto-detect plugins → fill `capabilities.md` + adjust hooks to detected stack
 - `fix <N>` — repair specific check by ID
 
-### `/constitution`
+### 📜 `/constitution`
 
 Edit `CLAUDE.md` at the project root. Warns when token count exceeds 2,500 and suggests sharding per module.
 
-### `/spec <type> <description>`
+### 🌿 `/spec <type> <description>`
 
 Phase 1 — Specify. Requires `<type>` ∈ {`feat`, `fix`, `chore`, `refactor`, `docs`} (Conventional Commits).
 
 Steps:
+
 1. Verify clean git tree (`git status --porcelain`) — STOP if dirty
 2. Parse `<type>` and generate `feature_slug` (kebab-case) and `feature_title` (Title Case)
 3. Create branch `<type>/<feature_slug>`
@@ -328,15 +341,16 @@ Steps:
 
 ⛔ The spec file is **business-only** — no code, no tech stack details.
 
-### `/clarify`
+### ❓ `/clarify`
 
 Phase 2 — Clarify. AI reads the current spec.md and asks 5-10 targeted questions about gaps (ambiguous requirements, missing edge cases, vague acceptance criteria). When the user answers, the spec is updated automatically.
 
-### `/plan`
+### 🗺️ `/plan`
 
 Phase 3 — Plan. **Run in Plan Mode** (Shift+Tab) so Claude has edits disabled and can only read/analyze.
 
 Generates `plan.md` with:
+
 - High-level approach
 - Data model (Mermaid ER diagram)
 - Component diagram (Mermaid flowchart)
@@ -347,7 +361,7 @@ Generates `plan.md` with:
 
 After generation, **human review of plan.md is mandatory** before proceeding to `/tasks`.
 
-### `/tasks`
+### 🧩 `/tasks`
 
 Phase 4 — Tasks. Decompose `plan.md` into a tagged task list:
 
@@ -372,7 +386,7 @@ Phase 4 — Tasks. Decompose `plan.md` into a tagged task list:
 
 `/tasks` auto-emits 3 tasks per component without you asking.
 
-### `/implement <task-id>`
+### 🔨 `/implement <task-id>`
 
 Phase 5 — Implement one task. Pipeline:
 
@@ -389,7 +403,7 @@ Phase 5 — Implement one task. Pipeline:
 
 ⛔ One task per `/implement` invocation. Bulk implementation defeats the purpose.
 
-### `/review`
+### 🔍 `/review`
 
 Phase 6 — Final audit before PR. Runs in sequence:
 
@@ -401,11 +415,12 @@ Phase 6 — Final audit before PR. Runs in sequence:
 6. On GO: `git commit` (Conventional Commits format) + `gh pr create` with body linking to `spec.md`
 7. On NO-GO: list concrete blockers
 
-### `/analyze`
+### 📊 `/analyze`
 
 Diagnostic tool — run anytime to detect drift between spec ↔ plan ↔ tasks ↔ code. Useful before `/review` to avoid a NO-GO verdict.
 
 Outputs a markdown matrix:
+
 - ✅ **Aligned** items (spec AC → plan → task → commits)
 - ⚠️ **Drift** items (with file paths and suggested fixes)
 - 🔴 **Critical** conflicts (spec says X, code does contradictory Y)
@@ -414,11 +429,11 @@ Outputs a markdown matrix:
 
 ---
 
-## Sub-agents Reference
+## 🤖 Sub-agents Reference
 
 This framework introduces **only 4 new generic agents**. Everything else is your existing plugin specialists, invoked via `Task` tool with `subagent_type`.
 
-### `sdd-spec-guard`
+### 🛡️ `sdd-spec-guard`
 
 **Purpose:** Verify that a code diff satisfies all Acceptance Criteria from `spec.md` and does not introduce out-of-scope changes.
 
@@ -442,13 +457,14 @@ This framework introduces **only 4 new generic agents**. Everything else is your
 
 Strict constraints: **never** writes code, **never** suggests fixes (only reports gaps), **never** judges code quality (that's `sdd-reviewer`'s job).
 
-### `sdd-drift-detector`
+### 🔀 `sdd-drift-detector`
 
 **Purpose:** Find inconsistencies between documentation layers (`spec.md`, `plan.md`, `tasks.md`) and the current code state.
 
 **Called by:** `/review` and `/analyze`.
 
 Cross-checks performed:
+
 - **Spec → Plan**: every AC has a corresponding entry in plan.md
 - **Plan → Tasks**: every file in plan.md's "File-by-file" list has a covering task
 - **Tasks → Code**: tasks marked `done`/`review` actually changed their declared `files`
@@ -456,13 +472,14 @@ Cross-checks performed:
 
 **Output:** Markdown report with severity tiers (✅ Aligned / ⚠️ Drift / 🔴 Critical) and a suggested fix per drift item.
 
-### `sdd-reviewer`
+### 🧐 `sdd-reviewer`
 
 **Purpose:** Final quality audit before PR. Orchestrates domain-specific audits and decides GO/NO-GO.
 
 **Called by:** `/review`.
 
 Pipeline:
+
 1. Run full test suite (command from CLAUDE.md)
 2. Check coverage thresholds
 3. Invoke relevant skills + agents based on the diff:
@@ -474,7 +491,9 @@ Pipeline:
 5. Generate `specs/<slug>/review.md` with verdict
 6. Block GO if any test fails or any critical a11y/security violation exists
 
-### `sdd-ui-critic`
+**Output:** JSON `{verdict: "GO" | "NO_GO", blockers: [...], warnings: [...]}`
+
+### 🎨 `sdd-ui-critic`
 
 **Purpose:** Visual review of changed UI components — captures Storybook screenshots via a browser MCP and evaluates them for design-system adherence, layout regressions, and rendering issues.
 
@@ -505,11 +524,9 @@ Severity classification: `issue` (visible bug, blocks GO), `warning` (suboptimal
 
 Screenshots are saved under `./.sdd-screenshots/` — add this path to `.gitignore`.
 
-**Output:** JSON `{verdict: "GO" | "NO_GO", blockers: [...], warnings: [...]}`
-
 ---
 
-## End-to-end Example
+## 📋 End-to-end Example
 
 Feature: **"User can reset password via email"**.
 
@@ -523,7 +540,7 @@ cd ~/Projects/my-app && git init
 
 In Claude Code:
 
-```
+```text
 /sdd-doctor init       # auto-detects Next.js 15 + TS + Vitest + Storybook
 /sdd-doctor check      # ✅ READY (10/10)
 /constitution          # fill Tech stack, Run/build, WHAT NOT TO DO
@@ -531,27 +548,30 @@ In Claude Code:
 
 ### Spec phase
 
-```
+```text
 /spec feat user can reset password via email
 ```
 
 Effects:
+
 - ✅ Clean git verified
 - ✅ Branch `feat/user-can-reset-password-via-email` created
 - ✅ `specs/user-can-reset-password-via-email/spec.md` generated
 
 You open the spec, fill in:
+
 - User stories (Reset via email, optional MFA)
 - Acceptance criteria (AC1: token valid for 1h, AC2: rate-limited to 3 attempts, …)
 - Edge cases (unknown email — silent success per security best practice)
 
 ### Clarify
 
-```
+```text
 /clarify
 ```
 
 Claude asks:
+
 1. **AC1**: should expired tokens return 410 or 401?
 2. **AC2**: is the rate limit per IP, per email, or both?
 3. **Edge case**: what if SMTP delivery fails — retry or fail loud?
@@ -563,11 +583,12 @@ You answer in chat. Spec is updated.
 
 Enable Plan Mode (Shift+Tab):
 
-```
+```text
 /plan
 ```
 
 Generates `specs/.../plan.md`:
+
 - Data model (Mermaid ER): `User`, `PasswordResetToken`
 - Component diagram (Mermaid): `ResetForm → Action → Service → DB + Mailer`
 - API surface: `POST /actions/resetPassword`
@@ -578,7 +599,7 @@ Generates `specs/.../plan.md`:
 
 ### Tasks
 
-```
+```text
 /tasks
 ```
 
@@ -644,31 +665,31 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
 
 ### Implement
 
-```
+```text
 /implement T1.1
 ```
 
 `type: ui-contract` (orchestrator). Defines the inline `ResetPasswordFormProps` interface and a skeleton component (`<div data-testid="reset-password-form" />`) — no logic yet. Hook validates typecheck/lint.
 
-```
+```text
 /implement T1.2
 ```
 
 `type: ui-component-test` (`agent: storybook-tester`). Prerequisite `T1.1` is done, so tests CAN import the component meaningfully. Specialist writes tests + Storybook story. Tests fail with meaningful assertion errors (not module-not-found).
 
-```
+```text
 /implement T1.3
 ```
 
 `type: ui-component` (orchestrator). Prerequisite `T1.2` is done. Orchestrator fleshes out the skeleton until all tests from T1.2 pass. `sdd-spec-guard` confirms diff matches spec AC.
 
-```
+```text
 /implement T2.1
 ```
 
 Classic strict TDD test task — orchestrator writes failing tests (red phase), confirms proper failure reasons.
 
-```
+```text
 /implement T2.2
 ```
 
@@ -676,11 +697,12 @@ Classic strict TDD test task — orchestrator writes failing tests (red phase), 
 
 ### Review
 
-```
+```text
 /review
 ```
 
 Pipeline executes:
+
 1. Tests: 23/23 passed
 2. `sdd-spec-guard`: all 4 AC satisfied
 3. `sdd-drift-detector`: no drift
@@ -711,13 +733,13 @@ Without SDD a similar feature is 4-6 h with frequent rework. With SDD: 2-4 h, de
 
 ---
 
-## File Structure
+## 📁 File Structure
 
 ### In your project (after `/sdd-doctor init`)
 
 Only per-project artifacts. Commands / agents / verification skills live in the installed plugin, not in your project.
 
-```
+```text
 your-project/
 ├── CLAUDE.md                              # root constitution (<2,500 tokens)
 ├── specs/
@@ -736,8 +758,8 @@ your-project/
 
 ### In the plugin (installed once per machine)
 
-```
-~/.claude/plugins/cache/sdd/               # or your own forked plugin path
+```text
+spec-driven-development/                    # or your own forked plugin path
 ├── plugin.json                            # manifest
 ├── README.md / LICENSE / CHANGELOG.md / CONTRIBUTING.md / .github/
 ├── skills/
@@ -766,7 +788,7 @@ your-project/
 
 ---
 
-## Best Practices
+## ⭐ Best Practices
 
 Ten actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
 
@@ -783,7 +805,7 @@ Ten actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, Open
 
 ---
 
-## Anti-patterns
+## 🚫 Anti-patterns
 
 What to avoid — common failure modes when adopting SDD:
 
@@ -798,14 +820,14 @@ What to avoid — common failure modes when adopting SDD:
 
 ---
 
-## Design Decisions
+## 🧩 Design Decisions
 
 Why this framework looks the way it does:
 
 | Decision | Rationale |
 |----------|-----------|
 | **Per-project, not global** | Different projects have different stacks, different specialist agents, different routing rules. A global framework would force homogeneity. |
-| **Only 3 new agents** | The rest already exists in the plugin marketplace (storybook-tester, nextjs-backend-engineer, …). Duplicating them would be wasted effort and version drift. |
+| **Only 4 new agents** | The rest already exists in the plugin marketplace (storybook-tester, nextjs-backend-engineer, …). Duplicating them would be wasted effort and version drift. |
 | **YAML tags in tasks.md** | Explicit > heuristic. The user knows exactly which agent will be invoked for each task. |
 | **Conventional Commits in `/spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
 | **Hook exit code 2** | The strongest possible feedback signal for Claude. Cannot be ignored or skipped — Claude must fix the failure before continuing. |
@@ -817,7 +839,7 @@ Why this framework looks the way it does:
 
 ---
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
@@ -832,14 +854,58 @@ Why this framework looks the way it does:
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, testing approach, style guidelines, and PR checklist.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the local smoke-test loop, style guidelines, and the PR checklist.
 
-## Changelog
+In short:
 
-See [CHANGELOG.md](CHANGELOG.md) for the version history.
+1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
+2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `hooks/`, `skills/sdd-doctor/templates/`)
+3. Run the smoke test (`check.py` then `init.py` against a fresh empty directory)
+4. Update the README's File Structure / reference sections and add a `CHANGELOG.md` entry under `[Unreleased]`
+5. Open a Pull Request
 
-## License
+---
 
-Released under the [MIT License](LICENSE). © 2026 Jan Szewczyk.
+## 📝 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history. This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details. © 2026 Jan Szewczyk.
+
+---
+
+## 🙏 Acknowledgments
+
+SDD is a synthesis of ideas from the spec-driven and agentic-coding ecosystem:
+
+- [GitHub Spec Kit](https://github.com/github/spec-kit) — canonical phases
+- BMAD Method — sharding and role-based sub-agents
+- Amazon Kiro — hooks and Mermaid generation
+- OpenSpec — lightweight CLI for legacy code
+- [Anthropic Claude Code](https://claude.com/claude-code) — slash commands, plan mode, custom agents, and the plugin system this framework is built on
+
+---
+
+## 📧 Contact & Support
+
+- 🐛 [Open an issue](https://github.com/JanSzewczyk/spec-driven-development/issues)
+- ⭐ [Star this repository](https://github.com/JanSzewczyk/spec-driven-development)
+- 👨‍💻 Check out the maintainer's [GitHub profile](https://github.com/JanSzewczyk)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by [Jan Szewczyk](https://github.com/JanSzewczyk)**
+
+If this framework helped you, please consider giving it a ⭐ on GitHub!
+
+[⬆ Back to Top](#-sdd-framework-for-claude-code)
+
+</div>
