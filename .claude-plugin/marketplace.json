@@ -1,0 +1,23 @@
+{
+  "name": "spec-driven-development",
+  "owner": {
+    "name": "Jan Szewczyk"
+  },
+  "metadata": {
+    "description": "Marketplace for the Spec-Driven Development (SDD) plugin for Claude Code.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "sdd",
+      "source": "./",
+      "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), TDD enforcement with contract-first UI, blocking hooks, and orchestration of your existing specialist sub-agents.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Jan Szewczyk"
+      },
+      "homepage": "https://github.com/JanSzewczyk/spec-driven-development",
+      "license": "MIT"
+    }
+  ]
+}
