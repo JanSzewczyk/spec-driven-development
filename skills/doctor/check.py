@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SDD Doctor — readiness check (plugin context).
 
-Runs 11 checks against the target project plus the installed plugin and returns
+Runs 10 checks against the target project plus the installed plugin and returns
 a JSON report on stdout.
 
 Usage:
@@ -18,10 +18,6 @@ import subprocess
 import sys
 from typing import Any
 
-# CLAUDE.md is the lightweight session loader. It should at minimum reference the constitution
-# and document the operational essentials.
-REQUIRED_CLAUDE_SECTIONS = ["Tech stack", "Run/build"]
-CONSTITUTION_POINTER = "specs/constitution.md"
 # specs/constitution.md is the long-form source of truth. The detailed sections live here.
 REQUIRED_CONSTITUTION_SECTIONS = ["Tech stack", "Run/build", "Conventions", "WHAT NOT TO DO"]
 REQUIRED_TEMPLATE_FIELDS = [
@@ -33,7 +29,6 @@ REQUIRED_TEMPLATE_FIELDS = [
     "Testing guidelines",
 ]
 PLUGIN_NAME = "sdd"
-TOKEN_LIMIT_CLAUDE_MD = 2500
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -49,33 +44,9 @@ def resolve_plugin_root() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parent.parent.parent
 
 
-def estimate_tokens(text: str) -> int:
-    """Rough estimate: ~4 characters per token for English/Polish prose."""
-    return len(text) // 4
-
-
 # ────────────────────────────────────────────────────────────────────────────
 # Per-project checks
 # ────────────────────────────────────────────────────────────────────────────
-
-
-def check_claude_md(root: pathlib.Path) -> dict[str, Any]:
-    path = root / "CLAUDE.md"
-    if not path.exists():
-        return {"status": "fail", "message": "CLAUDE.md does not exist at the project root"}
-    text = path.read_text(encoding="utf-8")
-    tokens = estimate_tokens(text)
-    issues: list[str] = []
-    missing = [s for s in REQUIRED_CLAUDE_SECTIONS if s.lower() not in text.lower()]
-    if missing:
-        issues.append(f"missing sections: {', '.join(missing)}")
-    if CONSTITUTION_POINTER not in text:
-        issues.append(f"no pointer to {CONSTITUTION_POINTER}")
-    if tokens > TOKEN_LIMIT_CLAUDE_MD:
-        issues.append(f"{tokens} tokens — exceeds limit {TOKEN_LIMIT_CLAUDE_MD} (consider sharding)")
-    if issues:
-        return {"status": "warn", "message": f"{tokens} tokens; " + "; ".join(issues)}
-    return {"status": "pass", "message": f"{tokens} tokens; pointer to constitution present"}
 
 
 def check_constitution(root: pathlib.Path) -> dict[str, Any]:
@@ -186,25 +157,78 @@ def check_plugin_installed() -> dict[str, Any]:
     return {"status": "pass", "message": f"{name}@{version} at {plugin_root}"}
 
 
-def check_plugin_enabled() -> dict[str, Any]:
-    """Verify the plugin is enabled in the user's Claude Code settings."""
-    user_settings = pathlib.Path.home() / ".claude" / "settings.json"
-    if not user_settings.exists():
-        return {"status": "warn", "message": "~/.claude/settings.json not found"}
+def _settings_enabled_names(settings_path: pathlib.Path) -> tuple[set[str] | None, str | None]:
+    """Read a Claude Code settings.json and return the set of enabled plugin names.
+
+    Returns (names, error). On a missing file → (None, None). On parse failure →
+    (None, "<message>"). On success → (names, None) where names may be empty.
+    Claude Code accepts several shapes (`enabledPlugins`, `plugins`) and either dict
+    or list values, so we union across them all and strip any `@version` suffix.
+    """
+    if not settings_path.exists():
+        return (None, None)
     try:
-        data = json.loads(user_settings.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {"status": "warn", "message": "user settings.json invalid JSON"}
-    enabled = data.get("enabledPlugins") or data.get("plugins") or {}
-    # Different Claude Code versions use different shapes; check broadly.
-    enabled_names: set[str] = set()
-    if isinstance(enabled, dict):
-        enabled_names = {k.split("@")[0] for k in enabled.keys()}
-    elif isinstance(enabled, list):
-        enabled_names = {str(e).split("@")[0] for e in enabled}
-    if PLUGIN_NAME in enabled_names or any(PLUGIN_NAME in n for n in enabled_names):
-        return {"status": "pass", "message": "enabled in user settings"}
-    return {"status": "warn", "message": "plugin not listed in enabledPlugins (may still work if auto-loaded)"}
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        return (None, f"{settings_path}: invalid JSON ({e})")
+    names: set[str] = set()
+    for key in ("enabledPlugins", "plugins"):
+        raw = data.get(key)
+        if isinstance(raw, dict):
+            names.update(k.split("@")[0] for k in raw.keys())
+        elif isinstance(raw, list):
+            names.update(str(e).split("@")[0] for e in raw)
+    return (names, None)
+
+
+def check_plugin_enabled(root: pathlib.Path) -> dict[str, Any]:
+    """Verify the plugin is enabled in any of the three Claude Code settings layers.
+
+    Claude Code merges settings from (highest precedence first):
+      1. `<project>/.claude/settings.local.json` (gitignored local overrides)
+      2. `<project>/.claude/settings.json` (per-project, committed)
+      3. `~/.claude/settings.json` (user-global)
+
+    The plugin counts as enabled when it appears in any one of these.
+    """
+    candidates = [
+        ("user", pathlib.Path.home() / ".claude" / "settings.json"),
+        ("project", root / ".claude" / "settings.json"),
+        ("local", root / ".claude" / "settings.local.json"),
+    ]
+
+    found_in: list[str] = []
+    errors: list[str] = []
+    any_seen = False
+
+    for label, path in candidates:
+        names, err = _settings_enabled_names(path)
+        if err:
+            errors.append(f"{label}: {err}")
+            continue
+        if names is None:
+            continue  # file absent
+        any_seen = True
+        if PLUGIN_NAME in names or any(PLUGIN_NAME in n for n in names):
+            found_in.append(label)
+
+    if found_in:
+        msg = f"enabled in {', '.join(found_in)} settings"
+        if errors:
+            msg += f" (other layers: {'; '.join(errors)})"
+        return {"status": "pass", "message": msg}
+
+    if errors and not any_seen:
+        return {"status": "warn", "message": "; ".join(errors)}
+
+    if not any_seen:
+        return {"status": "warn", "message": "no Claude Code settings.json found in user/project/local layers"}
+
+    suffix = f"; parse errors: {'; '.join(errors)}" if errors else ""
+    return {
+        "status": "warn",
+        "message": "plugin not listed in any enabledPlugins layer (may still work if auto-loaded)" + suffix,
+    }
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -293,17 +317,16 @@ def check_project_type(stack: dict[str, Any]) -> dict[str, Any]:
 def run_all_checks(root: pathlib.Path) -> dict[str, Any]:
     stack = detect_stack(root)
     checks = [
-        {"id": 1, "name": "CLAUDE.md (loader)", **check_claude_md(root)},
+        {"id": 1, "name": "specs/constitution.md", **check_constitution(root)},
         {"id": 2, "name": "specs/template.md", **check_specs_template(root)},
         {"id": 3, "name": "Plugin installed", **check_plugin_installed()},
-        {"id": 4, "name": "Plugin enabled", **check_plugin_enabled()},
+        {"id": 4, "name": "Plugin enabled", **check_plugin_enabled(root)},
         {"id": 5, "name": "specs/capabilities.md", **check_capabilities(root)},
         {"id": 6, "name": ".claude/settings.json hooks", **check_settings_hooks(root)},
         {"id": 7, "name": "Git + gh", **check_git_gh(root)},
         {"id": 8, "name": "Tooling", **check_tooling(root, stack)},
         {"id": 9, "name": "Specialist agents", **check_specialist_agents()},
         {"id": 10, "name": "Project type", **check_project_type(stack)},
-        {"id": 11, "name": "specs/constitution.md", **check_constitution(root)},
     ]
 
     fails = sum(1 for c in checks if c["status"] == "fail")

@@ -4,9 +4,8 @@
 This script runs from inside the installed SDD plugin and:
 
 1. Resolves the plugin root (via `$CLAUDE_PLUGIN_ROOT` or `__file__`).
-2. Sets up the project constitution + CLAUDE.md loader (handles the v0.2.0 → v0.3.0
-   migration from a single-file CLAUDE.md into a dedicated `specs/constitution.md`
-   plus a condensed `CLAUDE.md` loader).
+2. Bootstraps `specs/constitution.md` from the bundled template when missing. The
+   project root `CLAUDE.md` is OWNED BY THE USER — this script never writes it.
 3. Copies bundled templates from `<plugin>/skills/doctor/templates/` into the
    target project — `specs/template.md`, `specs/capabilities.md`, `.claude/settings.json`.
 4. Auto-detects installed plugins and the project stack to populate `capabilities.md`
@@ -36,7 +35,6 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from check import detect_stack, run_all_checks  # noqa: E402
 
 USER_OVERRIDE_MARKER = "<!-- user-override -->"
-MIGRATED_MARKER_RE = re.compile(r"<!--\s*MIGRATED:(.+?)\s*-->")
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -58,79 +56,8 @@ def resolve_plugin_root() -> pathlib.Path:
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Constitution + CLAUDE.md setup (handles migration from v0.2.0 single-file layout)
+# Constitution setup
 # ────────────────────────────────────────────────────────────────────────────
-
-
-def _extract_h2_sections(markdown: str) -> dict[str, str]:
-    """Parse `## Heading` sections from a markdown document.
-
-    Returns a dict mapping the heading text (without the `## ` prefix) to the section body
-    (everything between this heading and the next `## ` or end of file, trimmed).
-    """
-    sections: dict[str, str] = {}
-    # Heading line plus body up to next H2 or EOF
-    pattern = re.compile(r"^## (.+?)\n(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
-    for match in pattern.finditer(markdown):
-        heading = match.group(1).strip()
-        body = match.group(2).strip()
-        sections[heading] = body
-    return sections
-
-
-def _match_marker_heading(heading: str, marker_heading: str) -> bool:
-    """Loose match between a CLAUDE.md heading and a constitution MIGRATED:* marker name.
-
-    The legacy CLAUDE.md template used these headings:
-        Tech stack
-        Run/build commands
-        Architecture (one-liner)
-        Code conventions
-        WHAT NOT TO DO ⛔
-        SDD flow
-
-    The constitution template carries markers with the same names plus a few variants.
-    Compare case-insensitively and ignore trailing emoji / parenthetical content.
-    """
-    def normalize(s: str) -> str:
-        s = re.sub(r"\([^)]*\)", "", s)        # drop "(one-liner)" etc.
-        s = re.sub(r"[^\w\s/-]", "", s)         # drop emoji + non-word punctuation
-        return " ".join(s.lower().split())
-    return normalize(heading) == normalize(marker_heading)
-
-
-def migrate_claude_md_to_constitution(
-    claude_md: pathlib.Path,
-    constitution: pathlib.Path,
-    templates_dir: pathlib.Path,
-) -> list[str]:
-    """Seed `specs/constitution.md` from an existing CLAUDE.md.
-
-    Reads the constitution template, finds each `<!-- MIGRATED:<heading> -->` marker,
-    and replaces it with the matching section from CLAUDE.md (loose heading match).
-    Returns the list of headings that were migrated, for reporting.
-    """
-    template = (templates_dir / "constitution.md.template").read_text(encoding="utf-8")
-    old_sections = _extract_h2_sections(claude_md.read_text(encoding="utf-8"))
-
-    migrated: list[str] = []
-
-    def replace(match: re.Match[str]) -> str:
-        marker_heading = match.group(1).strip()
-        for heading, body in old_sections.items():
-            if _match_marker_heading(heading, marker_heading):
-                migrated.append(heading)
-                return body + "\n\n<!-- TODO: add rationale / WHY -->"
-        # No match found — leave the marker placeholder copy from the template (next to the marker).
-        # Returning empty string would delete the placeholder body too aggressively;
-        # we just remove the marker comment so the user sees the bare placeholders.
-        return ""
-
-    rendered = MIGRATED_MARKER_RE.sub(replace, template)
-
-    constitution.parent.mkdir(parents=True, exist_ok=True)
-    constitution.write_text(rendered, encoding="utf-8")
-    return migrated
 
 
 def _rename_legacy_underscored_files(project_root: pathlib.Path, *, dry_run: bool) -> list[str]:
@@ -142,8 +69,8 @@ def _rename_legacy_underscored_files(project_root: pathlib.Path, *, dry_run: boo
 
     Each rename is performed only when the legacy path exists AND the new target path
     does not (won't clobber). Idempotent — re-running this on a project that has already
-    been migrated is a no-op. Also patches pointer references in `CLAUDE.md` from the old
-    locations to the new ones (path-only fix; never modifies user-authored content).
+    been migrated is a no-op. The project-root `CLAUDE.md` is intentionally NOT touched;
+    if it carries stale pointer paths, the user updates it themselves.
     Returns human-readable status lines.
     """
     moves: list[str] = []
@@ -170,19 +97,6 @@ def _rename_legacy_underscored_files(project_root: pathlib.Path, *, dry_run: boo
             legacy_caps.rename(new_caps)
             moves.append(f"  legacy relocate      — moved: .claude/capabilities.md → specs/capabilities.md")
 
-    # Pointer-string fixes in CLAUDE.md (path only — never modifies user-authored content).
-    claude_md = project_root / "CLAUDE.md"
-    if claude_md.exists():
-        text = claude_md.read_text(encoding="utf-8")
-        new_text = text
-        new_text = new_text.replace("specs/_constitution.md", "specs/constitution.md")
-        new_text = new_text.replace(".claude/capabilities.md", "specs/capabilities.md")
-        if new_text != text:
-            if dry_run:
-                moves.append(f"  CLAUDE.md pointer    — would-patch legacy paths to new locations")
-            else:
-                claude_md.write_text(new_text, encoding="utf-8")
-                moves.append(f"  CLAUDE.md pointer    — patched legacy paths to new locations")
     return moves
 
 
@@ -192,61 +106,26 @@ def setup_constitution(
     *,
     dry_run: bool,
 ) -> list[str]:
-    """Bootstrap `specs/constitution.md` and `CLAUDE.md` according to the four-case matrix.
+    """Bootstrap `specs/constitution.md` from the bundled template when missing.
 
+    The project root `CLAUDE.md` is user-owned and is never read or written here.
     Returns a list of human-readable status lines for the caller to print.
     """
-    # Migrate v0.3.0 underscored filenames (`_constitution.md`, `_template.md`) BEFORE
-    # the case-matrix check so the new paths are visible to the existence tests below.
     lines: list[str] = _rename_legacy_underscored_files(project_root, dry_run=dry_run)
 
     constitution_path = project_root / "specs" / "constitution.md"
-    claude_md_path = project_root / "CLAUDE.md"
 
-    has_constitution = constitution_path.exists()
-    has_claude_md = claude_md_path.exists()
-
-    if has_constitution and has_claude_md:
-        lines.append(f"  constitution         — skipped: both files already present")
-        lines.append(f"  CLAUDE.md (loader)   — skipped: present")
+    if constitution_path.exists():
+        lines.append(f"  constitution         — skipped: already present")
         return lines
 
-    if not has_constitution and has_claude_md:
-        # Migration v0.2.0 → v0.3.0
-        if dry_run:
-            lines.append(f"  constitution         — would-migrate from existing CLAUDE.md → {constitution_path}")
-            lines.append(f"  CLAUDE.md (loader)   — would-regenerate as condensed loader: {claude_md_path}")
-            return lines
-        migrated = migrate_claude_md_to_constitution(claude_md_path, constitution_path, templates_dir)
-        # Overwrite CLAUDE.md with the new condensed loader template.
-        shutil.copyfile(templates_dir / "CLAUDE.md.template", claude_md_path)
-        if migrated:
-            lines.append(f"  constitution         — migrated from CLAUDE.md ({len(migrated)} sections: {', '.join(migrated)}): {constitution_path}")
-        else:
-            lines.append(f"  constitution         — bootstrapped (no migratable sections found in CLAUDE.md): {constitution_path}")
-        lines.append(f"  CLAUDE.md (loader)   — regenerated as condensed loader: {claude_md_path}")
-        return lines
-
-    if not has_constitution and not has_claude_md:
-        # Fresh install
-        if dry_run:
-            lines.append(f"  constitution         — would-copy fresh: {constitution_path}")
-            lines.append(f"  CLAUDE.md (loader)   — would-copy fresh: {claude_md_path}")
-            return lines
-        constitution_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(templates_dir / "constitution.md.template", constitution_path)
-        shutil.copyfile(templates_dir / "CLAUDE.md.template", claude_md_path)
-        lines.append(f"  constitution         — created: {constitution_path}")
-        lines.append(f"  CLAUDE.md (loader)   — created: {claude_md_path}")
-        return lines
-
-    # constitution exists, CLAUDE.md missing (rare)
     if dry_run:
-        lines.append(f"  CLAUDE.md (loader)   — would-copy fresh: {claude_md_path}")
+        lines.append(f"  constitution         — would-copy fresh: {constitution_path}")
         return lines
-    shutil.copyfile(templates_dir / "CLAUDE.md.template", claude_md_path)
-    lines.append(f"  constitution         — skipped: already present")
-    lines.append(f"  CLAUDE.md (loader)   — created: {claude_md_path}")
+
+    constitution_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(templates_dir / "constitution.md.template", constitution_path)
+    lines.append(f"  constitution         — created: {constitution_path}")
     return lines
 
 
@@ -663,7 +542,7 @@ def main() -> int:
         print("   Is the plugin correctly installed?", file=sys.stderr)
         return 1
 
-    # 1. Constitution + CLAUDE.md (handles four cases including v0.2.0 → v0.3.0 migration).
+    # 1. Constitution — bootstrap specs/constitution.md when missing. CLAUDE.md is user-owned.
     for line in setup_constitution(project_root, templates_dir, dry_run=args.dry_run):
         print(line)
 

@@ -1,7 +1,7 @@
 # Project Constitution
 
 > **The source of truth for this project's rules of engagement.**
-> Humans read this for the WHY. Claude reads `CLAUDE.md` (the loader) for operational quick reference.
+> The SDD framework reads this file for operational context and edits it via `/sdd:constitution`.
 >
 > Edit this file with `/sdd:constitution`. No token limit — be detailed.
 > Every "WHAT NOT TO DO" entry should carry a *reason* (the incident, the trade-off, the
@@ -15,7 +15,6 @@
 
 ## 1. Tech stack
 
-<!-- MIGRATED:Tech stack -->
 - **Runtime:**
 - **Framework:**
 - **Database:**
@@ -33,7 +32,6 @@
 
 ## 2. Run/build commands
 
-<!-- MIGRATED:Run/build commands -->
 | Command | Purpose |
 |---------|---------|
 | `dev` | local development server |
@@ -48,7 +46,6 @@ Add notes for non-obvious flags or env vars required.
 
 ## 3. Architecture
 
-<!-- MIGRATED:Architecture (one-liner) -->
 <!-- One paragraph + (optionally) a Mermaid diagram showing the top-level shape of the repo. -->
 <!-- Example: monorepo with `apps/web` (Next.js), `apps/api` (FastAPI), `packages/shared`. -->
 
@@ -66,7 +63,6 @@ flowchart LR
 
 ## 4. Code conventions
 
-<!-- MIGRATED:Code conventions -->
 - TypeScript strict, no `any`.
 - File names: kebab-case.
 - Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `docs`, `test`).
@@ -88,8 +84,6 @@ async function loadUser(id: any) { try { ... } catch {} }
 
 <!-- THE most important section. Every entry MUST have a "Why" line. -->
 <!-- After every meaningful Claude mistake, append the lesson here with its rationale. -->
-
-<!-- MIGRATED:WHAT NOT TO DO ⛔ -->
 
 ### Example template for new entries
 

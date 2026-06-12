@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -90,7 +90,7 @@ Then enable it in your user settings (`~/.claude/settings.json`):
 ```json
 {
   "enabledPlugins": {
-    "sdd@janszewczyk": true
+    "sdd@spec-driven-development": true
   }
 }
 ```
@@ -103,23 +103,26 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@0.3.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required.
+You should see `sdd@0.4.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required.
 
 ### 2. Initialize a project
 
 Open the target project in Claude Code and run:
 
 ```text
-/sdd:doctor init      # copies CLAUDE.md.template, specs/template.md, capabilities.md, settings.json
-/sdd:doctor check     # confirms 11/11 — plugin + per-project files present, constitution valid
-/sdd:constitution         # edit CLAUDE.md — must be <2,500 tokens
+/sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md, .claude/settings.json
+/sdd:doctor check     # confirms 10/10 — plugin + per-project files present, constitution valid
+/sdd:constitution     # edit specs/constitution.md (long-form, no token limit)
 ```
 
 What `init` does:
 
-- Copies `CLAUDE.md` and `specs/template.md` into the project (skips if already present — never overwrites).
+- Bootstraps `specs/constitution.md` from the bundled template (skipped if already present — never overwrites).
+- Copies `specs/template.md` (the base for new feature specs) into the project.
 - Generates `specs/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
-- Generates `.claude/settings.json` with PostToolUse hooks pointing at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`.
+- Safe-merges `.claude/settings.json` with PostToolUse hooks pointing at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`. Existing keys (permissions, MCP config, your own hooks) are preserved verbatim.
+
+> **`CLAUDE.md` is not touched.** The project-root `CLAUDE.md` (if you keep one as a Claude Code session loader) is fully owned by you — the SDD framework never reads or writes it. The source of truth is `specs/constitution.md`, edited via `/sdd:constitution`.
 
 ### 3. Build your first feature
 
@@ -139,7 +142,7 @@ If you want a customized copy (e.g. with org-specific routing rules in `capabili
 
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugin.json`.
 2. (Optional) Edit `skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
-3. (Optional) Edit `skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale, and `skills/doctor/templates/CLAUDE.md.template` to customize the session loader.
+3. (Optional) Edit `skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
 4. Bump the `version` in `plugin.json` and tag a release.
 5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
 
@@ -174,7 +177,7 @@ flowchart TD
 
 | Phase | Command | What happens |
 |-------|---------|--------------|
-| **Constitution** | `/sdd:constitution` | Edit `specs/constitution.md` — the long-form source of truth (tech stack, conventions, **WHAT NOT TO DO** with rationale, testing philosophy, out-of-scope). `CLAUDE.md` at the root is a separate condensed session loader, kept independent. |
+| **Constitution** | `/sdd:constitution` | Edit `specs/constitution.md` — the long-form source of truth (tech stack, conventions, **WHAT NOT TO DO** with rationale, testing philosophy, out-of-scope). No token limit. The only file this command touches. |
 | **Specify** | `/sdd:spec <type> <description>` | Validate clean git, create branch `<type>/<slug>`, generate `specs/<slug>/spec.md` (business only — no code) |
 | **Clarify** | `/sdd:clarify` | AI reads spec.md and asks 5-10 targeted gap questions; updates spec with answers |
 | **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
@@ -192,7 +195,7 @@ flowchart TD
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │  ORCHESTRATOR (main Claude session)                         │
-│  • Reads CLAUDE.md, capabilities.md, spec/sdd:plan/sdd:tasks        │
+│  • Reads specs/constitution.md, capabilities.md, spec/plan/tasks │
 │  • Routes work to specialist agents via Task tool           │
 │  • Runs verification agents at review time                  │
 └─────────────────────────────────────────────────────────────┘
@@ -257,12 +260,14 @@ Three techniques prevent context bloat:
 2. **Skills on-demand** — `Use skill: X` only loads when needed
 3. **Fresh chat per Story** — open a new Claude session between stories; `tasks.md` status is the handover document
 
-`CLAUDE.md` token limit: **<2,500 tokens**. When you exceed it, shard per module:
+If you keep a Claude Code session loader (`CLAUDE.md` at the project root or per-module), keep it lean — Claude starts ignoring content past the first couple of thousand tokens. A useful convention is to point it at `specs/constitution.md` for detail and shard per module when the root file grows:
 
 - `CLAUDE.md` (root, cross-cutting concerns)
 - `apps/web/CLAUDE.md` (frontend-specific)
 - `apps/api/CLAUDE.md` (backend-specific)
 - `packages/ui/CLAUDE.md` (component library)
+
+The SDD framework itself does not read, write, or enforce any structure on these files — they are entirely yours.
 
 ### 🪝 Verification hooks
 
@@ -318,17 +323,16 @@ Example schema:
 
 ## ⌨️ Slash Commands Reference
 
-### 🏥 `/sdd:doctor [check|init|fix <ids>]`
+### 🏥 `/sdd:doctor [check|init]`
 
-Preflight audit and auto-setup. **11 checks**: CLAUDE.md loader (with constitution pointer), specs/template.md, plugin installed, plugin enabled, capabilities.md valid, settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected, specs/constitution.md valid.
+Preflight audit and auto-setup. **10 checks**: specs/constitution.md, specs/template.md, plugin installed, plugin enabled (looked up across user / project / local settings layers), specs/capabilities.md valid, .claude/settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected.
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
-- `init` — generate all missing files + auto-detect plugins → fill `capabilities.md` + adjust hooks to detected stack
-- `fix <N>` — repair specific check by ID
+- `init` — bootstrap missing files (constitution, template, capabilities, settings.json hook entries) and auto-detect installed plugins + project stack. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md` and every non-SDD key in `settings.json`. Never touches the project-root `CLAUDE.md`.
 
 ### 📜 `/sdd:constitution`
 
-Edit `specs/constitution.md` — the long-form project constitution (no token limit). This is the source of truth where every "WHAT NOT TO DO" rule carries its rationale, every architectural decision its trade-off. `CLAUDE.md` at the project root is a separate, independent session loader — this command does NOT modify it. If the constitution file is missing, the command directs the user to run `/sdd:doctor init` first (which bootstraps it, migrating from any existing CLAUDE.md content).
+Edit `specs/constitution.md` — the long-form project constitution (no token limit). This is the source of truth where every "WHAT NOT TO DO" rule carries its rationale, every architectural decision its trade-off. This is also the ONLY file the command modifies. If the constitution file is missing, the command directs the user to run `/sdd:doctor init` first (which bootstraps it from the bundled template).
 
 ### 🌿 `/sdd:spec <type> <description>`
 
@@ -339,7 +343,7 @@ Steps:
 1. Verify clean git tree (`git status --porcelain`) — STOP if dirty
 2. Parse `<type>` and generate `feature_slug` (kebab-case) and `feature_title` (Title Case)
 3. Create branch `<type>/<feature_slug>`
-4. Generate `specs/<feature_slug>/spec.md` from `_template.md`
+4. Generate `specs/<feature_slug>/spec.md` from `specs/template.md`
 
 ⛔ The spec file is **business-only** — no code, no tech stack details.
 
@@ -544,7 +548,7 @@ In Claude Code:
 
 ```text
 /sdd:doctor init       # auto-detects Next.js 15 + TS + Vitest + Storybook
-/sdd:doctor check      # ✅ READY (11/11)
+/sdd:doctor check      # ✅ READY (10/10)
 /sdd:constitution      # fill specs/constitution.md: Tech stack, Run/build, WHAT NOT TO DO with rationale
 ```
 
@@ -743,21 +747,21 @@ Only per-project artifacts. Commands / agents / verification skills live in the 
 
 ```text
 your-project/
-├── CLAUDE.md                              # session loader (<2,500 tokens); points to specs/constitution.md
 ├── specs/
-│   ├── constitution.md                   # full project constitution (source of truth, no token limit)
-│   ├── _template.md                       # base template for new specs
+│   ├── constitution.md                    # source of truth — created by `/sdd:doctor init` if missing, edited by `/sdd:constitution`
+│   ├── template.md                        # base template for new feature specs
+│   ├── capabilities.md                    # hybrid: auto-generated agents/skills/stack + user-override routing rules
 │   └── <feature-slug>/
 │       ├── spec.md                        # business specification
 │       ├── plan.md                        # architecture + Mermaid diagrams
 │       ├── tasks.md                       # YAML task list with routing tags
 │       └── review.md                      # generated by /sdd:review
 ├── .claude/
-│   ├── capabilities.md                    # hybrid: auto-generated + user-overrides
-│   └── settings.json                      # PostToolUse hooks → plugin hook scripts
-├── apps/web/CLAUDE.md                     # (optional) module-scoped loader
-└── apps/api/CLAUDE.md                     # (optional) module-scoped loader
+│   └── settings.json                      # PostToolUse hooks → plugin hook scripts (safe-merged; user keys preserved)
+└── CLAUDE.md                              # (optional, user-owned) Claude Code session loader — never touched by SDD
 ```
+
+> **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md`, and SDD-tagged hook entries inside `.claude/settings.json`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md` and any non-SDD keys in `.claude/settings.json` — is owned by you and is never modified.
 
 ### In the plugin (installed once per machine)
 
@@ -768,24 +772,23 @@ spec-driven-development/                    # or your own forked plugin path
 ├── skills/
 │   └── doctor/
 │       ├── SKILL.md                       # skill metadata + instructions
-│       ├── check.py                       # 11-point readiness check
-│       ├── init.py                        # bootstraps / migrates per-project files
+│       ├── check.py                       # 10-point readiness check
+│       ├── init.py                        # bootstraps per-project files (constitution + template + capabilities + hook entries)
 │       └── templates/                     # bundled templates copied by `init`
-│           ├── constitution.md.template  # long-form constitution (with MIGRATED markers)
-│           ├── CLAUDE.md.template         # condensed session loader
-│           ├── capabilities.md.template
-│           └── specs/template.md
+│           ├── constitution.md.template   # long-form project constitution
+│           ├── capabilities.md.template   # auto-generated + user-override hybrid
+│           └── specs/template.md          # base for new feature specs
 │       # settings.json is NOT a template — init builds hook entries programmatically
 │       # from detected tools and safely merges them into any existing file.
 ├── commands/                              # 9 slash commands (auto-discovered)
 │   ├── doctor.md
 │   ├── constitution.md / spec.md / clarify.md / plan.md
-│   ├── tasks.md / implement.md / review.md / analyze.md
+│   └── tasks.md / implement.md / review.md / analyze.md
 ├── agents/                                # 4 verification sub-agents
 │   ├── spec-guard.md
 │   ├── drift-detector.md
 │   ├── reviewer.md
-│   └── ui-critic.md                   # optional — needs browser MCP
+│   └── ui-critic.md                       # optional — needs browser MCP
 └── hooks/
     ├── typecheck.py                       # exit 2 = blocks Claude
     └── lint.sh
@@ -798,7 +801,7 @@ spec-driven-development/                    # or your own forked plugin path
 Eleven actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
 
 1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Hooks make typecheck/lint non-skippable. For **logic** (server actions, hooks, utilities) use classic strict TDD — failing test first, then implementation. For **UI components** use contract-first TDD: define inline props interface + skeleton component, then tests + Storybook story (which now fail with meaningful assertion errors, not module-not-found), then full implementation. Props interface lives inline in the `.tsx` file — never as a separate `.types.ts`.
-2. **📜 Constitution carries the WHY, CLAUDE.md carries the operational surface.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). `CLAUDE.md` summarizes the top operational rules and links back to the constitution. After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken.
+2. **📜 The constitution is the WHY.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken. If you also maintain a Claude Code session loader (`CLAUDE.md`), use it to surface the most-broken rules and point at the constitution for detail — but that file is yours to shape, not the framework's.
 3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer agent. Break it into Epic → Story → Task. Each specialist receives only its slice.
 4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.
 5. **🔒 Use Plan Mode before edits.** `/sdd:plan` and `/sdd:clarify` ideally run in Plan Mode (Shift+Tab) so Claude cannot accidentally modify files during exploration.
@@ -840,8 +843,8 @@ Why this framework looks the way it does:
 | **Skills loaded on demand** | No global pre-loading means smaller context per task. Skills are referenced from `capabilities.md` and loaded only when the task type requires them. |
 | **Plan Mode before `/sdd:implement`** | Forces human review and blocks destructive changes before a plan exists. |
 | **Hybrid capabilities.md** | `<!-- auto-generated -->` sections reflect installed plugins. `<!-- user-override -->` sections preserve customizations. Re-running `init` is safe. |
-| **CLAUDE.md at root, not in .claude/** | Claude Code reads `CLAUDE.md` from the project root by default. Putting it in `.claude/` would require manual loading. |
-| **Framework lives in the plugin, project owns its specs** | Commands, agents, hooks, and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `CLAUDE.md`, `specs/`, `capabilities.md`, `settings.json`. Plugin updates roll out by reinstalling; project data is never overwritten. |
+| **Constitution lives under `specs/`, not in `CLAUDE.md`** | Two separate concerns. `specs/constitution.md` is the long-form source of truth — no token budget, rationale-rich, edited via `/sdd:constitution`. The project root `CLAUDE.md`, if you keep one, is a Claude Code session loader fully owned by you; the framework never reads, writes, or enforces its structure. |
+| **Framework lives in the plugin, project owns its specs** | Commands, agents, hooks, and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `specs/`, `.claude/settings.json`, and whatever `CLAUDE.md` you choose to maintain. Plugin updates roll out by reinstalling; project data is never overwritten. |
 
 ---
 
@@ -850,7 +853,7 @@ Why this framework looks the way it does:
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `/sdd:doctor check` shows ❌ on check #9 (specialist agents) | No plugins installed | Install relevant plugins (e.g., `@szum-tech` marketplace) and re-run `/sdd:doctor init` |
-| Hooks not firing after Edit | `settings.json` not loaded | Verify `.claude/settings.json` exists and `chmod +x .claude/hooks/*` |
+| Hooks not firing after Edit | `settings.json` not loaded, or hook entries missing | Verify `.claude/settings.json` exists and its `hooks.PostToolUse` array contains commands pointing at `<plugin-root>/hooks/typecheck.py` and `hooks/lint.sh`. Re-run `/sdd:doctor init` to regenerate hook entries from the detected stack. |
 | `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
 | `/sdd:implement` keeps producing the same code despite hook failures | typecheck error not propagating | Check that `typecheck.py` exits with code 2 on failure; verify `tsc`/`mypy` is installed |
 | `/sdd:tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
