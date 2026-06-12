@@ -1,6 +1,6 @@
 ---
 name: doctor
-version: 0.5.0
+version: 0.6.0
 lastUpdated: 2026-06-12
 description: Preflight audit and setup of project readiness for the SDD framework. Runs 10 checks (specs/constitution.md, specs/template.md, plugin installed + enabled across user/project/local settings, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode creates the per-project artifacts (constitution, specs/template.md, capabilities.md, stack-specific hook scripts, settings.json hook entries) directly with file tools — no helper scripts. The root `CLAUDE.md` is user-owned and never read or modified by this skill. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
 tags: [sdd, spec-driven-development, tdd, claude-code, plugin]
@@ -118,7 +118,7 @@ uses something not shown there, write a block for it by analogy (see init step 4
 |---|-------|--------|--------|
 | 1 | specs/constitution.md | ✅ | 4/4 required sections present |
 | 2 | specs/template.md | ✅ | all fields present |
-| 3 | Plugin installed | ✅ | sdd@0.5.0 at ~/.claude/plugins/cache/sdd |
+| 3 | Plugin installed | ✅ | sdd@0.6.0 at ~/.claude/plugins/cache/sdd |
 | 4 | Plugin enabled | ✅ | enabled in user, project settings |
 | 5 | specs/capabilities.md | ✅ | 4 sections present |
 | 6 | .claude/settings.json hooks | ❌ | no PostToolUse hooks |

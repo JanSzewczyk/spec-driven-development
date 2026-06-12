@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-06-12
+
 ### Added
 
 - **Open-ended, language-agnostic hook generation.** `/sdd:doctor init` no longer matches against a fixed catalog of stacks. It now discovers *how the specific project checks its code* — from declared scripts/tasks (`package.json`, `Makefile`, `justfile`, Gradle/Maven, etc.), CI and pre-commit config, and tool config files — and generates hooks that reproduce those exact commands, for **any** language or tool, including ones never enumerated (Kotlin, Swift, Ruby, PHP, C#/.NET, Elixir, a tool released last month). The `templates/hooks/*.sh.template` blocks are now framed as *worked examples of the hook shape*, and `SKILL.md` instructs the skill to add new blocks by analogy for tools the examples don't cover. Java (Maven/Gradle — compile as typecheck, Checkstyle/PMD/SpotBugs as lint) is included as one such worked example.
