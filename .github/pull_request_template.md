@@ -19,10 +19,9 @@
 ## Verification
 
 - [ ] Stale-reference grep is clean:
-      `grep -rnE '(?<!sdd-)\b(spec-guard|drift-detector|reviewer|ui-critic)\b' --perl-regexp template/ README.md` → empty
-- [ ] Framework integrity:
-      `python3 template/.claude/skills/doctor/check.py --root template` → checks 3, 4, 6 pass
-- [ ] If a new agent / command / hook was added, it is registered in `check.py` constants and documented in `README.md` File Structure.
+      `grep -rnE '(?<!sdd-)\b(spec-guard|drift-detector|reviewer|ui-critic)\b' --perl-regexp commands/ agents/ skills/ README.md` → empty
+- [ ] Doctor exercised against a fresh project: `/sdd:doctor check` → `init` → `check`; artifacts verified to land under the project root and a re-`init` is idempotent.
+- [ ] If a new agent / command / hook / check was added, it is documented in `README.md` File Structure and the relevant `SKILL.md` / template was updated.
 - [ ] `CHANGELOG.md` updated under `[Unreleased]`.
 
 ## Notes for reviewers

@@ -120,7 +120,7 @@ What `init` does:
 - Bootstraps `specs/constitution.md` from the bundled template (skipped if already present — never overwrites).
 - Copies `specs/template.md` (the base for new feature specs) into the project.
 - Generates `specs/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
-- Generates project-local hook scripts at `.claude/hooks/typecheck.sh` and `.claude/hooks/lint.sh` containing ONLY the tools your project actually uses (detected from `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`). Existing hook files are never overwritten — once you customise one, it's yours.
+- Generates project-local hook scripts at `.claude/hooks/typecheck.sh` and `.claude/hooks/lint.sh` containing ONLY the tools your project actually uses — discovered from its scripts/tasks, CI and pre-commit config, and tool configs, for any language (no fixed stack list). Existing hook files are never overwritten — once you customise one, it's yours.
 - Safe-merges `.claude/settings.json` with PostToolUse entries pointing at those project-local hooks. Existing keys (permissions, MCP config, your own hooks) are preserved verbatim.
 
 > **`CLAUDE.md` is not touched.** The project-root `CLAUDE.md` (if you keep one as a Claude Code session loader) is fully owned by you — the SDD framework never reads or writes it. The source of truth is `specs/constitution.md`, edited via `/sdd:constitution`.
@@ -272,22 +272,22 @@ The SDD framework itself does not read, write, or enforce any structure on these
 
 ### 🪝 Verification hooks
 
-Hook scripts are **not shipped by the plugin** — they're technology-specific, so the plugin would have to bake in assumptions about every possible stack. Instead, `/sdd:doctor init` detects what your project actually uses (parsing `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json` and confirming each tool resolves on `$PATH`) and generates minimal hooks for **only those tools** under your project:
+Hook scripts are **not shipped by the plugin** — they're technology-specific, so the plugin would have to bake in assumptions about every possible stack. Instead, because the doctor skill is LLM-driven, `/sdd:doctor init` **inspects how your project actually checks its code** — its declared scripts/tasks (`package.json`, `Makefile`, Gradle/Maven, etc.), CI and pre-commit config, and tool config files — then generates minimal hooks that reproduce *those* commands, for **only the tools your project uses**:
 
 ```text
 <project>/.claude/hooks/typecheck.sh   # e.g. just `tsc` for a Next.js + TS project
 <project>/.claude/hooks/lint.sh        # e.g. just `biome` if Biome is detected
 ```
 
-Coverage per stack:
+**There is no fixed list of supported stacks.** New languages and code-quality tools appear constantly; the skill detects and reproduces whatever your project uses — TypeScript, Python, Rust, Go, Deno, Java/Kotlin, Ruby, PHP, C#/.NET, Swift, Elixir, or a tool released last month. A few worked examples, to show the shape:
 
-- **TypeScript / JavaScript** — `tsc --noEmit` for typecheck; lint preference Biome → ESLint → oxlint (first detected wins)
-- **Python** — `mypy --strict` (preferred) or `pyright` for typecheck; `ruff check` for lint
-- **Rust** — `cargo check --quiet` for typecheck; `cargo clippy -- -D warnings` for lint
-- **Go** — `go vet ./...` for typecheck; `golangci-lint run` for lint
-- **Deno** — `deno check` for typecheck; `deno lint` for lint
+- **TypeScript / JavaScript** — `tsc --noEmit` for typecheck; the linter the project depends on (Biome / ESLint / oxlint)
+- **Python** — `mypy`/`pyright` for typecheck; `ruff check` for lint
+- **Rust** — `cargo check` for typecheck; `cargo clippy` for lint &nbsp;·&nbsp; **Go** — `go vet` / `golangci-lint`
+- **Java** — the build tool's compile task as typecheck (`./gradlew compileJava` → `mvn compile`); Checkstyle/PMD/SpotBugs for lint when configured
+- **…anything else** — the skill reuses the exact command your project already runs to verify code
 
-PostToolUse entries in `.claude/settings.json` run those scripts after every `Edit`/`Write`/`MultiEdit`. Exit code **2** blocks Claude until the diagnostic is fixed; missing tools exit 0 (safe no-op).
+The plugin ships a handful of these as starter patterns in `templates/hooks/`; the skill extends them by analogy for tools they don't cover. PostToolUse entries in `.claude/settings.json` run the generated scripts after every `Edit`/`Write`/`MultiEdit`. Exit code **2** blocks Claude until the diagnostic is fixed; missing tools exit 0 (safe no-op).
 
 **Stack-aware, non-destructive, idempotent.** `/sdd:doctor init`:
 
@@ -788,16 +788,19 @@ spec-driven-development/                    # or your own forked plugin path
 ├── plugin.json                            # manifest
 ├── README.md / LICENSE / CHANGELOG.md / CONTRIBUTING.md / .github/
 ├── skills/
-│   └── doctor/
-│       ├── SKILL.md                       # skill metadata + instructions
-│       ├── check.py                       # 10-point readiness check
-│       ├── init.py                        # bootstraps per-project files (constitution + template + capabilities + hook entries)
-│       └── templates/                     # bundled templates copied by `init`
+│   └── doctor/                            # LLM-driven skill — no Python helpers
+│       ├── SKILL.md                       # the full procedure for `check` + `init`
+│       ├── reference/
+│       │   └── settings-merge.md          # mechanical safe-merge procedure for settings.json
+│       └── templates/                     # bundled seed files read by `init`
 │           ├── constitution.md.template   # long-form project constitution
 │           ├── capabilities.md.template   # auto-generated + user-override hybrid
-│           └── specs/template.md          # base for new feature specs
-│       # settings.json is NOT a template — init builds hook entries programmatically
-│       # from detected tools and safely merges them into any existing file.
+│           ├── specs/template.md          # base for new feature specs
+│           └── hooks/                     # per-tool shell snippets composed into project hooks
+│               ├── typecheck.sh.template
+│               └── lint.sh.template
+│       # settings.json is NOT a template — init builds hook entries from detected
+│       # tools and safely merges them into any existing file.
 ├── commands/                              # 9 slash commands (auto-discovered)
 │   ├── doctor.md
 │   ├── constitution.md / spec.md / clarify.md / plan.md
@@ -809,7 +812,7 @@ spec-driven-development/                    # or your own forked plugin path
     └── ui-critic.md                       # optional — needs browser MCP
 ```
 
-> **No `hooks/` in the plugin.** Hook scripts are technology-specific and are generated per-project by `/sdd:doctor init` under `<project>/.claude/hooks/`. The plugin only carries detection logic and the per-tool shell snippets that get composed into those scripts.
+> **No `hooks/` in the plugin.** Hook scripts are technology-specific and are generated per-project by `/sdd:doctor init` under `<project>/.claude/hooks/`. The plugin only carries the per-tool shell snippets (`templates/hooks/`) that doctor composes into those scripts, keeping only the blocks for the tools your project actually has.
 
 ---
 
@@ -887,8 +890,8 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 In short:
 
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
-2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `skills/doctor/templates/`, or the hook-snippet tables inside `skills/doctor/init.py`)
-3. Run the smoke test (`check.py` then `init.py` against a fresh empty directory)
+2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `skills/doctor/templates/`, `skills/doctor/reference/`, or the per-tool blocks in `skills/doctor/templates/hooks/*.sh.template`)
+3. Exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and add a `CHANGELOG.md` entry under `[Unreleased]`
 5. Open a Pull Request
 
