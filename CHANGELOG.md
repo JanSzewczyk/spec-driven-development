@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`/sdd:doctor init` no longer destructively overwrites `.claude/settings.json`.** Earlier versions rendered the bundled `settings.json.template` and wrote it back verbatim, wiping any user-authored keys (custom permissions, other PostToolUse hooks, MCP config, model overrides). Now `init` reads the existing file, strips only its OWN previously-installed hook entries (identified by command path containing `hooks/typecheck.py` or `hooks/lint.sh`), and appends fresh entries. Every other key is preserved verbatim. On malformed JSON in the existing file, init bails with a clear error and refuses to touch the file.
+
+### Changed
+
+- **Stack-aware hook entries.** Instead of installing a hardcoded TypeScript + ESLint hook pair on every project, `init` now detects what typecheck / lint tools are actually present by parsing `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` / `deno.json` AND verifying each candidate is on `$PATH`. Hook entries are emitted only for tools we can actually run.
+- **Expanded language coverage in the hook scripts.** `hooks/typecheck.py` now handles `.ts/.tsx` (tsc), `.py` (mypy → pyright fallback), `.rs` (cargo check), `.go` (go vet). `hooks/lint.sh` now picks Biome → ESLint → oxlint (first available) for JS/TS, Ruff for Python, `cargo clippy` for Rust, `golangci-lint` for Go.
+- **Hook scripts no-op gracefully when tools are missing.** Previously a missing ESLint (or any required tool) could exit with code 2 and unnecessarily block Claude on stacks that don't use that linter. Now hooks check `shutil.which` / `command -v` before invoking and exit 0 when the tool isn't installed.
+
+### Removed
+
+- `skills/doctor/templates/settings.json.template` — hook entries are built programmatically by `init.py` from detected tools; no static template needed.
+
 ## [0.3.0] — 2026-06-12
 
 ### Changed (breaking)

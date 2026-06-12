@@ -268,10 +268,12 @@ Three techniques prevent context bloat:
 
 PostToolUse hooks in `.claude/settings.json` run after every `Edit`/`Write`/`MultiEdit`:
 
-- `typecheck.py` — runs `tsc --noEmit` for TypeScript or `mypy --strict` for Python on the modified file
-- `lint.sh` — runs ESLint for JS/TS or Ruff for Python
+- `typecheck.py` — picks the typechecker matching the file's language *and* available on `$PATH`. Supports `.ts/.tsx` (tsc via npx), `.py` (mypy → pyright fallback), `.rs` (cargo check), `.go` (go vet). Unsupported extensions and missing tools → no-op.
+- `lint.sh` — picks the linter matching the file's language. JS/TS preference order: **Biome → ESLint → oxlint** (first available wins). Python → Ruff. Rust → `cargo clippy -- -D warnings`. Go → `golangci-lint run`.
 
-If typecheck or lint fails, the hook exits with code **2**. Claude receives the stderr output and is **forced to fix the issue** before taking the next action. There is no way to "forget" about validation.
+If typecheck or lint fails, the hook exits with code **2**. Claude receives the stderr output and is **forced to fix the issue** before taking the next action. If the relevant tool isn't installed, the hook quietly exits 0 — it never blocks Claude on missing tooling.
+
+**Setup is stack-aware and non-destructive.** `/sdd:doctor init` detects which typecheck / lint tools the project actually uses (parsing `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`), emits hook entries only for those tools, and **merges them into your existing `.claude/settings.json`** — preserving any user-authored keys (custom permissions, other PostToolUse hooks, MCP server config, model overrides). Re-running init is idempotent: stale SDD-managed entries are stripped and replaced; everything else is left alone.
 
 ### 📇 Capabilities registry — hybrid mode
 
@@ -772,8 +774,9 @@ spec-driven-development/                    # or your own forked plugin path
 │           ├── constitution.md.template  # long-form constitution (with MIGRATED markers)
 │           ├── CLAUDE.md.template         # condensed session loader
 │           ├── capabilities.md.template
-│           ├── settings.json.template     # ${PLUGIN_ROOT} placeholder
 │           └── specs/template.md
+│       # settings.json is NOT a template — init builds hook entries programmatically
+│       # from detected tools and safely merges them into any existing file.
 ├── commands/                              # 9 slash commands (auto-discovered)
 │   ├── doctor.md
 │   ├── constitution.md / spec.md / clarify.md / plan.md

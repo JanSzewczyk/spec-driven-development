@@ -94,7 +94,12 @@ The `init.py` script:
    - Constitution exists, CLAUDE.md missing → copy the CLAUDE.md loader template only.
 3. Copies `<plugin>/skills/doctor/templates/specs/template.md` → `<project>/specs/template.md` (skipped if exists).
 4. Renders `.claude/capabilities.md` by scanning `~/.claude/plugins/cache/<plugin>/{skills,agents}/` for installed capabilities, plus detecting stack from `package.json` / `pyproject.toml`. **Preserves** every `<!-- user-override -->` section from any existing file.
-5. Renders `.claude/settings.json` from the bundled `settings.json.template`, substituting `${PLUGIN_ROOT}` with the absolute plugin path so the PostToolUse hooks resolve to `<plugin>/hooks/typecheck.py` and `<plugin>/hooks/lint.sh`.
+5. **Safe-merges `.claude/settings.json`**:
+   - Detects what typecheck / lint tools the project actually uses (parses `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`) AND verifies each candidate is on `$PATH` via `shutil.which`.
+   - Builds PostToolUse hook entries only for the tools it can run. Stacks: TypeScript (`tsc`), JS/TS lint (Biome → ESLint → oxlint, first available wins), Python (mypy/pyright, ruff), Rust (`cargo check`, clippy), Go (`go vet`, golangci-lint), Deno (`deno check`, `deno lint`).
+   - **Never overwrites the file.** Reads existing `settings.json`, deep-copies it, strips only its OWN previously-installed hook entries (identified by their command containing `hooks/typecheck.py` or `hooks/lint.sh`), appends the freshly-built ones. Every other top-level key (`permissions`, `model`, MCP config, user's own PostToolUse hooks) is preserved verbatim.
+   - On malformed existing JSON, bails with a clear error to stderr — never touches a corrupt file.
+   - When no hookable tools are detected, leaves PostToolUse empty (or strips stale SDD entries only). Check 6 then reports `warn` — that's honest, not a failure.
 
 After the migration step has run once, `/sdd:constitution` is the canonical editor for `specs/constitution.md`. CLAUDE.md is never rewritten by the constitution command; users keep it in sync manually.
 

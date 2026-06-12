@@ -11,8 +11,11 @@ This script runs from inside the installed SDD plugin and:
    target project — `specs/template.md`, `.claude/capabilities.md`, `.claude/settings.json`.
 4. Auto-detects installed plugins and the project stack to populate `capabilities.md`
    (preserves every `<!-- user-override -->` section on re-init).
-5. Renders `settings.json.template` with the resolved plugin path so PostToolUse
-   hooks point at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`.
+5. Safe-merges `.claude/settings.json`: detects which typecheck / lint tools the
+   project actually uses (parsing package.json / pyproject.toml / Cargo.toml / go.mod /
+   deno.json + `shutil.which` on each candidate), builds PostToolUse hook entries only
+   for the tools we can run, and merges them into any existing settings.json without
+   touching user-authored keys.
 
 Usage:
     python3 skills/doctor/init.py [--root <project-path>] [--dry-run]
@@ -20,6 +23,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import pathlib
@@ -375,15 +379,218 @@ def generate_capabilities_md(project_root: pathlib.Path, plugin_root: pathlib.Pa
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Settings.json rendering
+# Settings.json — stack-aware hooks + safe merge
 # ────────────────────────────────────────────────────────────────────────────
 
+# Substring markers that identify an SDD-managed PostToolUse hook entry.
+# Re-init strips any entry containing one of these and re-adds fresh.
+SDD_HOOK_MARKERS = ("hooks/typecheck.py", "hooks/lint.sh")
 
-def render_settings_json(plugin_root: pathlib.Path) -> str:
-    """Render `.claude/settings.json` from the bundled template with the plugin root substituted in."""
-    template_path = plugin_root / "skills" / "doctor" / "templates" / "settings.json.template"
-    text = template_path.read_text(encoding="utf-8")
-    return text.replace("${PLUGIN_ROOT}", str(plugin_root))
+SETTINGS_SCHEMA_URL = "https://json.schemastore.org/claude-code-settings"
+
+
+def _read_json_deps(path: pathlib.Path) -> dict[str, str]:
+    """Return merged dependencies + devDependencies from a package.json."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+
+
+def _pyproject_text(path: pathlib.Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def detect_hookable_tools(project_root: pathlib.Path, stack: dict) -> dict[str, list[str]]:
+    """Inspect the project to learn what typecheck / lint tools are actually configured AND
+    on PATH. Returns {"typecheck": [...], "lint": [...]} with the chosen tool names per category.
+
+    Only tools whose binary is reachable (via `shutil.which`, or via npx for npm-managed
+    tools) are reported — we never claim a hookable tool we can't actually invoke.
+    """
+    tools: dict[str, list[str]] = {"typecheck": [], "lint": []}
+    pkg = project_root / "package.json"
+    pyproject = project_root / "pyproject.toml"
+    cargo = project_root / "Cargo.toml"
+    go_mod = project_root / "go.mod"
+    deno = project_root / "deno.json"
+
+    has_npx = shutil.which("npx") is not None
+
+    # JS/TS ecosystem ────────────────────────────────────────────────────────
+    if pkg.exists() and has_npx:
+        deps = _read_json_deps(pkg)
+        if "typescript" in deps:
+            tools["typecheck"].append("tsc")
+        # Lint: prefer Biome (lints + formats) over ESLint over oxlint.
+        if "@biomejs/biome" in deps:
+            tools["lint"].append("biome")
+        elif "eslint" in deps:
+            tools["lint"].append("eslint")
+        elif "oxlint" in deps:
+            tools["lint"].append("oxlint")
+
+    # Python ecosystem ───────────────────────────────────────────────────────
+    if pyproject.exists():
+        py_txt = _pyproject_text(pyproject)
+        if "[tool.mypy]" in py_txt or shutil.which("mypy"):
+            if shutil.which("mypy"):
+                tools["typecheck"].append("mypy")
+        elif "[tool.pyright]" in py_txt or shutil.which("pyright"):
+            if shutil.which("pyright"):
+                tools["typecheck"].append("pyright")
+        if "[tool.ruff]" in py_txt or shutil.which("ruff"):
+            if shutil.which("ruff"):
+                tools["lint"].append("ruff")
+
+    # Rust ───────────────────────────────────────────────────────────────────
+    if cargo.exists() and shutil.which("cargo"):
+        tools["typecheck"].append("cargo-check")
+        # Clippy ships with rustup by default but may be absent on some installs.
+        try:
+            result = shutil.which("cargo")
+            if result and subprocess_run_quiet(["cargo", "clippy", "--version"]):
+                tools["lint"].append("clippy")
+        except Exception:
+            pass
+
+    # Go ─────────────────────────────────────────────────────────────────────
+    if go_mod.exists() and shutil.which("go"):
+        tools["typecheck"].append("go-vet")
+        if shutil.which("golangci-lint"):
+            tools["lint"].append("golangci-lint")
+
+    # Deno ───────────────────────────────────────────────────────────────────
+    if deno.exists() and shutil.which("deno"):
+        tools["typecheck"].append("deno-check")
+        tools["lint"].append("deno-lint")
+
+    return tools
+
+
+def subprocess_run_quiet(cmd: list[str]) -> bool:
+    """Helper — run a command silently; True on exit 0."""
+    import subprocess
+
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=10)
+        return r.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
+def build_hook_entries(
+    stack: dict,
+    plugin_root: pathlib.Path,
+    project_root: pathlib.Path,
+) -> tuple[list[dict], dict[str, list[str]]]:
+    """Build the PostToolUse hook entries appropriate for the project.
+
+    Returns `(entries, detected_tools)`. `entries` is empty if no hookable tools were
+    detected — in that case caller should not add anything to settings.json.
+    """
+    detected = detect_hookable_tools(project_root, stack)
+    inner: list[dict] = []
+    if detected["typecheck"]:
+        inner.append({"type": "command", "command": f"python3 {plugin_root}/hooks/typecheck.py"})
+    if detected["lint"]:
+        inner.append({"type": "command", "command": f"bash {plugin_root}/hooks/lint.sh"})
+    if not inner:
+        return [], detected
+    return [{"matcher": "Edit|Write|MultiEdit", "hooks": inner}], detected
+
+
+def _is_sdd_hook_entry(entry: dict) -> bool:
+    """An entry is SDD-managed if ANY of its inner hooks references one of our scripts."""
+    for h in entry.get("hooks", []):
+        cmd = h.get("command", "")
+        if any(marker in cmd for marker in SDD_HOOK_MARKERS):
+            return True
+    return False
+
+
+def setup_settings_json(
+    project_root: pathlib.Path,
+    plugin_root: pathlib.Path,
+    stack: dict,
+    *,
+    dry_run: bool,
+) -> list[str]:
+    """Merge SDD hook entries into the project's settings.json.
+
+    Behaviour:
+    - Reads existing file (bails on JSON parse error — never touches a corrupt file).
+    - Strips stale SDD-managed PostToolUse entries (matched by SDD_HOOK_MARKERS).
+    - Appends fresh entries built from current detection.
+    - Preserves every other top-level key untouched.
+    - If no hookable tools detected, emits no SDD entries (still preserves user config).
+    """
+    settings_path = project_root / ".claude" / "settings.json"
+    existing: dict = {}
+    if settings_path.exists():
+        raw = settings_path.read_text(encoding="utf-8").strip()
+        if raw:
+            try:
+                existing = json.loads(raw)
+            except json.JSONDecodeError as e:
+                return [
+                    f"  settings.json        — ❌ malformed JSON ({e}); refusing to touch the file. "
+                    f"Fix it manually and re-run /sdd:doctor init."
+                ]
+
+    new_entries, detected = build_hook_entries(stack, plugin_root, project_root)
+
+    # Start from a deep copy so we never mutate the in-memory existing dict.
+    merged = copy.deepcopy(existing) if existing else {"$schema": SETTINGS_SCHEMA_URL}
+
+    hooks_block = merged.setdefault("hooks", {})
+    post_tool: list = hooks_block.setdefault("PostToolUse", [])
+
+    before = len(post_tool)
+    post_tool[:] = [e for e in post_tool if not _is_sdd_hook_entry(e)]
+    stripped = before - len(post_tool)
+    post_tool.extend(new_entries)
+
+    detection_summary = (
+        f"typecheck=[{', '.join(detected['typecheck']) or '∅'}], "
+        f"lint=[{', '.join(detected['lint']) or '∅'}]"
+    )
+
+    if not new_entries and not existing:
+        # Empty project, nothing detected — write a minimal $schema-only file so the
+        # check still finds the file (warns instead of fails).
+        if dry_run:
+            return [f"  settings.json        — would-create minimal (no hookable tools: {detection_summary})"]
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        settings_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+        return [f"  settings.json        — created minimal (no hookable tools: {detection_summary})"]
+
+    if not new_entries:
+        # Detection found nothing AND a file already exists — leave PostToolUse alone if our
+        # entries were already absent; nothing to do.
+        if stripped == 0:
+            return [f"  settings.json        — unchanged (no hookable tools: {detection_summary})"]
+        if dry_run:
+            return [f"  settings.json        — would-strip {stripped} stale SDD hook(s) (no hookable tools: {detection_summary})"]
+        settings_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+        return [f"  settings.json        — stripped {stripped} stale SDD hook(s) (no hookable tools: {detection_summary})"]
+
+    if dry_run:
+        return [
+            f"  settings.json        — would-merge: strip {stripped} stale + add {len(new_entries)} "
+            f"({detection_summary})"
+        ]
+
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+    return [
+        f"  settings.json        — merged: stripped {stripped} stale, added {len(new_entries)} fresh "
+        f"({detection_summary})"
+    ]
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -448,15 +655,10 @@ def main() -> int:
         caps_path.write_text(caps_content, encoding="utf-8")
         print(f"  capabilities.md      — regenerated: {caps_path}")
 
-    # 4. .claude/settings.json — render with plugin root substituted in
-    settings_path = project_root / ".claude" / "settings.json"
-    settings_content = render_settings_json(plugin_root)
-    if args.dry_run:
-        print(f"  settings.json        — would-write: {settings_path}")
-    else:
-        settings_path.parent.mkdir(parents=True, exist_ok=True)
-        settings_path.write_text(settings_content, encoding="utf-8")
-        print(f"  settings.json        — written: {settings_path}")
+    # 4. .claude/settings.json — stack-aware hooks, safe-merge into existing file
+    stack = detect_stack(project_root)
+    for line in setup_settings_json(project_root, plugin_root, stack, dry_run=args.dry_run):
+        print(line)
 
     # Final report
     print()

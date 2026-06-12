@@ -73,8 +73,8 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 | New routing rule (task type → agent) | Edit `skills/doctor/templates/capabilities.md.template` |
 | New SDD-doctor check | Add function to `skills/doctor/check.py`, append to `run_all_checks` |
 | New slash command | New file in `commands/<name>.md`. Document in README. |
-| New verification agent | New file in `agents/sdd-<name>.md` + integrate via `/sdd:review` (`commands/review.md` and `agents/reviewer.md`) |
-| New hook | New script in `hooks/<name>.<ext>` + wire into `skills/doctor/templates/settings.json.template` |
+| New verification agent | New file in `agents/<name>.md` + integrate via `/sdd:review` (`commands/review.md` and `agents/reviewer.md`) |
+| New hook script | New script in `hooks/<name>.<ext>` + extend `build_hook_entries()` in `skills/doctor/init.py` to emit the corresponding PostToolUse entry (and add a marker substring to `SDD_HOOK_MARKERS` so the safe-merge can identify it). |
 | Bundled per-project template | Place under `skills/doctor/templates/` — `init.py` will copy it |
 | Documentation | `README.md` is the single source of truth. Do not split docs into `docs/`. |
 
