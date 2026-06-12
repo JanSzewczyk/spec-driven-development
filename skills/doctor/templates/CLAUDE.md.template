@@ -1,15 +1,13 @@
-# Project Constitution
+# Claude Code Loader
 
-> **Guidelines for Claude Code in this project.** This file must stay under 2,500 tokens.
-> If it grows beyond that, shard per module: `apps/web/CLAUDE.md`, `apps/api/CLAUDE.md`, etc.
+> **Full project constitution:** [`specs/_constitution.md`](specs/_constitution.md)
+> Edit it with `/sdd:constitution`. This file is the lightweight operational loader Claude
+> reads each session. Keep it under 2,500 tokens — when in doubt, move detail to the
+> constitution instead of growing this file.
 
-## Tech stack
+## Tech stack (one-liner)
 <!-- Filled by /sdd:doctor init based on auto-detection -->
-- Runtime:
-- Framework:
-- DB:
-- Tests:
-- Lint/format:
+- Runtime / Framework / DB / Tests / Lint:
 
 ## Run/build commands
 - `dev`:
@@ -18,17 +16,13 @@
 - `typecheck`:
 - `lint`:
 
-## Architecture (one-liner)
-<!-- One-sentence summary of repo layout -->
+## Architecture (one sentence)
+<!-- One-sentence summary of repo layout. Detail lives in specs/_constitution.md section 3. -->
 
-## Code conventions
-- TypeScript strict, no `any`
-- File names: kebab-case
-- Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `docs`, `test`)
-- Errors: typed errors, no silent catch
+## Most-broken rules (top WHAT-NOT-TO-DO items)
 
-## WHAT NOT TO DO ⛔
-<!-- THE most important section. After every Claude mistake, append the lesson here. -->
+These are the operational anti-patterns Claude most often violates. The full catalogue with WHY each rule exists is in [`specs/_constitution.md`](specs/_constitution.md) section 5.
+
 - DO NOT use `npm install` — only `pnpm`
 - DO NOT create barrel files (`index.ts` re-export aggregators)
 - DO NOT mock the database in tests — we use testcontainers
@@ -36,7 +30,7 @@
 - DO NOT use `--dangerously-skip-permissions` outside a sandbox environment
 
 ## SDD flow
-- Start with `/sdd:doctor check`
-- Per feature: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement <id>` → `/sdd:review`
-- Specifications live in `specs/<feature-slug>/`
-- Capabilities (specialist agents + skills) are defined in `.claude/capabilities.md`
+- Start any feature with `/sdd:doctor check`.
+- Per feature: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement <id>` → `/sdd:review`.
+- Specs live in `specs/<feature-slug>/`; the full project constitution is at [`specs/_constitution.md`](specs/_constitution.md).
+- Routing rules + installed capabilities: `.claude/capabilities.md`.

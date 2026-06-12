@@ -4,12 +4,14 @@
 This script runs from inside the installed SDD plugin and:
 
 1. Resolves the plugin root (via `$CLAUDE_PLUGIN_ROOT` or `__file__`).
-2. Copies bundled templates from `<plugin>/skills/doctor/templates/` into the
-   target project — `CLAUDE.md`, `specs/_template.md`, `.claude/capabilities.md`,
-   `.claude/settings.json`.
-3. Auto-detects installed plugins and the project stack to populate
-   `capabilities.md` (preserves every `<!-- user-override -->` section on re-init).
-4. Renders `settings.json.template` with the resolved plugin path so PostToolUse
+2. Sets up the project constitution + CLAUDE.md loader (handles the v0.2.0 → v0.3.0
+   migration from a single-file CLAUDE.md into a dedicated `specs/_constitution.md`
+   plus a condensed `CLAUDE.md` loader).
+3. Copies bundled templates from `<plugin>/skills/doctor/templates/` into the
+   target project — `specs/_template.md`, `.claude/capabilities.md`, `.claude/settings.json`.
+4. Auto-detects installed plugins and the project stack to populate `capabilities.md`
+   (preserves every `<!-- user-override -->` section on re-init).
+5. Renders `settings.json.template` with the resolved plugin path so PostToolUse
    hooks point at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`.
 
 Usage:
@@ -30,6 +32,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from check import detect_stack, run_all_checks  # noqa: E402
 
 USER_OVERRIDE_MARKER = "<!-- user-override -->"
+MIGRATED_MARKER_RE = re.compile(r"<!--\s*MIGRATED:(.+?)\s*-->")
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -48,6 +51,144 @@ def resolve_plugin_root() -> pathlib.Path:
     if env:
         return pathlib.Path(env).resolve()
     return pathlib.Path(__file__).resolve().parent.parent.parent
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Constitution + CLAUDE.md setup (handles migration from v0.2.0 single-file layout)
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def _extract_h2_sections(markdown: str) -> dict[str, str]:
+    """Parse `## Heading` sections from a markdown document.
+
+    Returns a dict mapping the heading text (without the `## ` prefix) to the section body
+    (everything between this heading and the next `## ` or end of file, trimmed).
+    """
+    sections: dict[str, str] = {}
+    # Heading line plus body up to next H2 or EOF
+    pattern = re.compile(r"^## (.+?)\n(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+    for match in pattern.finditer(markdown):
+        heading = match.group(1).strip()
+        body = match.group(2).strip()
+        sections[heading] = body
+    return sections
+
+
+def _match_marker_heading(heading: str, marker_heading: str) -> bool:
+    """Loose match between a CLAUDE.md heading and a constitution MIGRATED:* marker name.
+
+    The legacy CLAUDE.md template used these headings:
+        Tech stack
+        Run/build commands
+        Architecture (one-liner)
+        Code conventions
+        WHAT NOT TO DO ⛔
+        SDD flow
+
+    The constitution template carries markers with the same names plus a few variants.
+    Compare case-insensitively and ignore trailing emoji / parenthetical content.
+    """
+    def normalize(s: str) -> str:
+        s = re.sub(r"\([^)]*\)", "", s)        # drop "(one-liner)" etc.
+        s = re.sub(r"[^\w\s/-]", "", s)         # drop emoji + non-word punctuation
+        return " ".join(s.lower().split())
+    return normalize(heading) == normalize(marker_heading)
+
+
+def migrate_claude_md_to_constitution(
+    claude_md: pathlib.Path,
+    constitution: pathlib.Path,
+    templates_dir: pathlib.Path,
+) -> list[str]:
+    """Seed `specs/_constitution.md` from an existing CLAUDE.md.
+
+    Reads the constitution template, finds each `<!-- MIGRATED:<heading> -->` marker,
+    and replaces it with the matching section from CLAUDE.md (loose heading match).
+    Returns the list of headings that were migrated, for reporting.
+    """
+    template = (templates_dir / "_constitution.md.template").read_text(encoding="utf-8")
+    old_sections = _extract_h2_sections(claude_md.read_text(encoding="utf-8"))
+
+    migrated: list[str] = []
+
+    def replace(match: re.Match[str]) -> str:
+        marker_heading = match.group(1).strip()
+        for heading, body in old_sections.items():
+            if _match_marker_heading(heading, marker_heading):
+                migrated.append(heading)
+                return body + "\n\n<!-- TODO: add rationale / WHY -->"
+        # No match found — leave the marker placeholder copy from the template (next to the marker).
+        # Returning empty string would delete the placeholder body too aggressively;
+        # we just remove the marker comment so the user sees the bare placeholders.
+        return ""
+
+    rendered = MIGRATED_MARKER_RE.sub(replace, template)
+
+    constitution.parent.mkdir(parents=True, exist_ok=True)
+    constitution.write_text(rendered, encoding="utf-8")
+    return migrated
+
+
+def setup_constitution(
+    project_root: pathlib.Path,
+    templates_dir: pathlib.Path,
+    *,
+    dry_run: bool,
+) -> list[str]:
+    """Bootstrap `specs/_constitution.md` and `CLAUDE.md` according to the four-case matrix.
+
+    Returns a list of human-readable status lines for the caller to print.
+    """
+    constitution_path = project_root / "specs" / "_constitution.md"
+    claude_md_path = project_root / "CLAUDE.md"
+
+    has_constitution = constitution_path.exists()
+    has_claude_md = claude_md_path.exists()
+
+    lines: list[str] = []
+
+    if has_constitution and has_claude_md:
+        lines.append(f"  constitution         — skipped: both files already present")
+        lines.append(f"  CLAUDE.md (loader)   — skipped: present")
+        return lines
+
+    if not has_constitution and has_claude_md:
+        # Migration v0.2.0 → v0.3.0
+        if dry_run:
+            lines.append(f"  constitution         — would-migrate from existing CLAUDE.md → {constitution_path}")
+            lines.append(f"  CLAUDE.md (loader)   — would-regenerate as condensed loader: {claude_md_path}")
+            return lines
+        migrated = migrate_claude_md_to_constitution(claude_md_path, constitution_path, templates_dir)
+        # Overwrite CLAUDE.md with the new condensed loader template.
+        shutil.copyfile(templates_dir / "CLAUDE.md.template", claude_md_path)
+        if migrated:
+            lines.append(f"  constitution         — migrated from CLAUDE.md ({len(migrated)} sections: {', '.join(migrated)}): {constitution_path}")
+        else:
+            lines.append(f"  constitution         — bootstrapped (no migratable sections found in CLAUDE.md): {constitution_path}")
+        lines.append(f"  CLAUDE.md (loader)   — regenerated as condensed loader: {claude_md_path}")
+        return lines
+
+    if not has_constitution and not has_claude_md:
+        # Fresh install
+        if dry_run:
+            lines.append(f"  constitution         — would-copy fresh: {constitution_path}")
+            lines.append(f"  CLAUDE.md (loader)   — would-copy fresh: {claude_md_path}")
+            return lines
+        constitution_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(templates_dir / "_constitution.md.template", constitution_path)
+        shutil.copyfile(templates_dir / "CLAUDE.md.template", claude_md_path)
+        lines.append(f"  constitution         — created: {constitution_path}")
+        lines.append(f"  CLAUDE.md (loader)   — created: {claude_md_path}")
+        return lines
+
+    # constitution exists, CLAUDE.md missing (rare)
+    if dry_run:
+        lines.append(f"  CLAUDE.md (loader)   — would-copy fresh: {claude_md_path}")
+        return lines
+    shutil.copyfile(templates_dir / "CLAUDE.md.template", claude_md_path)
+    lines.append(f"  constitution         — skipped: already present")
+    lines.append(f"  CLAUDE.md (loader)   — created: {claude_md_path}")
+    return lines
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -251,13 +392,9 @@ def main() -> int:
         print("   Is the plugin correctly installed?", file=sys.stderr)
         return 1
 
-    # 1. CLAUDE.md
-    status, msg = copy_if_absent(
-        templates_dir / "CLAUDE.md.template",
-        project_root / "CLAUDE.md",
-        dry_run=args.dry_run,
-    )
-    print(f"  CLAUDE.md           — {status}: {msg}")
+    # 1. Constitution + CLAUDE.md (handles four cases including v0.2.0 → v0.3.0 migration).
+    for line in setup_constitution(project_root, templates_dir, dry_run=args.dry_run):
+        print(line)
 
     # 2. specs/_template.md
     status, msg = copy_if_absent(
@@ -265,27 +402,27 @@ def main() -> int:
         project_root / "specs" / "_template.md",
         dry_run=args.dry_run,
     )
-    print(f"  specs/_template.md  — {status}: {msg}")
+    print(f"  specs/_template.md   — {status}: {msg}")
 
     # 3. .claude/capabilities.md — always regenerate (preserves user-overrides internally)
     caps_path = project_root / ".claude" / "capabilities.md"
     caps_content = generate_capabilities_md(project_root, plugin_root)
     if args.dry_run:
-        print(f"  capabilities.md     — would-regenerate: {caps_path}")
+        print(f"  capabilities.md      — would-regenerate: {caps_path}")
     else:
         caps_path.parent.mkdir(parents=True, exist_ok=True)
         caps_path.write_text(caps_content, encoding="utf-8")
-        print(f"  capabilities.md     — regenerated: {caps_path}")
+        print(f"  capabilities.md      — regenerated: {caps_path}")
 
     # 4. .claude/settings.json — render with plugin root substituted in
     settings_path = project_root / ".claude" / "settings.json"
     settings_content = render_settings_json(plugin_root)
     if args.dry_run:
-        print(f"  settings.json       — would-write: {settings_path}")
+        print(f"  settings.json        — would-write: {settings_path}")
     else:
         settings_path.parent.mkdir(parents=True, exist_ok=True)
         settings_path.write_text(settings_content, encoding="utf-8")
-        print(f"  settings.json       — written: {settings_path}")
+        print(f"  settings.json        — written: {settings_path}")
 
     # Final report
     print()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SDD Doctor — readiness check (plugin context).
 
-Runs 10 checks against the target project plus the installed plugin and returns
+Runs 11 checks against the target project plus the installed plugin and returns
 a JSON report on stdout.
 
 Usage:
@@ -18,7 +18,12 @@ import subprocess
 import sys
 from typing import Any
 
-REQUIRED_CLAUDE_SECTIONS = ["Tech stack", "Run/build", "Conventions", "WHAT NOT TO DO"]
+# CLAUDE.md is the lightweight session loader. It should at minimum reference the constitution
+# and document the operational essentials.
+REQUIRED_CLAUDE_SECTIONS = ["Tech stack", "Run/build"]
+CONSTITUTION_POINTER = "specs/_constitution.md"
+# specs/_constitution.md is the long-form source of truth. The detailed sections live here.
+REQUIRED_CONSTITUTION_SECTIONS = ["Tech stack", "Run/build", "Conventions", "WHAT NOT TO DO"]
 REQUIRED_TEMPLATE_FIELDS = [
     "Summary",
     "User stories",
@@ -60,18 +65,28 @@ def check_claude_md(root: pathlib.Path) -> dict[str, Any]:
         return {"status": "fail", "message": "CLAUDE.md does not exist at the project root"}
     text = path.read_text(encoding="utf-8")
     tokens = estimate_tokens(text)
+    issues: list[str] = []
     missing = [s for s in REQUIRED_CLAUDE_SECTIONS if s.lower() not in text.lower()]
     if missing:
-        return {
-            "status": "warn",
-            "message": f"{tokens} tokens; missing sections: {', '.join(missing)}",
-        }
+        issues.append(f"missing sections: {', '.join(missing)}")
+    if CONSTITUTION_POINTER not in text:
+        issues.append(f"no pointer to {CONSTITUTION_POINTER}")
     if tokens > TOKEN_LIMIT_CLAUDE_MD:
-        return {
-            "status": "warn",
-            "message": f"{tokens} tokens — exceeds limit {TOKEN_LIMIT_CLAUDE_MD} (consider sharding)",
-        }
-    return {"status": "pass", "message": f"{tokens} tokens"}
+        issues.append(f"{tokens} tokens — exceeds limit {TOKEN_LIMIT_CLAUDE_MD} (consider sharding)")
+    if issues:
+        return {"status": "warn", "message": f"{tokens} tokens; " + "; ".join(issues)}
+    return {"status": "pass", "message": f"{tokens} tokens; pointer to constitution present"}
+
+
+def check_constitution(root: pathlib.Path) -> dict[str, Any]:
+    path = root / "specs" / "_constitution.md"
+    if not path.exists():
+        return {"status": "fail", "message": "specs/_constitution.md does not exist"}
+    text = path.read_text(encoding="utf-8")
+    missing = [s for s in REQUIRED_CONSTITUTION_SECTIONS if s.lower() not in text.lower()]
+    if missing:
+        return {"status": "warn", "message": f"missing sections: {', '.join(missing)}"}
+    return {"status": "pass", "message": f"{len(REQUIRED_CONSTITUTION_SECTIONS)}/{len(REQUIRED_CONSTITUTION_SECTIONS)} required sections present"}
 
 
 def check_specs_template(root: pathlib.Path) -> dict[str, Any]:
@@ -278,7 +293,7 @@ def check_project_type(stack: dict[str, Any]) -> dict[str, Any]:
 def run_all_checks(root: pathlib.Path) -> dict[str, Any]:
     stack = detect_stack(root)
     checks = [
-        {"id": 1, "name": "CLAUDE.md", **check_claude_md(root)},
+        {"id": 1, "name": "CLAUDE.md (loader)", **check_claude_md(root)},
         {"id": 2, "name": "specs/_template.md", **check_specs_template(root)},
         {"id": 3, "name": "Plugin installed", **check_plugin_installed()},
         {"id": 4, "name": "Plugin enabled", **check_plugin_enabled()},
@@ -288,6 +303,7 @@ def run_all_checks(root: pathlib.Path) -> dict[str, Any]:
         {"id": 8, "name": "Tooling", **check_tooling(root, stack)},
         {"id": 9, "name": "Specialist agents", **check_specialist_agents()},
         {"id": 10, "name": "Project type", **check_project_type(stack)},
+        {"id": 11, "name": "specs/_constitution.md", **check_constitution(root)},
     ]
 
     fails = sum(1 for c in checks if c["status"] == "fail")

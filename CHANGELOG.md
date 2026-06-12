@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Skill renamed `sdd-doctor` → `doctor`.** The skill directory is now `skills/doctor/` and its `name:` is `doctor`; the wrapper command file is `commands/doctor.md`. The redundant `sdd-` prefix is dropped because the plugin namespace already disambiguates.
 - **Documentation now uses the plugin-namespaced invocation form `/sdd:<command>`** — `/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`. This is how commands are actually invoked when the plugin is installed in another project (`/<plugin>:<command>`). Command files under `commands/` keep their plain names (`spec.md`, `plan.md`, …); the `sdd` namespace comes from `plugin.json`.
+- **Dedicated `specs/_constitution.md` as the source of truth.** The Constitution is no longer collapsed into `CLAUDE.md`. It now lives as a long-form artifact under `specs/_constitution.md` with no token limit. `/sdd:constitution` edits this file exclusively. `CLAUDE.md` becomes a separate, independent session loader (<2,500 tokens) that points at the constitution. The two files are intentionally decoupled — `/sdd:constitution` never modifies `CLAUDE.md`.
+- **Doctor expanded to 11 checks.** New check 11 verifies `specs/_constitution.md` exists with the canonical sections (Tech stack, Run/build, Conventions, WHAT NOT TO DO). Existing check 1 now additionally verifies that `CLAUDE.md` contains a pointer reference to `specs/_constitution.md` and warns if missing.
+- **One-time v0.2.0 → v0.3.0 migration in `/sdd:doctor init`.** When the target project has a populated `CLAUDE.md` but no `specs/_constitution.md`, init parses `##` sections from CLAUDE.md, seeds them into the new constitution with `<!-- TODO: add rationale / WHY -->` placeholders, then overwrites CLAUDE.md with the new condensed loader template. The original CLAUDE.md content is preserved inside the constitution. Subsequent inits are idempotent (skip both files when present).
+
+### Added
+
+- `skills/doctor/templates/_constitution.md.template` — long-form constitution scaffold with `<!-- MIGRATED:* -->` markers used by the migration routine. Includes canonical sections plus optional ones (Testing philosophy, Error handling philosophy, Out of scope).
+- `setup_constitution()` four-case handler in `init.py` (both present / migrate / both missing / loader-only).
+- `check_constitution()` in `check.py`, plus pointer-reference verification in `check_claude_md()`.
+
+### Changed (non-breaking)
+
+- `skills/doctor/templates/CLAUDE.md.template` refactored from a self-contained constitution into a condensed session loader that points at `specs/_constitution.md`.
+- `commands/constitution.md` rewritten to target `specs/_constitution.md` and to explicitly avoid touching `CLAUDE.md`.
 
 ## [0.2.0] — 2026-06-08
 
