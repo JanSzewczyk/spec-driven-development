@@ -25,7 +25,7 @@ Audit and auto-setup for the Spec-Driven Development plugin on a target project.
 2. **`specs/template.md`** — exists with all required fields (Summary, User stories, Acceptance criteria, Edge cases, Open questions, Testing guidelines).
 3. **Plugin installed** — `plugin.json` is reachable at the resolved plugin root (verifies the `sdd` plugin is correctly installed under `~/.claude/plugins/cache/`).
 4. **Plugin enabled** — `sdd` appears in `~/.claude/settings.json` under `enabledPlugins` (or equivalent).
-5. **`.claude/capabilities.md`** — exists and lists specialist agents + skills + task type routing.
+5. **`specs/capabilities.md`** — exists and lists specialist agents + skills + task type routing.
 6. **`.claude/settings.json`** — PostToolUse hooks for typecheck + lint configured and pointing at the plugin's hook scripts.
 7. **Git + gh** — repository initialized, `git status` clean, `gh auth status` ok.
 8. **Tooling auto-detect** — if `package.json` is present: `tsc`, `eslint`, `vitest`/`jest` installed; if `pyproject.toml`: `mypy`, `ruff`, `pytest`.
@@ -93,7 +93,7 @@ The `init.py` script:
    - Both missing → copy both templates fresh.
    - Constitution exists, CLAUDE.md missing → copy the CLAUDE.md loader template only.
 3. Copies `<plugin>/skills/doctor/templates/specs/template.md` → `<project>/specs/template.md` (skipped if exists).
-4. Renders `.claude/capabilities.md` by scanning `~/.claude/plugins/cache/<plugin>/{skills,agents}/` for installed capabilities, plus detecting stack from `package.json` / `pyproject.toml`. **Preserves** every `<!-- user-override -->` section from any existing file.
+4. Renders `specs/capabilities.md` by scanning `~/.claude/plugins/cache/<plugin>/{skills,agents}/` for installed capabilities, plus detecting stack from `package.json` / `pyproject.toml`. **Preserves** every `<!-- user-override -->` section from any existing file.
 5. **Safe-merges `.claude/settings.json`**:
    - Detects what typecheck / lint tools the project actually uses (parses `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`) AND verifies each candidate is on `$PATH` via `shutil.which`.
    - Builds PostToolUse hook entries only for the tools it can run. Stacks: TypeScript (`tsc`), JS/TS lint (Biome → ESLint → oxlint, first available wins), Python (mypy/pyright, ruff), Rust (`cargo check`, clippy), Go (`go vet`, golangci-lint), Deno (`deno check`, `deno lint`).
@@ -117,7 +117,7 @@ After the migration step has run once, `/sdd:constitution` is the canonical edit
 | 2 | specs/template.md | ✅ | all fields present |
 | 3 | Plugin installed | ✅ | sdd@0.3.0 at ~/.claude/plugins/cache/sdd |
 | 4 | Plugin enabled | ✅ | listed in user settings |
-| 5 | .claude/capabilities.md | ✅ | 4 specialist agents, 12 skills |
+| 5 | specs/capabilities.md | ✅ | 4 specialist agents, 12 skills |
 | 6 | .claude/settings.json hooks | ❌ | no PostToolUse hooks |
 | 7 | Git + gh | ✅ | clean tree, gh ok |
 | 8 | Tooling (TS/lint/test) | ✅ | node_modules present |

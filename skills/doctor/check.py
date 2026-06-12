@@ -101,9 +101,9 @@ def check_specs_template(root: pathlib.Path) -> dict[str, Any]:
 
 
 def check_capabilities(root: pathlib.Path) -> dict[str, Any]:
-    path = root / ".claude" / "capabilities.md"
+    path = root / "specs" / "capabilities.md"
     if not path.exists():
-        return {"status": "fail", "message": ".claude/capabilities.md does not exist"}
+        return {"status": "fail", "message": "specs/capabilities.md does not exist"}
     text = path.read_text(encoding="utf-8")
     required_sections = [
         "Specialist agents",
@@ -297,7 +297,7 @@ def run_all_checks(root: pathlib.Path) -> dict[str, Any]:
         {"id": 2, "name": "specs/template.md", **check_specs_template(root)},
         {"id": 3, "name": "Plugin installed", **check_plugin_installed()},
         {"id": 4, "name": "Plugin enabled", **check_plugin_enabled()},
-        {"id": 5, "name": ".claude/capabilities.md", **check_capabilities(root)},
+        {"id": 5, "name": "specs/capabilities.md", **check_capabilities(root)},
         {"id": 6, "name": ".claude/settings.json hooks", **check_settings_hooks(root)},
         {"id": 7, "name": "Git + gh", **check_git_gh(root)},
         {"id": 8, "name": "Tooling", **check_tooling(root, stack)},

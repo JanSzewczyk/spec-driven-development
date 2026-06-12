@@ -118,7 +118,7 @@ Open the target project in Claude Code and run:
 What `init` does:
 
 - Copies `CLAUDE.md` and `specs/template.md` into the project (skips if already present — never overwrites).
-- Generates `.claude/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
+- Generates `specs/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
 - Generates `.claude/settings.json` with PostToolUse hooks pointing at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`.
 
 ### 3. Build your first feature
@@ -277,7 +277,7 @@ If typecheck or lint fails, the hook exits with code **2**. Claude receives the 
 
 ### 📇 Capabilities registry — hybrid mode
 
-`.claude/capabilities.md` has two kinds of sections:
+`specs/capabilities.md` has two kinds of sections:
 
 - **`<!-- auto-generated -->`** — overwritten by `/sdd:doctor init` on every run (it scans `~/.claude/plugins/cache/`)
 - **`<!-- user-override -->`** — preserved untouched, the safe place to keep customizations

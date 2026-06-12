@@ -39,7 +39,7 @@ prompt: "Detect drift between the documentation (specs/<current>/) and the curre
 
 ### 4. Domain-specific audits (if relevant)
 
-From `.claude/capabilities.md` check which skills are available. Invoke:
+From `specs/capabilities.md` check which skills are available. Invoke:
 - `react-doctor` — if the diff contains `.tsx`/`.jsx` files
 - `accessibility-audit` — if the diff contains UI files (components)
 - `ui-critic` sub-agent — if the diff contains UI files; captures Storybook screenshots and evaluates visual quality. Soft check — never blocks on infrastructure (no MCP / Storybook down → `SKIPPED` verdict, warning only).

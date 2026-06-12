@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- **`capabilities.md` moved from `.claude/` to `specs/`.** All SDD project artifacts now live together under `specs/` (`constitution.md`, `template.md`, `capabilities.md`, feature folders). The `.claude/` directory is reserved for Claude Code infrastructure (`settings.json`). Check 5 now verifies `specs/capabilities.md`. Slash commands and verification agents that consult capabilities (e.g. `/sdd:plan`, `/sdd:tasks`, `/sdd:review`, `reviewer` agent) updated accordingly.
+- **Auto-migration in `/sdd:doctor init`.** If a project still has `.claude/capabilities.md` from earlier versions, init now moves it to `specs/capabilities.md` (only when the new path is absent — never clobbers) and patches any pointer reference inside `CLAUDE.md` from `.claude/capabilities.md` → `specs/capabilities.md`. Path-only fix; never touches user-authored content.
+
+### Fixed
+
+- **`generate_capabilities_md()` is now byte-stable idempotent from the first run.** Two bugs surfaced and were fixed:
+  - The user-override extractor used `(.+?)` with `re.DOTALL`, which non-greedily backtracked across `## ` boundaries and could swallow auto-generated sections into a fake "title". On re-init, those sections were appended again and the file grew on every run. Title pattern tightened to `[^\n]+?` so it can only match a single heading line.
+  - When substituting user-override sections back, the trailing blank-line separator between sections was being collapsed by one. Body now preserves `\n\n` trailing; the final EOF newline is normalised at the end of the generator.
+
 ### Fixed
 
 - **`/sdd:doctor init` no longer destructively overwrites `.claude/settings.json`.** Earlier versions rendered the bundled `settings.json.template` and wrote it back verbatim, wiping any user-authored keys (custom permissions, other PostToolUse hooks, MCP config, model overrides). Now `init` reads the existing file, strips only its OWN previously-installed hook entries (identified by command path containing `hooks/typecheck.py` or `hooks/lint.sh`), and appends fresh entries. Every other key is preserved verbatim. On malformed JSON in the existing file, init bails with a clear error and refuses to touch the file.

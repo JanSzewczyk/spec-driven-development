@@ -34,7 +34,7 @@ Thresholds from CLAUDE.md or defaults: unit >70%, integration >50%.
 
 ### 3. Domain-specific audits
 
-From `.claude/capabilities.md` "Skills" section — pick those relevant to the diff:
+From `specs/capabilities.md` "Skills" section — pick those relevant to the diff:
 
 #### If the diff contains `.tsx` / `.jsx` / React:
 ```

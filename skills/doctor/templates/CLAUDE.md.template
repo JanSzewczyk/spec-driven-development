@@ -33,4 +33,4 @@ These are the operational anti-patterns Claude most often violates. The full cat
 - Start any feature with `/sdd:doctor check`.
 - Per feature: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement <id>` → `/sdd:review`.
 - Specs live in `specs/<feature-slug>/`; the full project constitution is at [`specs/constitution.md`](specs/constitution.md).
-- Routing rules + installed capabilities: `.claude/capabilities.md`.
+- Routing rules + installed capabilities: `specs/capabilities.md`.

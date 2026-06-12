@@ -8,7 +8,7 @@ This script runs from inside the installed SDD plugin and:
    migration from a single-file CLAUDE.md into a dedicated `specs/constitution.md`
    plus a condensed `CLAUDE.md` loader).
 3. Copies bundled templates from `<plugin>/skills/doctor/templates/` into the
-   target project — `specs/template.md`, `.claude/capabilities.md`, `.claude/settings.json`.
+   target project — `specs/template.md`, `specs/capabilities.md`, `.claude/settings.json`.
 4. Auto-detects installed plugins and the project stack to populate `capabilities.md`
    (preserves every `<!-- user-override -->` section on re-init).
 5. Safe-merges `.claude/settings.json`: detects which typecheck / lint tools the
@@ -134,13 +134,21 @@ def migrate_claude_md_to_constitution(
 
 
 def _rename_legacy_underscored_files(project_root: pathlib.Path, *, dry_run: bool) -> list[str]:
-    """v0.3.0 → v0.4.0 path migration: drop the `_` prefix from `specs/_constitution.md`
-    and `specs/_template.md`. Idempotent — if the new name already exists, the legacy file
-    is left untouched (won't clobber). After renaming, also patch any pointer reference in
-    CLAUDE.md from `specs/_constitution.md` → `specs/constitution.md` (path-only fix; never
-    touches user-authored content). Returns status lines.
+    """Legacy path migrations that keep older project layouts working:
+
+    - `specs/_constitution.md` → `specs/constitution.md`
+    - `specs/_template.md` → `specs/template.md`
+    - `.claude/capabilities.md` → `specs/capabilities.md`
+
+    Each rename is performed only when the legacy path exists AND the new target path
+    does not (won't clobber). Idempotent — re-running this on a project that has already
+    been migrated is a no-op. Also patches pointer references in `CLAUDE.md` from the old
+    locations to the new ones (path-only fix; never modifies user-authored content).
+    Returns human-readable status lines.
     """
     moves: list[str] = []
+
+    # specs/_constitution.md and specs/_template.md (drop underscore)
     for legacy_name, new_name in [("_constitution.md", "constitution.md"), ("_template.md", "template.md")]:
         legacy = project_root / "specs" / legacy_name
         target = project_root / "specs" / new_name
@@ -151,17 +159,30 @@ def _rename_legacy_underscored_files(project_root: pathlib.Path, *, dry_run: boo
                 legacy.rename(target)
                 moves.append(f"  legacy rename        — renamed: specs/{legacy_name} → specs/{new_name}")
 
-    # Pointer-string fix in CLAUDE.md (path only — never modifies user-authored content).
+    # .claude/capabilities.md → specs/capabilities.md (relocate)
+    legacy_caps = project_root / ".claude" / "capabilities.md"
+    new_caps = project_root / "specs" / "capabilities.md"
+    if legacy_caps.exists() and not new_caps.exists():
+        if dry_run:
+            moves.append(f"  legacy relocate      — would-move: .claude/capabilities.md → specs/capabilities.md")
+        else:
+            new_caps.parent.mkdir(parents=True, exist_ok=True)
+            legacy_caps.rename(new_caps)
+            moves.append(f"  legacy relocate      — moved: .claude/capabilities.md → specs/capabilities.md")
+
+    # Pointer-string fixes in CLAUDE.md (path only — never modifies user-authored content).
     claude_md = project_root / "CLAUDE.md"
     if claude_md.exists():
         text = claude_md.read_text(encoding="utf-8")
-        if "specs/_constitution.md" in text:
-            new_text = text.replace("specs/_constitution.md", "specs/constitution.md")
+        new_text = text
+        new_text = new_text.replace("specs/_constitution.md", "specs/constitution.md")
+        new_text = new_text.replace(".claude/capabilities.md", "specs/capabilities.md")
+        if new_text != text:
             if dry_run:
-                moves.append(f"  CLAUDE.md pointer    — would-patch: specs/_constitution.md → specs/constitution.md")
+                moves.append(f"  CLAUDE.md pointer    — would-patch legacy paths to new locations")
             else:
                 claude_md.write_text(new_text, encoding="utf-8")
-                moves.append(f"  CLAUDE.md pointer    — patched: specs/_constitution.md → specs/constitution.md")
+                moves.append(f"  CLAUDE.md pointer    — patched legacy paths to new locations")
     return moves
 
 
@@ -292,21 +313,30 @@ def _parse_frontmatter(text: str) -> dict[str, str]:
 
 
 def _extract_user_override_sections(text: str) -> dict[str, str]:
-    """Extract sections marked <!-- user-override --> from capabilities.md."""
+    """Extract sections marked `<!-- user-override -->` from `capabilities.md`.
+
+    The title in `## TITLE` is constrained to a single line via `[^\n]+?` — otherwise the
+    non-greedy `(.+?)` combined with `re.DOTALL` would backtrack across H2 boundaries and
+    swallow auto-generated sections into a fake "title", causing the merge step to append
+    those sections again and the file to grow on every re-run.
+    """
     sections: dict[str, str] = {}
     pattern = re.compile(
-        r"^(## (.+?))\s*\n\n<!-- user-override -->\n(.*?)(?=^## |\Z)",
+        r"^## ([^\n]+?)\s*\n\s*\n<!-- user-override -->\s*\n(?:.*?)(?=^## |\Z)",
         re.MULTILINE | re.DOTALL,
     )
     for match in pattern.finditer(text):
-        title = match.group(2).strip()
+        title = match.group(1).strip()
         body = match.group(0)
-        sections[title] = body.rstrip() + "\n"
+        # Preserve the trailing blank-line separator so re-substitution into
+        # `overrides_default` keeps the same inter-section spacing (final EOF newline
+        # is normalised by the caller).
+        sections[title] = body.rstrip() + "\n\n"
     return sections
 
 
 def generate_capabilities_md(project_root: pathlib.Path, plugin_root: pathlib.Path) -> str:
-    """Render `.claude/capabilities.md` for the target project.
+    """Render `specs/capabilities.md` for the target project.
 
     Auto-generated sections are always overwritten. Sections marked
     <!-- user-override --> in the existing file are preserved verbatim.
@@ -361,7 +391,7 @@ def generate_capabilities_md(project_root: pathlib.Path, plugin_root: pathlib.Pa
             overrides_default = ""
 
     # Preserve user-overrides from any existing file in the target project.
-    existing_path = project_root / ".claude" / "capabilities.md"
+    existing_path = project_root / "specs" / "capabilities.md"
     if existing_path.exists():
         existing = existing_path.read_text(encoding="utf-8")
         preserved = _extract_user_override_sections(existing)
@@ -375,7 +405,7 @@ def generate_capabilities_md(project_root: pathlib.Path, plugin_root: pathlib.Pa
             else:
                 overrides_default = overrides_default.rstrip() + "\n\n" + body
 
-    return auto_text + "\n" + overrides_default
+    return (auto_text + "\n" + overrides_default).rstrip() + "\n"
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -645,8 +675,8 @@ def main() -> int:
     )
     print(f"  specs/template.md   — {status}: {msg}")
 
-    # 3. .claude/capabilities.md — always regenerate (preserves user-overrides internally)
-    caps_path = project_root / ".claude" / "capabilities.md"
+    # 3. specs/capabilities.md — always regenerate (preserves user-overrides internally)
+    caps_path = project_root / "specs" / "capabilities.md"
     caps_content = generate_capabilities_md(project_root, plugin_root)
     if args.dry_run:
         print(f"  capabilities.md      — would-regenerate: {caps_path}")

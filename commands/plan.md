@@ -14,7 +14,7 @@ The **Plan** phase of SDD. Generate an architecture document `plan.md`. **DO NOT
 ### 1. Load context
 
 - `CLAUDE.md` (project constitution)
-- `.claude/capabilities.md` (specialist agents + skills + routing rules)
+- `specs/capabilities.md` (specialist agents + skills + routing rules)
 - `specs/<current>/spec.md` (from the current branch OR from `$ARGUMENTS`)
 
 ### 2. Survey the existing codebase

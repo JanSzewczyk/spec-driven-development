@@ -12,7 +12,7 @@ to specialist agents.
 ### 1. Load context
 
 - `specs/<current>/plan.md` (from the current branch)
-- `.claude/capabilities.md` — **critical**: the "Task type → routing rules" section (both
+- `specs/capabilities.md` — **critical**: the "Task type → routing rules" section (both
   the defaults and any `<!-- user-override -->` customizations)
 
 ### 2. Decomposition
