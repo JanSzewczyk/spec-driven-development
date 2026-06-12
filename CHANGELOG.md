@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-12
+
 ### Changed (breaking)
 
 - **Skill renamed — dropped the redundant `sdd-` prefix.** The skill directory is now `skills/doctor/` and its `name:` frontmatter is `doctor`; the wrapper command file is `commands/doctor.md`. The plugin namespace (`sdd:`) already disambiguates this against any same-named skill in another plugin, so the prefix added noise without value.
