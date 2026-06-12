@@ -4,23 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-This is **not an application** — it is a **Claude Code plugin** named `sdd` that ships the Spec-Driven Development framework. It contains slash commands, sub-agents, and a setup skill, all consumed by Claude Code itself. Blocking hooks (typecheck / lint) are NOT shipped by the plugin — they're generated per-project by `/sdd:doctor init` into `<target>/.claude/hooks/`. There is no build step and almost no runtime code; the only executable code is the Python in `skills/doctor/`.
+This is **not an application** — it is a **Claude Code plugin** named `sdd` that ships the Spec-Driven Development framework. It contains slash commands, sub-agents, and a setup skill, all consumed by Claude Code itself. Blocking hooks (typecheck / lint) are NOT shipped by the plugin — they're generated per-project by `/sdd:doctor init` into `<target>/.claude/hooks/`. There is no build step and **no runtime code**: every asset is a Markdown prompt that Claude executes. The doctor skill, once script-based, is now fully **LLM-driven** — Claude performs the checks and file operations itself (see Architecture).
 
 The plugin is installed into a *target* project (`~/.claude/plugins/cache/sdd`) and operates on that project's `specs/` directory and git repo. When developing here, you are editing the plugin; to see behavior you exercise it against a separate target project.
 
 ## Commands
 
-There is no `npm`/`make`. The "tests" are the doctor scripts, run against a target project (see CONTRIBUTING.md "Testing your changes locally"):
+There is no `npm`/`make` and no script to run — the doctor skill is LLM-driven. To exercise
+it you install the plugin and invoke the skill against a target project (see CONTRIBUTING.md
+"Testing your changes locally"):
 
-```bash
-# Audit a target project's SDD readiness (10 checks, JSON on stdout)
-python3 skills/doctor/check.py --root /path/to/target-project
-
-# Bootstrap/migrate per-project artifacts into a target project
-python3 skills/doctor/init.py --root /path/to/target-project
+```
+/sdd:doctor check     # report-only: 10 checks against the target project
+/sdd:doctor init      # create/repair per-project artifacts
+/sdd:doctor check     # confirm the checks flip to pass
 ```
 
-Smoke-test loop: run `check.py` against a fresh empty dir → `init.py` → `check.py` again and confirm checks flip to pass. `check.py` is the closest thing to a unit test in this repo.
+Smoke-test loop: `check` against a fresh project → `init` → `check` again, then verify by hand
+that the artifacts landed under the **project root** (not the plugin) and that a re-`init` is
+idempotent. There is no automated test in this repo; manual exercise of the skill is the test.
 
 ## Architecture
 
@@ -40,21 +42,21 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `p
   - `reviewer` — final GO/NO-GO audit; runs the test suite + domain audits.
   - `ui-critic` — screenshots changed UI via a browser MCP; skips gracefully if none is available (never blocks).
 
-- **`skills/doctor/`** — the `doctor` skill (audit + setup). `SKILL.md` is the instruction layer; `check.py` (10 read-only checks → JSON) and `init.py` (bootstrap) are the helpers. `init.py` detects the target's stack, **generates project-local hook scripts** in `<target>/.claude/hooks/typecheck.sh` + `lint.sh` containing only the tools the project actually has (existing hook files are never overwritten), and **safe-merges `<target>/.claude/settings.json`** — strips only its own previously-installed hook entries (matched by `.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`, or legacy v0.4 plugin-path substrings) and preserves every other key. Per-tool shell snippets live in the `TYPECHECK_BLOCKS` / `LINT_BLOCKS` tables inside `init.py`. Templates seeded into target projects live in `skills/doctor/templates/`.
+- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` is the entire procedure: the `check` mode runs 10 read-only inspections; the `init` mode detects the target's stack and creates the per-project artifacts directly with file tools. It **generates project-local hook scripts** in `<target>/.claude/hooks/typecheck.sh` + `lint.sh` containing only the tools the project actually has (existing hook files are never overwritten), and **safe-merges `<target>/.claude/settings.json`** — strips only its own previously-installed hook entries (matched by `.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`, or legacy v0.4 plugin-path substrings) and preserves every other key. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`, and per-tool hook snippets in `templates/hooks/*.sh.template`) and `reference/settings-merge.md` (the mechanical settings.json merge procedure). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
 
 ### Key concepts when editing
 
 - **Per-task routing**: every task in a target's `tasks.md` carries `type`, `agent`, `skills` fields. `/sdd:implement` reads them to route work to the right specialist sub-agent (from the marketplace) and load the right skills. The framework *orchestrates existing agents* rather than duplicating them — when `agent: orchestrator`, work is done inline.
 - **Contract-first TDD for UI**: `ui-contract` → `ui-component-test` → `ui-component`. Props interfaces live **inline in the `.tsx`**, never in a separate `.types.ts`. Phase validation in `implement.md` enforces a meaningful red phase (tests must fail with real assertions, not module-not-found).
 - **Constitution is the only file the framework writes outside of `specs/`**: `specs/constitution.md` is the long-form source of truth, edited via `/sdd:constitution`. The target's root `CLAUDE.md` (if any) is user-owned and never read or written by this framework.
-- **Hooks are project-specific, not plugin-shipped**: when adding support for a new typecheck/lint tool, edit `TYPECHECK_BLOCKS` or `LINT_BLOCKS` in `skills/doctor/init.py` (add an entry keyed by tool name) and extend `detect_hookable_tools()` to recognise it. Do NOT add a shared hook script to the plugin.
+- **Hooks are project-specific and open-ended**: there is no fixed list of supported stacks. `/sdd:doctor init` discovers how a project checks its code (declared scripts/tasks, CI + pre-commit config, tool config files) and generates hooks reproducing those commands — for *any* language/tool, including ones never enumerated. Supporting a new tool usually requires **editing nothing**; the LLM handles it by reasoning from the project. The `case` blocks in `templates/hooks/*.sh.template` are **worked examples of the hook shape**, not a closed catalog — add one only when a common tool deserves a higher-quality reference pattern than the LLM would improvise. Never add a shared hook script to the plugin.
 
 ## Conventions
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
 - **Versioning is manual and multi-file**: a release bumps the version in `plugin.json`, `.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md`. Keep them in sync.
 - Command/agent references in docs use the `/sdd:<command>` form.
-- Python helpers are stdlib-only, fail-open, and `from __future__ import annotations`; match their docstring-heavy style and exit-code discipline when extending them.
+- Behavior lives in Markdown prompts, not code. To change what an asset does, edit its prose. Generated hook scripts (`.claude/hooks/*.sh`) must exit 0 when nothing applies and exit 2 to block.
 
 ## Where to make a change
 
@@ -62,6 +64,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `p
 |---|---|
 | What a slash command does | `commands/<name>.md` (the prose body) |
 | A verification agent's behavior | `agents/<name>.md` |
-| Typecheck/lint blocking logic for a tool | edit the matching entry in `TYPECHECK_BLOCKS` / `LINT_BLOCKS` (and `detect_hookable_tools`) in `skills/doctor/init.py` |
-| A doctor readiness check | add a `check_*` fn in `skills/doctor/check.py`, register in `run_all_checks` |
+| Typecheck/lint blocking logic for a tool | add a `case` block to `skills/doctor/templates/hooks/{typecheck,lint}.sh.template` + teach tool-detection in `skills/doctor/SKILL.md` |
+| A doctor readiness check | edit the `check` procedure in `skills/doctor/SKILL.md` |
+| The settings.json merge behavior | `skills/doctor/reference/settings-merge.md` |
 | Files seeded into target projects | `skills/doctor/templates/` |

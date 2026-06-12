@@ -1,8 +1,8 @@
 ---
 name: doctor
-version: 0.5.0
+version: 0.6.0
 lastUpdated: 2026-06-12
-description: Preflight audit of project readiness for the SDD framework. Runs 10 checks (specs/constitution.md, specs/template.md, plugin installed + enabled across user/project/local settings, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode copies bundled templates into the target project and bootstraps `specs/constitution.md` when missing. The root `CLAUDE.md` is user-owned and never read or modified by this skill. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
+description: Preflight audit and setup of project readiness for the SDD framework. Runs 10 checks (specs/constitution.md, specs/template.md, plugin installed + enabled across user/project/local settings, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode creates the per-project artifacts (constitution, specs/template.md, capabilities.md, stack-specific hook scripts, settings.json hook entries) directly with file tools — no helper scripts. The root `CLAUDE.md` is user-owned and never read or modified by this skill. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
 tags: [sdd, spec-driven-development, tdd, claude-code, plugin]
 author: Jan Szewczyk
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task
@@ -12,116 +12,273 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task
 
 Audit and auto-setup for the Spec-Driven Development plugin on a target project.
 
+**This skill is LLM-driven.** There are no Python helpers — you (Claude) perform every
+check and every file operation yourself, using your own tools. This is deliberate: it lets
+you adapt to any stack, package manager, or monorepo layout, and it guarantees files land in
+**the project's own directory** rather than wherever a script's working directory happened to be.
+
+## Two roots — never confuse them
+
+| Root | What it is | How to resolve | What lives here |
+|------|------------|----------------|-----------------|
+| **Project root** | the user's project you're operating on | **your current working directory** (`pwd`) | `specs/`, `.claude/`, `package.json`, the git repo |
+| **Plugin root** | the installed SDD plugin | `${CLAUDE_PLUGIN_ROOT}` (fallback `$HOME/.claude/plugins/cache/sdd`) | bundled `templates/`, `reference/` — **read-only** |
+
+> ⛔ **The bug this design fixes:** every artifact you create (`specs/...`, `.claude/...`) MUST
+> be written under the **project root** (cwd). Read seed templates from the **plugin root**.
+> Never write into the plugin root. When in doubt, run `pwd` and build paths from it explicitly.
+
 ## Modes
 
 | Mode | What it does | When to use |
 |------|--------------|-------------|
 | `check` (default) | Report only — 10 checks with statuses ✅/⚠️/❌ | Sanity check, audit |
-| `init` | Bootstrap per-project artifacts (constitution, specs/template.md, capabilities.md, settings.json) | First-time setup after the plugin is installed |
+| `init` | Create/repair per-project artifacts (constitution, specs/template.md, capabilities.md, stack-specific hooks, settings.json) | First-time setup after the plugin is installed |
 
-## What it checks (10 checks)
+Extract the mode from the user message: "check" / "audit" / "is ready" / "what's missing" →
+**check**; "init" / "setup" / "create" / "generate" / "configure" / "fix" → **init**.
+Default to **check**.
 
-1. **`specs/constitution.md`** — the long-form project constitution. Exists with the canonical sections (Tech stack, Run/build, Conventions, WHAT NOT TO DO). No token limit — this is the source of truth.
-2. **`specs/template.md`** — exists with all required fields (Summary, User stories, Acceptance criteria, Edge cases, Open questions, Testing guidelines).
-3. **Plugin installed** — `plugin.json` is reachable at the resolved plugin root (verifies the `sdd` plugin is correctly installed under `~/.claude/plugins/cache/`).
-4. **Plugin enabled** — `sdd` appears under `enabledPlugins` (or equivalent) in **any** of three Claude Code settings layers: `~/.claude/settings.json` (user-global), `<project>/.claude/settings.json` (per-project, committed), or `<project>/.claude/settings.local.json` (gitignored local override). The report names which layer(s) enabled it.
-5. **`specs/capabilities.md`** — exists and lists specialist agents + skills + task type routing.
-6. **`.claude/settings.json`** — PostToolUse hooks for typecheck + lint configured and pointing at the plugin's hook scripts.
-7. **Git + gh** — repository initialized, `git status` clean, `gh auth status` ok.
-8. **Tooling auto-detect** — if `package.json` is present: `tsc`, `eslint`, `vitest`/`jest` installed; if `pyproject.toml`: `mypy`, `ruff`, `pytest`.
-9. **Specialist agents available** — `storybook-tester`, `nextjs-backend-engineer`, `testing-strategist` (or others) discoverable in the plugin marketplace.
-10. **Project type detection** — detects the project type (nextjs / react / node / python / other) and shows which specialist agents/skills will be routed to.
+---
 
-> **Commands and verification agents are not per-project**: they live in the plugin (`commands/`, `agents/` at the plugin root). Once the plugin is installed (checks 3 + 4 pass), Claude Code auto-discovers all slash commands and SDD agents in every project.
->
-> **`CLAUDE.md` is owned by the user**: the SDD framework uses and modifies only `specs/constitution.md`. The root `CLAUDE.md` (if present) is never read or written by `/sdd:doctor` or `/sdd:constitution`.
+## Mode: `check`
 
-## How to operate (instructions for Claude)
+Run all 10 checks against the **project root** (cwd) plus the installed plugin. For each, use
+Read/Glob/Grep/Bash to inspect, then assign `pass` ✅ / `warn` ⚠️ / `fail` ❌.
 
-When this skill is activated:
+1. **`specs/constitution.md`** — exists and contains the canonical sections (Tech stack,
+   Run/build, Conventions, WHAT NOT TO DO). Missing file → fail; present but missing sections → warn.
+2. **`specs/template.md`** — exists with all required fields: Summary, User stories,
+   Acceptance criteria, Edge cases, Open questions, Testing guidelines. Missing → fail; partial → warn.
+3. **Plugin installed** — `${CLAUDE_PLUGIN_ROOT}/plugin.json` (fallback `$HOME/.claude/plugins/cache/sdd/plugin.json`)
+   is readable and its `name` is `sdd`. Report `name@version`.
+4. **Plugin enabled** — `sdd` appears under `enabledPlugins` (or `plugins`) in **any** of three
+   layers: `~/.claude/settings.json` (user), `<project>/.claude/settings.json` (project),
+   `<project>/.claude/settings.local.json` (local). Name which layer(s). Strip any `@version`
+   suffix when matching. Not listed anywhere → warn (may still auto-load).
+5. **`specs/capabilities.md`** — exists and contains the sections: `Specialist agents`,
+   `Skills`, `Stack profile`, `Task type` (routing). Missing → fail; partial → warn.
+6. **`.claude/settings.json` hooks** — exists, valid JSON, and `hooks.PostToolUse` contains an
+   entry whose command references `.claude/hooks/typecheck.sh` or `.claude/hooks/lint.sh`.
+   Missing file → fail; present but no SDD hook entry → warn.
+7. **Git + gh** — `.git` exists, `git status --porcelain` (clean vs dirty), `gh` on PATH and
+   `gh auth status` ok. Dirty tree or missing gh → warn.
+8. **Tooling** — based on the detected stack, confirm the toolchain is installed (e.g. JS/TS:
+   `node_modules` present; Python: `mypy`/`ruff`/`pytest` reachable). Missing → warn.
+9. **Specialist agents** — scan `~/.claude/plugins/cache/*/` (excluding the `sdd` plugin) for
+   `agents/*.md`. List a few. None → warn.
+10. **Project type** — report the detected language/framework and package manager (whatever they
+    are — not limited to a fixed list) and which specialist agents/skills will be routed to.
+    Genuinely undeterminable → warn.
 
-### 1. Identify the mode
+### Discover the project's quality tooling (used by check #8/#10 and all of init)
 
-Extract intent from the user message:
-- "check" / "audit" / "is ready" / "what's missing" → mode **check**
-- "init" / "setup" / "create" / "generate" / "configure" → mode **init**
+**There is no fixed list of supported stacks.** New languages and code-quality tools appear
+constantly — your job is to figure out how *this specific project* checks its code and reproduce
+that, whatever language or tool it uses (Kotlin, Swift, Ruby, PHP, C#/.NET, Elixir, Zig, Clojure,
+a tool released last month — all in scope). Don't pattern-match against a closed catalog; **read
+the project and reason.**
 
-Default: **check**.
+**The single most reliable signal: what does the project itself run to verify code?** Use it to
+identify the canonical tool and its config — the hook then runs *that* tool (narrowly, per-file
+where possible; see init step 4 for the latency rule). Look, in roughly this priority order:
 
-### 2. Invoke the Python helper
+1. **Declared scripts/tasks** — `package.json` `scripts`, `Makefile` / `justfile` / `Taskfile.yml`
+   targets, `composer.json` scripts, `mix.exs` aliases, Gradle/Maven tasks, `cargo`/`go`/`dotnet`
+   subcommands. A `typecheck` / `lint` / `check` / `format` script is the project telling you the
+   canonical invocation — prefer it over a raw tool call.
+2. **CI / pre-commit config** — `.github/workflows/*.yml`, `.gitlab-ci.yml`, `.pre-commit-config.yaml`,
+   `lefthook.yml`, Husky hooks. Whatever the project gates merges on *is* its quality bar; mirror it.
+3. **Tool config files** — `tsconfig.json`, `pyproject.toml` `[tool.*]`, `biome.json`, `.eslintrc*`,
+   `.golangci.yml`, `checkstyle.xml`, `.rubocop.yml`, `phpstan.neon`, `.editorconfig`, etc. Their
+   presence reveals which checkers are configured.
+4. **Manifest + lockfile** — to identify the language, framework, and package manager (e.g.
+   `pnpm-lock.yaml`→pnpm, `yarn.lock`→yarn, `bun.lockb`→bun; `pom.xml`→Maven, `gradlew`→Gradle
+   wrapper). Detect monorepos (`pnpm-workspace.yaml`, `workspaces`, `turbo.json`, `nx.json`).
 
-The scripts live next to this file inside the plugin. Resolve them via `${CLAUDE_PLUGIN_ROOT}` when Claude Code exposes it, otherwise via absolute path:
+For each category — **typecheck** (or compile, for statically-typed languages where the compiler
+*is* the type checker) and **lint** (style/quality/static-analysis) — pick the one canonical
+command the project uses. If the project configures no linter, emit no lint hook (don't invent one).
+Confirm the tool is actually runnable (on `$PATH`, via the package manager, or a repo-local wrapper
+like `./gradlew`) — never wire a command the environment can't execute.
 
-```bash
-# check
-python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/sdd}/skills/doctor/check.py"
+The `templates/hooks/*.sh.template` files give you **worked examples of the hook shape** for several
+common ecosystems. They are a starting pattern, **not the set of what's allowed** — when the project
+uses something not shown there, write a block for it by analogy (see init step 4).
 
-# init (bootstraps missing per-project artifacts)
-python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/sdd}/skills/doctor/init.py"
-```
-
-`check.py` returns JSON on stdout:
-
-```json
-{
-  "status": "READY" | "PARTIAL" | "NOT_READY",
-  "checks": [
-    {"id": 1, "name": "specs/constitution.md", "status": "pass" | "warn" | "fail", "message": "..."},
-    ...
-  ],
-  "stack": {"framework": "nextjs", "language": "typescript", ...}
-}
-```
-
-### 3. Format the report for the user
-
-Render a Markdown table with the 10 checks, each row showing its status (✅/⚠️/❌) and a short message. End with the overall status and suggested next steps:
-
-- READY → "You can run `/sdd:spec feat <description>`"
-- PARTIAL → "Run `/sdd:doctor init` to fill in the missing per-project files"
-- NOT_READY → "If checks 3 or 4 fail, install the plugin first: `claude plugin install https://github.com/JanSzewczyk/spec-driven-development`. Otherwise run `/sdd:doctor init`."
-
-### 4. Init mode — what happens
-
-The `init.py` script:
-
-1. Resolves the plugin root via `$CLAUDE_PLUGIN_ROOT` or by walking up from its own `__file__`.
-2. **Constitution bootstrap** — if `specs/constitution.md` is missing, copies the bundled template into place. If it already exists, leaves it untouched. The script never reads or writes the project-root `CLAUDE.md`.
-3. Copies `<plugin>/skills/doctor/templates/specs/template.md` → `<project>/specs/template.md` (skipped if exists).
-4. Renders `specs/capabilities.md` by scanning `~/.claude/plugins/cache/<plugin>/{skills,agents}/` for installed capabilities, plus detecting stack from `package.json` / `pyproject.toml`. **Preserves** every `<!-- user-override -->` section from any existing file.
-5. **Emits project-local hook scripts** under `<project>/.claude/hooks/`:
-   - Detects what typecheck / lint tools the project actually uses (parses `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`) AND verifies each candidate is on `$PATH` via `shutil.which`.
-   - Generates minimal `typecheck.sh` and `lint.sh` scripts that invoke ONLY the detected tools — no dead branches for stacks the project doesn't use. Stacks supported: TypeScript (`tsc`), JS/TS lint (Biome → ESLint → oxlint), Python (mypy / pyright, ruff), Rust (`cargo check`, clippy), Go (`go vet`, golangci-lint), Deno (`deno check`, `deno lint`).
-   - **Never overwrites an existing hook file.** If `.claude/hooks/typecheck.sh` or `.claude/hooks/lint.sh` already exists, init skips it — the user owns that file and may have customised it. Re-init still wires settings.json to point at it.
-6. **Safe-merges `.claude/settings.json`**:
-   - PostToolUse entries point at the project-local hook paths (`bash .claude/hooks/typecheck.sh`, `bash .claude/hooks/lint.sh`). The plugin no longer ships hook scripts.
-   - **Never overwrites the file.** Reads existing `settings.json`, deep-copies it, strips only its OWN previously-installed hook entries (identified by command substrings `.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`, plus legacy v0.4 plugin-path markers `hooks/typecheck.py` / `hooks/lint.sh`), appends the freshly-built ones. Every other top-level key (`permissions`, `model`, MCP config, user's own PostToolUse hooks) is preserved verbatim.
-   - On malformed existing JSON, bails with a clear error to stderr — never touches a corrupt file.
-   - When no hookable tools are detected, no hook scripts are emitted and PostToolUse is left empty (or stale SDD entries are stripped only). Check 6 then reports `warn` — that's honest, not a failure.
-
-`/sdd:constitution` is the canonical editor for `specs/constitution.md`. The root `CLAUDE.md`, if you keep one, stays under your manual control.
-
-## Output report — format
+### Report format (`check`)
 
 ```markdown
 # SDD Readiness Report
 
 **Status:** ⚠️ PARTIAL (8/10 checks passed)
-**Stack detected:** Next.js 15 + TypeScript strict + Vitest
+**Stack detected:** Next.js 15 + TypeScript strict + Vitest (pnpm)
 
 | # | Check | Status | Detail |
 |---|-------|--------|--------|
 | 1 | specs/constitution.md | ✅ | 4/4 required sections present |
 | 2 | specs/template.md | ✅ | all fields present |
-| 3 | Plugin installed | ✅ | sdd@0.4.0 at ~/.claude/plugins/cache/sdd |
+| 3 | Plugin installed | ✅ | sdd@0.6.0 at ~/.claude/plugins/cache/sdd |
 | 4 | Plugin enabled | ✅ | enabled in user, project settings |
-| 5 | specs/capabilities.md | ✅ | 4 specialist agents, 12 skills |
+| 5 | specs/capabilities.md | ✅ | 4 sections present |
 | 6 | .claude/settings.json hooks | ❌ | no PostToolUse hooks |
 | 7 | Git + gh | ✅ | clean tree, gh ok |
-| 8 | Tooling (TS/lint/test) | ✅ | node_modules present |
-| 9 | Specialist agents (plugin) | ✅ | storybook-tester, nextjs-backend-engineer |
+| 8 | Tooling | ✅ | node_modules present |
+| 9 | Specialist agents | ✅ | storybook-tester, nextjs-backend-engineer |
 | 10 | Project type | ✅ | nextjs detected |
 
 ## Next steps
-- Run `/sdd:doctor init` to fix check 6 (regenerates settings.json with plugin hook paths)
+- <one bullet per actionable fix>
 ```
+
+Overall status: `READY` (no fail, no warn) / `PARTIAL` (some warn or 1–2 fail) / `NOT_READY`
+(3+ fail). Next-step guidance:
+- READY → "You can run `/sdd:spec feat <description>`"
+- PARTIAL → "Run `/sdd:doctor init` to fill in the missing per-project files"
+- NOT_READY → "If checks 3 or 4 fail, install the plugin first: `claude plugin install
+  https://github.com/JanSzewczyk/spec-driven-development`. Otherwise run `/sdd:doctor init`."
+
+---
+
+## Mode: `init`
+
+Create or repair the per-project artifacts. **Everything is written under the project root (cwd).**
+Read seed templates from `${CLAUDE_PLUGIN_ROOT}/skills/doctor/templates/` (fallback
+`$HOME/.claude/plugins/cache/sdd/skills/doctor/templates/`).
+
+Run these steps in order. Print a one-line status for each artifact (created / skipped / merged).
+
+### 0. Confirm roots
+Run `pwd` to lock the project root. Verify the templates directory is readable at the plugin
+root. If the templates are missing, stop and tell the user the plugin looks broken.
+
+### 1. Discover the project's quality tooling
+Apply **Discover the project's quality tooling** (above). Record: language, framework, package
+manager, monorepo?, and — for **typecheck** (or compile) and **lint** — the one canonical command
+the project uses, confirmed runnable. This drives steps 4–5. Whatever the stack is, this is the
+same job: find how the project checks code and capture the exact invocation.
+
+When a category offers several candidates, pick the one the project actually configures/uses — e.g.
+for a JS/TS linter, whichever of Biome / ESLint / oxlint the project depends on (only one); for a
+compiled language, the build tool's compile task. If a category has no configured tool, skip it.
+
+### 2. Seed `specs/constitution.md` and `specs/template.md`
+- `mkdir -p specs`.
+- **constitution:** if `specs/constitution.md` is absent, copy `templates/constitution.md.template`
+  → `specs/constitution.md`. If present, **leave it untouched** (it's the source of truth, edited
+  via `/sdd:constitution`).
+- **template:** if `specs/template.md` is absent, copy `templates/specs/template.md` →
+  `specs/template.md` verbatim (the `{{placeholders}}` are filled later by `/sdd:spec`). If
+  present, skip.
+- (Legacy migrations, only if the new path is absent: `specs/_constitution.md` → `specs/constitution.md`,
+  `specs/_template.md` → `specs/template.md`, `.claude/capabilities.md` → `specs/capabilities.md`.)
+- **Never touch the project-root `CLAUDE.md`** — it is user-owned.
+
+### 3. Generate `specs/capabilities.md`
+Scan `~/.claude/plugins/cache/*/` for installed capabilities (skip the `sdd` plugin's own
+verification agents). For each plugin: read `agents/*.md` frontmatter (name + description) and
+`**/SKILL.md` frontmatter (name + description). Then write `specs/capabilities.md` with these
+sections (**keep these exact headings — other commands read them**):
+
+- `## Specialist agents (delegate implementation work)` + `<!-- auto-generated -->` — bullet list
+  of discovered agents (`- **name** (plugin) — description`), or a placeholder if none.
+- `## Skills (load into context on demand)` + `<!-- auto-generated -->` — bullet list of skills.
+- `## Stack profile` + `<!-- auto-generated -->` — the detected stack as `- **key**: value`.
+- `## Task type → routing rules` and `## Custom routing rules` — these carry `<!-- user-override -->`.
+
+**Idempotency — get this exactly right (it has bitten us before):** re-running init must produce
+a **byte-stable** file, not a growing one. Follow these rules:
+
+1. The file has two kinds of section: **auto-generated** (heading immediately followed by
+   `<!-- auto-generated -->`) and **user-override** (heading immediately followed by
+   `<!-- user-override -->`). Regenerate the auto-generated ones from scratch every run.
+2. If `specs/capabilities.md` already exists, **preserve every `<!-- user-override -->` section
+   byte-for-byte** — including its heading and its trailing blank line. Take its content from the
+   *existing* file, not the template.
+3. When you identify a section by its `## Heading`, match the heading as a **single line only**.
+   Do NOT let a section's body greedily absorb the next `## ` heading — each section ends exactly
+   where the next `## ` begins. (The old regex implementation backtracked across `## ` boundaries
+   and swallowed auto-generated sections into a fake "title", which is why the file grew on every
+   re-run.)
+4. Preserve exactly one blank line between sections — don't collapse or add separators on re-write.
+5. Sanity check before writing: the set of `## ` headings after regeneration must equal the set
+   before (no new duplicates, none lost). If `init` is run twice with no other change, the second
+   write must be identical to the first.
+
+If the file doesn't exist, take the routing sections (`Task type → routing rules`,
+`Custom routing rules`) verbatim from `templates/capabilities.md.template`.
+
+### 4. Generate hook scripts for the tools you found
+Generate `.claude/hooks/typecheck.sh` and `.claude/hooks/lint.sh` tailored to the command(s) you
+discovered in step 1 — **for whatever tools the project uses, not a fixed menu.**
+
+- Open the matching template (`templates/hooks/typecheck.sh.template` / `lint.sh.template`) and
+  read **two things**: the **header** (shebang → the `ext=` line — copy it verbatim; it reads the
+  PostToolUse payload and extracts `file_path`) and the **worked example blocks** below it.
+- Keep the example block(s) that match the project's tools, **adapting the invocation** to how the
+  project actually runs the tool (prefer its declared script/task — `pnpm typecheck`, a `Makefile`
+  target, `./gradlew checkstyleMain` — over a generic call).
+- **If the project uses a tool not shown in the template, write a new block for it by analogy.**
+  Follow the same shape every example uses:
+  ```bash
+  case "$ext" in
+    <extensions this tool applies to>)
+      command -v <tool-or-runner> >/dev/null 2>&1 || exit 0   # no-op if not runnable
+      if ! <the project's actual check command> 2>&1; then
+        echo "❌ <tool> failed for $file_path" >&2
+        exit 2                                                  # exit 2 BLOCKS Claude
+      fi
+      ;;
+  esac
+  ```
+  This is the whole contract: gate on the file extension(s) the tool covers, no-op (`exit 0`) when
+  the tool isn't reachable, `exit 2` with a message on a real failure. A repo-local wrapper (e.g.
+  `[[ -x ./gradlew ]]`) counts as runnable. Whole-project checkers (compilers, `go vet`) may run on
+  the whole module rather than the single file — that's fine.
+- **For tools invoked through a runner** (`bundle exec`, `npx`, `pnpm exec`, `poetry run`, `pipx`),
+  checking that the *runner* exists is not enough — the tool itself may be uninstalled, and the
+  runner would then exit non-zero and **falsely block**. Probe the actual tool first and no-op if
+  it's absent, e.g. `bundle exec rubocop --version >/dev/null 2>&1 || exit 0` (the JS examples model
+  this with `npx --no-install --quiet tsc --version`). Only after the tool resolves do you run the
+  real check and let its failure `exit 2`.
+- **Run the narrowest invocation that still catches the error — this hook fires after EVERY edit.**
+  When you read a project's `lint`/`typecheck` script or CI step, use it to learn *which tool and
+  which config* the project uses — then run **that tool on `$file_path`**, not the whole-repo
+  command verbatim. `pnpm lint` / `make lint` / a CI job lint the entire repo (and may install deps
+  or run tests) — wiring that into a per-edit hook adds seconds to every keystroke-batch and
+  regresses the dev loop. Prefer per-file (`eslint "$file_path"`, `ruff check "$file_path"`,
+  `rubocop "$file_path"`, per-file type-checkers). Fall back to a whole-project run **only** for
+  tools with no per-file mode (compilers, `tsc --noEmit`, `go vet ./...`, `cargo check`).
+- Drop the template's instruction-comment block from the output. Replace `{{TOOLS}}` with the
+  comma-separated tool names you actually wrote. End the script with `exit 0`.
+- After writing, `chmod +x` the file. Sanity-check it parses: `bash -n .claude/hooks/<name>.sh`.
+- **Never overwrite an existing hook file.** If `.claude/hooks/typecheck.sh` (or `lint.sh`)
+  already exists, skip writing it — the user owns it. Still wire settings.json to point at it.
+- If a category has **no** configured/runnable tool, write no script for it (and step 5 adds no
+  entry for it). Writing nothing is correct — better than a hook that blocks on a tool that isn't there.
+
+### 5. Safe-merge `.claude/settings.json`
+Follow `reference/settings-merge.md` **exactly** — it is a mechanical procedure. The essentials:
+read → parse → **STOP and report if malformed (never clobber)** → strip only SDD-marked
+PostToolUse entries → append the fresh `Edit|Write|MultiEdit` entry (only for detected tools) →
+preserve every other key verbatim → write with 2-space indent + trailing newline.
+
+### 6. Re-check and report
+Run the `check` procedure and present the readiness table so the user sees the new state.
+
+### Idempotency rules (apply throughout init)
+- Existing `specs/constitution.md`, `specs/template.md`, and hook scripts are **never overwritten**.
+- `specs/capabilities.md` regenerates auto-sections but **preserves `<!-- user-override -->`**.
+- `settings.json` strips only SDD-marked entries and re-adds them → **no duplicates** on re-run;
+  all user keys preserved; a malformed file is left untouched.
+
+---
+
+## Notes
+
+- **Commands and verification agents are not per-project**: they live in the plugin (`commands/`,
+  `agents/`). Once the plugin is installed and enabled (checks 3 + 4), Claude Code auto-discovers
+  every slash command and SDD agent in every project — no per-project copy.
+- **`CLAUDE.md` is owned by the user**: this framework reads and writes only `specs/...` and the
+  SDD-tagged hook entries in `.claude/settings.json`. The root `CLAUDE.md` is never touched.
+- **`/sdd:constitution`** is the canonical editor for `specs/constitution.md`.
