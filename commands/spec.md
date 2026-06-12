@@ -55,17 +55,17 @@ Copy `specs/_template.md` → `specs/<feature_slug>/spec.md` and substitute the 
 `{{date}}` (today).
 
 Fill in the **Summary** section using the `description` argument — ONE business-level sentence.
-Leave the other sections empty (the user will fill them via manual editing + `/clarify`).
+Leave the other sections empty (the user will fill them via manual editing + `/sdd:clarify`).
 
 ### 5. Output
 
 Show the user:
 - ✅ Branch created: `<type>/<feature_slug>`
 - ✅ Spec: `specs/<feature_slug>/spec.md`
-- 👉 Next step: edit the spec manually OR run `/clarify` to have AI ask gap questions.
+- 👉 Next step: edit the spec manually OR run `/sdd:clarify` to have AI ask gap questions.
 
 ## Constraints
 
 - ⛔ DO NOT write implementation code in `spec.md`
 - ⛔ DO NOT add technical details (frameworks, libraries) — this is the business phase
-- ⛔ DO NOT commit changes — that is done by `/review`
+- ⛔ DO NOT commit changes — that is done by `/sdd:review`

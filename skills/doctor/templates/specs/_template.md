@@ -42,7 +42,7 @@
 
 ## Open questions
 
-<!-- The /clarify phase fills these in. The owner answers them BEFORE /plan. -->
+<!-- The /sdd:clarify phase fills these in. The owner answers them BEFORE /plan. -->
 
 - ?
 

@@ -13,19 +13,19 @@ The repository is a Claude Code plugin. Its layout:
 
 - **`plugin.json`** — manifest at repo root.
 - **`skills/`, `agents/`, `commands/`, `hooks/`** — framework payload, auto-discovered by Claude Code once the plugin is installed.
-- **`skills/sdd-doctor/templates/`** — per-project templates copied into target projects by `/sdd-doctor init`.
+- **`skills/doctor/templates/`** — per-project templates copied into target projects by `/sdd:doctor init`.
 - **Root docs** (`README.md`, `LICENSE`, `CHANGELOG.md`, `.github/`) — repo-level documentation.
 
 ## Testing your changes locally
 
 This is a documentation-and-config framework, not runtime code, so the test loop is hands-on. The recommended cycle:
 
-1. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `hooks/`, `skills/sdd-doctor/templates/`).
+1. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `hooks/`, `skills/doctor/templates/`).
 2. Run the smoke test against the plugin from an empty target project:
 
    ```bash
    mkdir /tmp/sdd-smoke && cd /tmp/sdd-smoke && git init
-   python3 /path/to/spec-driven-development/skills/sdd-doctor/check.py --root .
+   python3 /path/to/spec-driven-development/skills/doctor/check.py --root .
    ```
 
    Expected for an empty project: checks 1, 2, 5, 6 fail (per-project files absent); 3, 4 pass if the plugin path resolves; 7, 8, 10 warn or pass depending on environment; 9 depends on your plugin marketplace.
@@ -33,8 +33,8 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 3. Run init to populate per-project files:
 
    ```bash
-   python3 /path/to/spec-driven-development/skills/sdd-doctor/init.py --root .
-   python3 /path/to/spec-driven-development/skills/sdd-doctor/check.py --root .
+   python3 /path/to/spec-driven-development/skills/doctor/init.py --root .
+   python3 /path/to/spec-driven-development/skills/doctor/check.py --root .
    ```
 
    Expected after `init`: at most 7 + 8 + 10 still warn, the rest pass.
@@ -44,9 +44,9 @@ This is a documentation-and-config framework, not runtime code, so the test loop
    ```bash
    claude plugin install /path/to/spec-driven-development
    # Open /tmp/sdd-smoke in Claude Code:
-   #   /sdd-doctor check
-   #   /sdd-doctor init
-   #   /spec feat hello world
+   #   /sdd:doctor check
+   #   /sdd:doctor init
+   #   /sdd:spec feat hello world
    ```
 
 5. Sanity-check stale references after any rename:
@@ -70,12 +70,12 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 
 | Change type | Location |
 |------|------|
-| New routing rule (task type → agent) | Edit `skills/sdd-doctor/templates/capabilities.md.template` |
-| New SDD-doctor check | Add function to `skills/sdd-doctor/check.py`, append to `run_all_checks` |
+| New routing rule (task type → agent) | Edit `skills/doctor/templates/capabilities.md.template` |
+| New SDD-doctor check | Add function to `skills/doctor/check.py`, append to `run_all_checks` |
 | New slash command | New file in `commands/<name>.md`. Document in README. |
-| New verification agent | New file in `agents/sdd-<name>.md` + integrate via `/review` (`commands/review.md` and `agents/sdd-reviewer.md`) |
-| New hook | New script in `hooks/<name>.<ext>` + wire into `skills/sdd-doctor/templates/settings.json.template` |
-| Bundled per-project template | Place under `skills/sdd-doctor/templates/` — `init.py` will copy it |
+| New verification agent | New file in `agents/sdd-<name>.md` + integrate via `/sdd:review` (`commands/review.md` and `agents/sdd-reviewer.md`) |
+| New hook | New script in `hooks/<name>.<ext>` + wire into `skills/doctor/templates/settings.json.template` |
+| Bundled per-project template | Place under `skills/doctor/templates/` — `init.py` will copy it |
 | Documentation | `README.md` is the single source of truth. Do not split docs into `docs/`. |
 
 ## Pull request checklist
@@ -92,7 +92,7 @@ Please open a GitHub issue with:
 
 - Plugin version (`plugin.json` `version` or the commit SHA you installed).
 - Target project stack (Next.js / Python / etc.).
-- The output of `/sdd-doctor check` from the failing project.
+- The output of `/sdd:doctor check` from the failing project.
 - Steps to reproduce.
 
 ## License

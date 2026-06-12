@@ -38,14 +38,14 @@ The unique contribution of this framework: **per-task routing to your existing s
 ## ✨ Features
 
 - 📋 **Canonical SDD phases**: `constitution → spec → clarify → plan → tasks → implement → review`
-- 🏥 **`/sdd-doctor`** — preflight audit + one-command init
+- 🏥 **`/sdd:doctor`** — preflight audit + one-command init
 - 🎭 **Orchestration of existing sub-agents** (does not duplicate — invokes specialist agents from the plugin marketplace via the Task tool)
 - 🏷️ **Tagged tasks** — every task in `tasks.md` has `type`, `agent`, `skills` → auto-routing to the right specialist
 - 🪝 **Auto-feedback hooks** — typecheck + lint block Claude via exit code 2
-- 🌿 **Conventional Commits branches** — `/spec feat user login` → branch `feat/user-login`
+- 🌿 **Conventional Commits branches** — `/sdd:spec feat user login` → branch `feat/user-login`
 - 📐 **TDD-first** — tests always before implementation
 - 🧠 **Context discipline** — sub-agents receive only their scope, skills load on demand
-- 🔍 **Drift detection** — built-in `sdd-drift-detector` and `/analyze` keep spec, plan, tasks, and code consistent
+- 🔍 **Drift detection** — built-in `sdd-drift-detector` and `/sdd:analyze` keep spec, plan, tasks, and code consistent
 
 ---
 
@@ -103,16 +103,16 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@0.2.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `sdd-doctor` skill are available in **every** project — no per-project copy required.
+You should see `sdd@0.2.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required.
 
 ### 2. Initialize a project
 
 Open the target project in Claude Code and run:
 
 ```text
-/sdd-doctor init      # copies CLAUDE.md.template, specs/_template.md, capabilities.md, settings.json
-/sdd-doctor check     # confirms 10/10 — plugin found, per-project files present
-/constitution         # edit CLAUDE.md — must be <2,500 tokens
+/sdd:doctor init      # copies CLAUDE.md.template, specs/_template.md, capabilities.md, settings.json
+/sdd:doctor check     # confirms 10/10 — plugin found, per-project files present
+/sdd:constitution         # edit CLAUDE.md — must be <2,500 tokens
 ```
 
 What `init` does:
@@ -124,13 +124,13 @@ What `init` does:
 ### 3. Build your first feature
 
 ```text
-/spec feat user can reset password via email
-/clarify
-/plan                 # run in Plan Mode (Shift+Tab)
-/tasks
-/implement T1.1
+/sdd:spec feat user can reset password via email
+/sdd:clarify
+/sdd:plan                 # run in Plan Mode (Shift+Tab)
+/sdd:tasks
+/sdd:implement T1.1
 ...
-/review
+/sdd:review
 ```
 
 ### Forking the plugin for your own organization
@@ -138,8 +138,8 @@ What `init` does:
 If you want a customized copy (e.g. with org-specific routing rules in `capabilities.md.template`):
 
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugin.json`.
-2. (Optional) Edit `skills/sdd-doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
-3. (Optional) Edit `skills/sdd-doctor/templates/CLAUDE.md.template` to seed your standard "WHAT NOT TO DO" rules.
+2. (Optional) Edit `skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
+3. (Optional) Edit `skills/doctor/templates/CLAUDE.md.template` to seed your standard "WHAT NOT TO DO" rules.
 4. Bump the `version` in `plugin.json` and tag a release.
 5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
 
@@ -149,13 +149,13 @@ If you want a customized copy (e.g. with org-specific routing rules in `capabili
 
 ```mermaid
 flowchart TD
-    A[/sdd-doctor init/] --> B[/constitution/]
-    B --> C[/spec feat user login/]
-    C --> D[/clarify/]
-    D --> E[/plan in Plan Mode/]
+    A[/sdd:doctor init/] --> B[/sdd:constitution/]
+    B --> C[/sdd:spec feat user login/]
+    C --> D[/sdd:clarify/]
+    D --> E[/sdd:plan in Plan Mode/]
     E --> F[Human reviews plan.md]
-    F --> G[/tasks/]
-    G --> H[/implement T1.1/]
+    F --> G[/sdd:tasks/]
+    G --> H[/sdd:implement T1.1/]
     H --> I{type ends with -test?}
     I -->|yes| J[Write tests<br/>red phase]
     I -->|no| K[Route to specialist<br/>per task.agent]
@@ -166,7 +166,7 @@ flowchart TD
     M -->|missing AC| K
     M -->|satisfied| N{more tasks?}
     N -->|yes| H
-    N -->|no| O[/review/]
+    N -->|no| O[/sdd:review/]
     O --> P[sdd-spec-guard + sdd-drift-detector + sdd-reviewer + skills]
     P -->|GO| Q[git commit + gh pr create]
     P -->|NO-GO| H
@@ -174,14 +174,14 @@ flowchart TD
 
 | Phase | Command | What happens |
 |-------|---------|--------------|
-| **Constitution** | `/constitution` | Edit `CLAUDE.md` — tech stack, conventions, **WHAT NOT TO DO** (<2,500 tokens) |
-| **Specify** | `/spec <type> <description>` | Validate clean git, create branch `<type>/<slug>`, generate `specs/<slug>/spec.md` (business only — no code) |
-| **Clarify** | `/clarify` | AI reads spec.md and asks 5-10 targeted gap questions; updates spec with answers |
-| **Plan** | `/plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
-| **Tasks** | `/tasks` | Decompose plan into YAML tasks with `type`, `agent`, `skills` auto-routed via `capabilities.md` |
-| **Implement** | `/implement <task-id>` | TDD loop + delegation to specialist agent per `task.agent`; hooks enforce typecheck + lint |
-| **Review** | `/review` | sdd-spec-guard + sdd-drift-detector + sdd-reviewer + domain skills → verdict GO/NO-GO → commit + PR |
-| **Analyze** | `/analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
+| **Constitution** | `/sdd:constitution` | Edit `CLAUDE.md` — tech stack, conventions, **WHAT NOT TO DO** (<2,500 tokens) |
+| **Specify** | `/sdd:spec <type> <description>` | Validate clean git, create branch `<type>/<slug>`, generate `specs/<slug>/spec.md` (business only — no code) |
+| **Clarify** | `/sdd:clarify` | AI reads spec.md and asks 5-10 targeted gap questions; updates spec with answers |
+| **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
+| **Tasks** | `/sdd:tasks` | Decompose plan into YAML tasks with `type`, `agent`, `skills` auto-routed via `capabilities.md` |
+| **Implement** | `/sdd:implement <task-id>` | TDD loop + delegation to specialist agent per `task.agent`; hooks enforce typecheck + lint |
+| **Review** | `/sdd:review` | sdd-spec-guard + sdd-drift-detector + sdd-reviewer + domain skills → verdict GO/NO-GO → commit + PR |
+| **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
 ---
 
@@ -192,7 +192,7 @@ flowchart TD
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │  ORCHESTRATOR (main Claude session)                         │
-│  • Reads CLAUDE.md, capabilities.md, spec/plan/tasks        │
+│  • Reads CLAUDE.md, capabilities.md, spec/sdd:plan/sdd:tasks        │
 │  • Routes work to specialist agents via Task tool           │
 │  • Runs verification agents at review time                  │
 └─────────────────────────────────────────────────────────────┘
@@ -216,8 +216,8 @@ flowchart TD
 
 This framework adds:
 
-- 1 skill (`sdd-doctor`)
-- 9 slash commands (`sdd-doctor`, `constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `analyze`)
+- 1 skill (`doctor`)
+- 9 slash commands (`/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`)
 - 4 verification agents (`sdd-spec-guard`, `sdd-drift-detector`, `sdd-reviewer`, `sdd-ui-critic`)
 - 2 hooks (`typecheck.py`, `lint.sh`)
 
@@ -236,7 +236,7 @@ Every task in `tasks.md` carries a YAML block:
   files: [LoginForm.stories.tsx]
 ```
 
-When the user runs `/implement T1.2`:
+When the user runs `/sdd:implement T1.2`:
 
 1. **Orchestrator** parses `tasks.md`, locates T1.2.
 2. **Load skills**: emits `Use skill: storybook-testing`, `Use skill: design-system`.
@@ -277,7 +277,7 @@ If typecheck or lint fails, the hook exits with code **2**. Claude receives the 
 
 `.claude/capabilities.md` has two kinds of sections:
 
-- **`<!-- auto-generated -->`** — overwritten by `/sdd-doctor init` on every run (it scans `~/.claude/plugins/cache/`)
+- **`<!-- auto-generated -->`** — overwritten by `/sdd:doctor init` on every run (it scans `~/.claude/plugins/cache/`)
 - **`<!-- user-override -->`** — preserved untouched, the safe place to keep customizations
 
 This lets you re-run `init` (e.g., after installing a new plugin) without losing your custom task-type routing rules.
@@ -316,7 +316,7 @@ Example schema:
 
 ## ⌨️ Slash Commands Reference
 
-### 🏥 `/sdd-doctor [check|init|fix <ids>]`
+### 🏥 `/sdd:doctor [check|init|fix <ids>]`
 
 Preflight audit and auto-setup. **10 checks**: CLAUDE.md, specs/_template.md, plugin installed, plugin enabled, capabilities.md valid, settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected.
 
@@ -324,11 +324,11 @@ Preflight audit and auto-setup. **10 checks**: CLAUDE.md, specs/_template.md, pl
 - `init` — generate all missing files + auto-detect plugins → fill `capabilities.md` + adjust hooks to detected stack
 - `fix <N>` — repair specific check by ID
 
-### 📜 `/constitution`
+### 📜 `/sdd:constitution`
 
 Edit `CLAUDE.md` at the project root. Warns when token count exceeds 2,500 and suggests sharding per module.
 
-### 🌿 `/spec <type> <description>`
+### 🌿 `/sdd:spec <type> <description>`
 
 Phase 1 — Specify. Requires `<type>` ∈ {`feat`, `fix`, `chore`, `refactor`, `docs`} (Conventional Commits).
 
@@ -341,11 +341,11 @@ Steps:
 
 ⛔ The spec file is **business-only** — no code, no tech stack details.
 
-### ❓ `/clarify`
+### ❓ `/sdd:clarify`
 
 Phase 2 — Clarify. AI reads the current spec.md and asks 5-10 targeted questions about gaps (ambiguous requirements, missing edge cases, vague acceptance criteria). When the user answers, the spec is updated automatically.
 
-### 🗺️ `/plan`
+### 🗺️ `/sdd:plan`
 
 Phase 3 — Plan. **Run in Plan Mode** (Shift+Tab) so Claude has edits disabled and can only read/analyze.
 
@@ -359,9 +359,9 @@ Generates `plan.md` with:
 - Reused utilities (citing existing code paths)
 - Risks & mitigations
 
-After generation, **human review of plan.md is mandatory** before proceeding to `/tasks`.
+After generation, **human review of plan.md is mandatory** before proceeding to `/sdd:tasks`.
 
-### 🧩 `/tasks`
+### 🧩 `/sdd:tasks`
 
 Phase 4 — Tasks. Decompose `plan.md` into a tagged task list:
 
@@ -384,9 +384,9 @@ Phase 4 — Tasks. Decompose `plan.md` into a tagged task list:
   2. `ui-component-test` — import the component (no module-not-found), write tests + Storybook story that fail with **meaningful assertion errors**.
   3. `ui-component` — flesh out the skeleton until tests pass.
 
-`/tasks` auto-emits 3 tasks per component without you asking.
+`/sdd:tasks` auto-emits 3 tasks per component without you asking.
 
-### 🔨 `/implement <task-id>`
+### 🔨 `/sdd:implement <task-id>`
 
 Phase 5 — Implement one task. Pipeline:
 
@@ -394,16 +394,16 @@ Phase 5 — Implement one task. Pipeline:
 2. **Phase validation** — depends on `type`:
    - **Logic tasks**: if not a test task, require the sibling test task with `status: review|done`.
    - **UI tasks** (contract-first TDD chain): `ui-component-test` requires sibling `ui-contract` done; `ui-component` (full impl) requires sibling `ui-component-test` done.
-   - On missing prerequisite → STOP, instruct user to run `/implement <prerequisite-id>` first.
+   - On missing prerequisite → STOP, instruct user to run `/sdd:implement <prerequisite-id>` first.
 3. Load skills from `task.skills`
 4. If `task.agent ≠ orchestrator` → delegate via `Task` tool with `subagent_type: <task.agent>`, passing only the relevant spec + plan slice
 5. Hooks run automatically (typecheck + lint, exit 2 on failure)
 6. `sdd-spec-guard` verifies the diff satisfies the task's acceptance criteria
 7. Mark task `review`
 
-⛔ One task per `/implement` invocation. Bulk implementation defeats the purpose.
+⛔ One task per `/sdd:implement` invocation. Bulk implementation defeats the purpose.
 
-### 🔍 `/review`
+### 🔍 `/sdd:review`
 
 Phase 6 — Final audit before PR. Runs in sequence:
 
@@ -415,9 +415,9 @@ Phase 6 — Final audit before PR. Runs in sequence:
 6. On GO: `git commit` (Conventional Commits format) + `gh pr create` with body linking to `spec.md`
 7. On NO-GO: list concrete blockers
 
-### 📊 `/analyze`
+### 📊 `/sdd:analyze`
 
-Diagnostic tool — run anytime to detect drift between spec ↔ plan ↔ tasks ↔ code. Useful before `/review` to avoid a NO-GO verdict.
+Diagnostic tool — run anytime to detect drift between spec ↔ plan ↔ tasks ↔ code. Useful before `/sdd:review` to avoid a NO-GO verdict.
 
 Outputs a markdown matrix:
 
@@ -437,7 +437,7 @@ This framework introduces **only 4 new generic agents**. Everything else is your
 
 **Purpose:** Verify that a code diff satisfies all Acceptance Criteria from `spec.md` and does not introduce out-of-scope changes.
 
-**Called by:** `/implement` (per task) and `/review` (whole feature).
+**Called by:** `/sdd:implement` (per task) and `/sdd:review` (whole feature).
 
 **Output:** JSON
 
@@ -461,7 +461,7 @@ Strict constraints: **never** writes code, **never** suggests fixes (only report
 
 **Purpose:** Find inconsistencies between documentation layers (`spec.md`, `plan.md`, `tasks.md`) and the current code state.
 
-**Called by:** `/review` and `/analyze`.
+**Called by:** `/sdd:review` and `/sdd:analyze`.
 
 Cross-checks performed:
 
@@ -476,7 +476,7 @@ Cross-checks performed:
 
 **Purpose:** Final quality audit before PR. Orchestrates domain-specific audits and decides GO/NO-GO.
 
-**Called by:** `/review`.
+**Called by:** `/sdd:review`.
 
 Pipeline:
 
@@ -497,7 +497,7 @@ Pipeline:
 
 **Purpose:** Visual review of changed UI components — captures Storybook screenshots via a browser MCP and evaluates them for design-system adherence, layout regressions, and rendering issues.
 
-**Called by:** `sdd-reviewer` (transitively from `/review`) when the diff contains `.tsx`/`.stories.tsx` files.
+**Called by:** `sdd-reviewer` (transitively from `/sdd:review`) when the diff contains `.tsx`/`.stories.tsx` files.
 
 **Requirements:** A browser MCP server connected (e.g. `Claude_in_Chrome`, `Claude_Preview`, or Playwright MCP) plus a running Storybook (default `http://localhost:6006`). If either is missing, the agent returns verdict `SKIPPED` and the review continues without blocking.
 
@@ -520,7 +520,7 @@ Pipeline:
 }
 ```
 
-Severity classification: `issue` (visible bug, blocks GO), `warning` (suboptimal but functional), `info` (observation). `SKIPPED` never blocks `/review` — it surfaces an infrastructure note instead.
+Severity classification: `issue` (visible bug, blocks GO), `warning` (suboptimal but functional), `info` (observation). `SKIPPED` never blocks `/sdd:review` — it surfaces an infrastructure note instead.
 
 Screenshots are saved under `./.sdd-screenshots/` — add this path to `.gitignore`.
 
@@ -541,15 +541,15 @@ cd ~/Projects/my-app && git init
 In Claude Code:
 
 ```text
-/sdd-doctor init       # auto-detects Next.js 15 + TS + Vitest + Storybook
-/sdd-doctor check      # ✅ READY (10/10)
-/constitution          # fill Tech stack, Run/build, WHAT NOT TO DO
+/sdd:doctor init       # auto-detects Next.js 15 + TS + Vitest + Storybook
+/sdd:doctor check      # ✅ READY (10/10)
+/sdd:constitution          # fill Tech stack, Run/build, WHAT NOT TO DO
 ```
 
 ### Spec phase
 
 ```text
-/spec feat user can reset password via email
+/sdd:spec feat user can reset password via email
 ```
 
 Effects:
@@ -567,7 +567,7 @@ You open the spec, fill in:
 ### Clarify
 
 ```text
-/clarify
+/sdd:clarify
 ```
 
 Claude asks:
@@ -584,7 +584,7 @@ You answer in chat. Spec is updated.
 Enable Plan Mode (Shift+Tab):
 
 ```text
-/plan
+/sdd:plan
 ```
 
 Generates `specs/.../plan.md`:
@@ -600,7 +600,7 @@ Generates `specs/.../plan.md`:
 ### Tasks
 
 ```text
-/tasks
+/sdd:tasks
 ```
 
 Generates tasks (note the contract-first 3-task decomposition for the UI component):
@@ -666,31 +666,31 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
 ### Implement
 
 ```text
-/implement T1.1
+/sdd:implement T1.1
 ```
 
 `type: ui-contract` (orchestrator). Defines the inline `ResetPasswordFormProps` interface and a skeleton component (`<div data-testid="reset-password-form" />`) — no logic yet. Hook validates typecheck/lint.
 
 ```text
-/implement T1.2
+/sdd:implement T1.2
 ```
 
 `type: ui-component-test` (`agent: storybook-tester`). Prerequisite `T1.1` is done, so tests CAN import the component meaningfully. Specialist writes tests + Storybook story. Tests fail with meaningful assertion errors (not module-not-found).
 
 ```text
-/implement T1.3
+/sdd:implement T1.3
 ```
 
 `type: ui-component` (orchestrator). Prerequisite `T1.2` is done. Orchestrator fleshes out the skeleton until all tests from T1.2 pass. `sdd-spec-guard` confirms diff matches spec AC.
 
 ```text
-/implement T2.1
+/sdd:implement T2.1
 ```
 
 Classic strict TDD test task — orchestrator writes failing tests (red phase), confirms proper failure reasons.
 
 ```text
-/implement T2.2
+/sdd:implement T2.2
 ```
 
 `agent: nextjs-backend-engineer` — Task tool with `subagent_type: nextjs-backend-engineer`. Specialist implements the server action with proper validation, error handling, and env-var validation per loaded skills.
@@ -698,7 +698,7 @@ Classic strict TDD test task — orchestrator writes failing tests (red phase), 
 ### Review
 
 ```text
-/review
+/sdd:review
 ```
 
 Pipeline executes:
@@ -719,14 +719,14 @@ Pipeline executes:
 
 | Step | Time |
 |------|------|
-| `/sdd-doctor init` | 30 s |
-| `/spec` | 1 min (Claude generates, you edit business spec) |
-| `/clarify` × 2 | 5 min (Q&A) |
-| `/plan` (Plan Mode) | 3 min (analysis + generation) |
+| `/sdd:doctor init` | 30 s |
+| `/sdd:spec` | 1 min (Claude generates, you edit business spec) |
+| `/sdd:clarify` × 2 | 5 min (Q&A) |
+| `/sdd:plan` (Plan Mode) | 3 min (analysis + generation) |
 | Human review of plan.md | 5-10 min |
-| `/tasks` | 1 min |
-| `/implement` × 8-15 tasks | 1-3 h (most of the time here) |
-| `/review` | 5 min |
+| `/sdd:tasks` | 1 min |
+| `/sdd:implement` × 8-15 tasks | 1-3 h (most of the time here) |
+| `/sdd:review` | 5 min |
 | **Total** | **~2-4 h** for a medium feature |
 
 Without SDD a similar feature is 4-6 h with frequent rework. With SDD: 2-4 h, deterministic.
@@ -735,7 +735,7 @@ Without SDD a similar feature is 4-6 h with frequent rework. With SDD: 2-4 h, de
 
 ## 📁 File Structure
 
-### In your project (after `/sdd-doctor init`)
+### In your project (after `/sdd:doctor init`)
 
 Only per-project artifacts. Commands / agents / verification skills live in the installed plugin, not in your project.
 
@@ -748,7 +748,7 @@ your-project/
 │       ├── spec.md                        # business specification
 │       ├── plan.md                        # architecture + Mermaid diagrams
 │       ├── tasks.md                       # YAML task list with routing tags
-│       └── review.md                      # generated by /review
+│       └── review.md                      # generated by /sdd:review
 ├── .claude/
 │   ├── capabilities.md                    # hybrid: auto-generated + user-overrides
 │   └── settings.json                      # PostToolUse hooks → plugin hook scripts
@@ -763,7 +763,7 @@ spec-driven-development/                    # or your own forked plugin path
 ├── plugin.json                            # manifest
 ├── README.md / LICENSE / CHANGELOG.md / CONTRIBUTING.md / .github/
 ├── skills/
-│   └── sdd-doctor/
+│   └── doctor/
 │       ├── SKILL.md                       # skill metadata + instructions
 │       ├── check.py                       # 10-point readiness check
 │       ├── init.py                        # copies templates into target project
@@ -773,7 +773,7 @@ spec-driven-development/                    # or your own forked plugin path
 │           ├── settings.json.template     # ${PLUGIN_ROOT} placeholder
 │           └── specs/_template.md
 ├── commands/                              # 9 slash commands (auto-discovered)
-│   ├── sdd-doctor.md
+│   ├── doctor.md
 │   ├── constitution.md / spec.md / clarify.md / plan.md
 │   ├── tasks.md / implement.md / review.md / analyze.md
 ├── agents/                                # 4 verification sub-agents
@@ -795,11 +795,11 @@ Ten actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, Open
 1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Hooks make typecheck/lint non-skippable. For **logic** (server actions, hooks, utilities) use classic strict TDD — failing test first, then implementation. For **UI components** use contract-first TDD: define inline props interface + skeleton component, then tests + Storybook story (which now fail with meaningful assertion errors, not module-not-found), then full implementation. Props interface lives inline in the `.tsx` file — never as a separate `.types.ts`.
 2. **✂️ Shard large specs.** Never hand a giant PRD to an implementer agent. Break it into Epic → Story → Task. Each specialist receives only its slice.
 3. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.
-4. **🔒 Use Plan Mode before edits.** `/plan` and `/clarify` ideally run in Plan Mode (Shift+Tab) so Claude cannot accidentally modify files during exploration.
-5. **👤 Human-in-the-loop on `plan.md`.** Always read the generated plan before `/tasks`. This is the cheapest moment to correct course.
-6. **🌿 One branch per feature.** `/spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
+4. **🔒 Use Plan Mode before edits.** `/sdd:plan` and `/sdd:clarify` ideally run in Plan Mode (Shift+Tab) so Claude cannot accidentally modify files during exploration.
+5. **👤 Human-in-the-loop on `plan.md`.** Always read the generated plan before `/sdd:tasks`. This is the cheapest moment to correct course.
+6. **🌿 One branch per feature.** `/sdd:spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
 7. **🤝 Use sub-agents for large reads.** Don't grep 50 files in the main session — invoke a `Task` tool sub-agent and receive only a summary.
-8. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/analyze` to detect drift periodically.
+8. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/sdd:analyze` to detect drift periodically.
 9. **💬 Fresh chat per Story.** Open a new Claude session when switching to a new Story. `tasks.md` status is your handover document.
 10. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
 
@@ -809,10 +809,10 @@ Ten actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, Open
 
 What to avoid — common failure modes when adopting SDD:
 
-- ❌ **Skipping `/clarify`** "because I know what I want." Open questions almost always surface real gaps.
+- ❌ **Skipping `/sdd:clarify`** "because I know what I want." Open questions almost always surface real gaps.
 - ❌ **Skipping human review of `plan.md`.** Claude can hallucinate architecture, especially on unusual stacks.
-- ❌ **Multiple `/implement` calls in one chat.** Context bloats, hallucinations rise. One task per session is the ideal.
-- ❌ **Manual `git commit` instead of `/review`.** You bypass `sdd-spec-guard` / `sdd-drift-detector` / `sdd-reviewer`.
+- ❌ **Multiple `/sdd:implement` calls in one chat.** Context bloats, hallucinations rise. One task per session is the ideal.
+- ❌ **Manual `git commit` instead of `/sdd:review`.** You bypass `sdd-spec-guard` / `sdd-drift-detector` / `sdd-reviewer`.
 - ❌ **Code or tech details in `spec.md`.** The spec is a business document. Implementation belongs in plan.md and code.
 - ❌ **Bloated `CLAUDE.md`.** Above ~2,500 tokens, Claude starts ignoring the bottom. Shard per module.
 - ❌ **`--dangerously-skip-permissions` in production.** A hallucinated bash command can destroy your system.
@@ -829,10 +829,10 @@ Why this framework looks the way it does:
 | **Per-project, not global** | Different projects have different stacks, different specialist agents, different routing rules. A global framework would force homogeneity. |
 | **Only 4 new agents** | The rest already exists in the plugin marketplace (storybook-tester, nextjs-backend-engineer, …). Duplicating them would be wasted effort and version drift. |
 | **YAML tags in tasks.md** | Explicit > heuristic. The user knows exactly which agent will be invoked for each task. |
-| **Conventional Commits in `/spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
+| **Conventional Commits in `/sdd:spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
 | **Hook exit code 2** | The strongest possible feedback signal for Claude. Cannot be ignored or skipped — Claude must fix the failure before continuing. |
 | **Skills loaded on demand** | No global pre-loading means smaller context per task. Skills are referenced from `capabilities.md` and loaded only when the task type requires them. |
-| **Plan Mode before `/implement`** | Forces human review and blocks destructive changes before a plan exists. |
+| **Plan Mode before `/sdd:implement`** | Forces human review and blocks destructive changes before a plan exists. |
 | **Hybrid capabilities.md** | `<!-- auto-generated -->` sections reflect installed plugins. `<!-- user-override -->` sections preserve customizations. Re-running `init` is safe. |
 | **CLAUDE.md at root, not in .claude/** | Claude Code reads `CLAUDE.md` from the project root by default. Putting it in `.claude/` would require manual loading. |
 | **Framework lives in the plugin, project owns its specs** | Commands, agents, hooks, and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `CLAUDE.md`, `specs/`, `capabilities.md`, `settings.json`. Plugin updates roll out by reinstalling; project data is never overwritten. |
@@ -843,14 +843,14 @@ Why this framework looks the way it does:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `/sdd-doctor check` shows ❌ on check #9 (specialist agents) | No plugins installed | Install relevant plugins (e.g., `@szum-tech` marketplace) and re-run `/sdd-doctor init` |
+| `/sdd:doctor check` shows ❌ on check #9 (specialist agents) | No plugins installed | Install relevant plugins (e.g., `@szum-tech` marketplace) and re-run `/sdd:doctor init` |
 | Hooks not firing after Edit | `settings.json` not loaded | Verify `.claude/settings.json` exists and `chmod +x .claude/hooks/*` |
-| `/spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
-| `/implement` keeps producing the same code despite hook failures | typecheck error not propagating | Check that `typecheck.py` exits with code 2 on failure; verify `tsc`/`mypy` is installed |
-| `/tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
+| `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
+| `/sdd:implement` keeps producing the same code despite hook failures | typecheck error not propagating | Check that `typecheck.py` exits with code 2 on failure; verify `tsc`/`mypy` is installed |
+| `/sdd:tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
 | `sdd-spec-guard` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
-| Plan Mode disabled but `/plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |
-| New specialist agent installed but not appearing in `capabilities.md` | `init` not re-run | `/sdd-doctor init` to rescan plugins |
+| Plan Mode disabled but `/sdd:plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |
+| New specialist agent installed but not appearing in `capabilities.md` | `init` not re-run | `/sdd:doctor init` to rescan plugins |
 
 ---
 
@@ -861,7 +861,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 In short:
 
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
-2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `hooks/`, `skills/sdd-doctor/templates/`)
+2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `hooks/`, `skills/doctor/templates/`)
 3. Run the smoke test (`check.py` then `init.py` against a fresh empty directory)
 4. Update the README's File Structure / reference sections and add a `CHANGELOG.md` entry under `[Unreleased]`
 5. Open a Pull Request

@@ -1,12 +1,12 @@
 ---
 name: sdd-ui-critic
-description: Visual review of UI components — captures screenshots via browser MCP and evaluates visual quality, design-system adherence, layout regressions, and rendering issues. Invoked by /review when the diff contains UI files (.tsx components, .stories.tsx). Requires a browser MCP server (e.g. Claude_in_Chrome, Claude_Preview, Playwright MCP) and a running Storybook/dev server. Skips gracefully (warning only, never blocks /review) when no browser MCP is available.
+description: Visual review of UI components — captures screenshots via browser MCP and evaluates visual quality, design-system adherence, layout regressions, and rendering issues. Invoked by /sdd:review when the diff contains UI files (.tsx components, .stories.tsx). Requires a browser MCP server (e.g. Claude_in_Chrome, Claude_Preview, Playwright MCP) and a running Storybook/dev server. Skips gracefully (warning only, never blocks /sdd:review) when no browser MCP is available.
 tools: "*"
 ---
 
 Your job: take screenshots of changed UI components and evaluate them visually.
 
-This agent is a **soft check** — it never blocks `/review` on infrastructure issues (missing MCP, Storybook down). It only reports `ISSUES` verdict for actual visual problems found in successfully rendered components.
+This agent is a **soft check** — it never blocks `/sdd:review` on infrastructure issues (missing MCP, Storybook down). It only reports `ISSUES` verdict for actual visual problems found in successfully rendered components.
 
 ## Input
 
@@ -94,7 +94,7 @@ Verdict logic:
 
 ## Constraints
 
-- ⛔ NEVER block `/review` on `SKIPPED` verdict (always a warning, never a blocker)
+- ⛔ NEVER block `/sdd:review` on `SKIPPED` verdict (always a warning, never a blocker)
 - ⛔ DO NOT edit code — visual audit only
 - ⛔ DO NOT kill any running Storybook server you found — only manage processes you started
 - ✅ ALWAYS save screenshots under `./.sdd-screenshots/` (gitignore-friendly path)

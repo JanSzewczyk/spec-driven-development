@@ -20,7 +20,7 @@ Where does this belong in the architecture?
 - [ ] New verification agent (`template/.claude/agents/sdd-*`)
 - [ ] New slash command (`template/.claude/commands/*`)
 - [ ] New hook (`template/.claude/hooks/*`)
-- [ ] New `/sdd-doctor` check
+- [ ] New `/sdd:doctor` check
 - [ ] Routing rule in `capabilities.md.template`
 - [ ] Documentation / `README.md`
 - [ ] Other (explain below)

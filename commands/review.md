@@ -123,9 +123,9 @@ All tasks in `tasks.md`: status `review` → `done`.
 ### 7. If verdict = NO-GO
 
 DO NOT commit. List the actions to fix. Suggest:
-- `/implement <task-id>` — if implementation is missing
+- `/sdd:implement <task-id>` — if implementation is missing
 - Manual code edits
-- `/analyze` — if drift is unclear
+- `/sdd:analyze` — if drift is unclear
 
 ## Constraints
 

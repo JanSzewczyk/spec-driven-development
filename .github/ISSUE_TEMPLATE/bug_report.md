@@ -26,7 +26,7 @@ labels: bug
 - Claude Code version:
 - OS (macOS / Linux / Windows + WSL):
 
-## `/sdd-doctor check` output
+## `/sdd:doctor check` output
 
 ```
 <paste here>

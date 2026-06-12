@@ -21,7 +21,7 @@
 - [ ] Stale-reference grep is clean:
       `grep -rnE '(?<!sdd-)\b(spec-guard|drift-detector|reviewer|ui-critic)\b' --perl-regexp template/ README.md` → empty
 - [ ] Framework integrity:
-      `python3 template/.claude/skills/sdd-doctor/check.py --root template` → checks 3, 4, 6 pass
+      `python3 template/.claude/skills/doctor/check.py --root template` → checks 3, 4, 6 pass
 - [ ] If a new agent / command / hook was added, it is registered in `check.py` constants and documented in `README.md` File Structure.
 - [ ] `CHANGELOG.md` updated under `[Unreleased]`.
 

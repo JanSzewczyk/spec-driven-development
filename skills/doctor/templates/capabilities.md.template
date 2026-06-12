@@ -1,13 +1,13 @@
 # Project Capabilities
 
-> This file is auto-populated by `/sdd-doctor init` (auto-detect installed plugins
+> This file is auto-populated by `/sdd:doctor init` (auto-detect installed plugins
 > plus project type detection). Sections marked `<!-- user-override -->` are NEVER
 > overwritten on re-init — safe place for customizations.
 
 ## Specialist agents (delegate implementation work)
 
 <!-- auto-generated -->
-<!-- /sdd-doctor init fills this in based on installed plugins -->
+<!-- /sdd:doctor init fills this in based on installed plugins -->
 
 ## Skills (load into context on demand)
 
@@ -37,4 +37,4 @@
 ## Custom routing rules
 
 <!-- user-override -->
-<!-- Add your own task types and routing rules. /tasks uses these alongside the defaults above. -->
+<!-- Add your own task types and routing rules. /sdd:tasks uses these alongside the defaults above. -->

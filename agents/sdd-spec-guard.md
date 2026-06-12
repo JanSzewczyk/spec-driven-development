@@ -1,6 +1,6 @@
 ---
 name: sdd-spec-guard
-description: Verifies whether a code diff satisfies ALL Acceptance criteria from spec.md and does NOT introduce out-of-scope changes. Invoked by /implement (per task) and /review (full feature). Returns JSON {satisfied, missing, out_of_scope}.
+description: Verifies whether a code diff satisfies ALL Acceptance criteria from spec.md and does NOT introduce out-of-scope changes. Invoked by /sdd:implement (per task) and /sdd:review (full feature). Returns JSON {satisfied, missing, out_of_scope}.
 tools: Read, Grep, Glob, Bash
 ---
 

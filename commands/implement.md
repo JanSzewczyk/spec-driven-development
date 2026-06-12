@@ -40,7 +40,7 @@ Different TDD strategies apply to different task families. Validate the prerequi
 | `ui-component-test` | sibling `ui-contract` with `status: review|done` | tests fail with meaningful assertion errors (not module-not-found) |
 | `ui-component` (full impl) | sibling `ui-component-test` with `status: review|done` | full implementation makes the tests pass |
 
-If the prerequisite is not satisfied → STOP, instruct the user to run `/implement <prerequisite-id>` first.
+If the prerequisite is not satisfied → STOP, instruct the user to run `/sdd:implement <prerequisite-id>` first.
 
 For `ui-contract` tasks:
 1. Define the inline TypeScript props interface (e.g. `type LoginFormProps = {...}`) in the `.tsx` file.
@@ -105,7 +105,7 @@ In `tasks.md`: `status: in-progress` → `status: review`.
 - Files changed: <list>
 - Tests: <X> passed
 - Spec-guard: satisfied=true
-- Next: /implement T1.3 OR /review (if this is the last task in the Story)
+- Next: /sdd:implement T1.3 OR /sdd:review (if this is the last task in the Story)
 ```
 
 ## Constraints
@@ -117,4 +117,4 @@ In `tasks.md`: `status: in-progress` → `status: review`.
 - ⛔ DO NOT skip the phase validation (Step 3) — it guarantees a meaningful red phase
 - ⛔ DO NOT skip `sdd-spec-guard`
 - ⛔ DO NOT batch multiple tasks in one session — one task = one Implement call
-- ⛔ DO NOT commit — that is done by `/review`
+- ⛔ DO NOT commit — that is done by `/sdd:review`

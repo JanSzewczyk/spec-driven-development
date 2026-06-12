@@ -43,8 +43,8 @@ Read the entire spec. For each section, ask 1-2 of the most important questions:
 2. **<section>**: <question>?
 ...
 
-⏸️  Answer in this thread, then run `/clarify` again so I can update the spec.
-OR use `/plan` if everything is clear.
+⏸️  Answer in this thread, then run `/sdd:clarify` again so I can update the spec.
+OR use `/sdd:plan` if everything is clear.
 ```
 
 ### 4. After receiving answers (when the user continues the conversation)

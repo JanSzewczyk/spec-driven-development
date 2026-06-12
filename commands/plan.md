@@ -84,11 +84,11 @@ flowchart LR
 Show the user:
 - ✅ Plan saved to: `specs/<slug>/plan.md`
 - 👉 READ the plan and edit manually before continuing
-- Next step: `/tasks`
+- Next step: `/sdd:tasks`
 
 ## Constraints
 
 - ⛔ DO NOT create files other than `plan.md` (just this one)
 - ⛔ DO NOT write actual implementation code
-- ⛔ DO NOT invoke specialist agents — that is done by `/implement`
+- ⛔ DO NOT invoke specialist agents — that is done by `/sdd:implement`
 - ✅ ALWAYS produce at least 2 Mermaid diagrams (data + component)

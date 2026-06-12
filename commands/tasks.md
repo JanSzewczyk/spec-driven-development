@@ -155,7 +155,7 @@ Show the user a summary table:
 | T1.3 | Storybook... | ui-component-test | storybook-tester | draft |
 ```
 
-Plus the suggestion: `/implement T1.1` to start with the tests.
+Plus the suggestion: `/sdd:implement T1.1` to start with the tests.
 
 ## Constraints
 

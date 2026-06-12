@@ -4,7 +4,7 @@
 > If it grows beyond that, shard per module: `apps/web/CLAUDE.md`, `apps/api/CLAUDE.md`, etc.
 
 ## Tech stack
-<!-- Filled by /sdd-doctor init based on auto-detection -->
+<!-- Filled by /sdd:doctor init based on auto-detection -->
 - Runtime:
 - Framework:
 - DB:
@@ -32,11 +32,11 @@
 - DO NOT use `npm install` — only `pnpm`
 - DO NOT create barrel files (`index.ts` re-export aggregators)
 - DO NOT mock the database in tests — we use testcontainers
-- DO NOT commit without going through `/review`
+- DO NOT commit without going through `/sdd:review`
 - DO NOT use `--dangerously-skip-permissions` outside a sandbox environment
 
 ## SDD flow
-- Start with `/sdd-doctor check`
-- Per feature: `/spec` → `/clarify` → `/plan` → `/tasks` → `/implement <id>` → `/review`
+- Start with `/sdd:doctor check`
+- Per feature: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement <id>` → `/sdd:review`
 - Specifications live in `specs/<feature-slug>/`
 - Capabilities (specialist agents + skills) are defined in `.claude/capabilities.md`

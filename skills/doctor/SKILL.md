@@ -1,8 +1,8 @@
 ---
-name: sdd-doctor
+name: doctor
 version: 0.2.0
 lastUpdated: 2026-06-08
-description: Preflight audit of project readiness for the SDD framework. Runs 10 checks (CLAUDE.md, specs/_template.md, plugin installed + enabled, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode copies bundled templates into the target project. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
+description: Preflight audit of project readiness for the SDD framework. Runs 10 checks (CLAUDE.md, specs/_template.md, plugin installed + enabled, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode copies bundled templates into the target project. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
 tags: [sdd, spec-driven-development, tdd, claude-code, plugin]
 author: Jan Szewczyk
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task
@@ -52,10 +52,10 @@ The scripts live next to this file inside the plugin. Resolve them via `${CLAUDE
 
 ```bash
 # check
-python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/sdd}/skills/sdd-doctor/check.py"
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/sdd}/skills/doctor/check.py"
 
 # init (copy templates into the current project)
-python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/sdd}/skills/sdd-doctor/init.py"
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/sdd}/skills/doctor/init.py"
 ```
 
 `check.py` returns JSON on stdout:
@@ -75,17 +75,17 @@ python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/cache/sdd}/skills/sdd-docto
 
 Render a Markdown table with the 10 checks, each row showing its status (✅/⚠️/❌) and a short message. End with the overall status and suggested next steps:
 
-- READY → "You can run `/spec feat <description>`"
-- PARTIAL → "Run `/sdd-doctor init` to fill in the missing per-project files"
-- NOT_READY → "If checks 3 or 4 fail, install the plugin first: `claude plugin install https://github.com/janszewczyk/sdd-plugin`. Otherwise run `/sdd-doctor init`."
+- READY → "You can run `/sdd:spec feat <description>`"
+- PARTIAL → "Run `/sdd:doctor init` to fill in the missing per-project files"
+- NOT_READY → "If checks 3 or 4 fail, install the plugin first: `claude plugin install https://github.com/janszewczyk/sdd-plugin`. Otherwise run `/sdd:doctor init`."
 
 ### 4. Init mode — what happens
 
 The `init.py` script:
 
 1. Resolves the plugin root via `$CLAUDE_PLUGIN_ROOT` or by walking up from its own `__file__`.
-2. Copies `<plugin>/skills/sdd-doctor/templates/CLAUDE.md.template` → `<project>/CLAUDE.md` (skipped if already exists — never overwrites user content).
-3. Copies `<plugin>/skills/sdd-doctor/templates/specs/_template.md` → `<project>/specs/_template.md` (skipped if exists).
+2. Copies `<plugin>/skills/doctor/templates/CLAUDE.md.template` → `<project>/CLAUDE.md` (skipped if already exists — never overwrites user content).
+3. Copies `<plugin>/skills/doctor/templates/specs/_template.md` → `<project>/specs/_template.md` (skipped if exists).
 4. Renders `.claude/capabilities.md` by scanning `~/.claude/plugins/cache/<plugin>/{skills,agents}/` for installed capabilities, plus detecting stack from `package.json` / `pyproject.toml`. **Preserves** every `<!-- user-override -->` section from any existing file.
 5. Renders `.claude/settings.json` from the bundled `settings.json.template`, substituting `${PLUGIN_ROOT}` with the absolute plugin path so the PostToolUse hooks resolve to `<plugin>/hooks/typecheck.py` and `<plugin>/hooks/lint.sh`.
 
@@ -111,5 +111,5 @@ The `init.py` script:
 | 10 | Project type | ✅ | nextjs detected |
 
 ## Next steps
-- Run `/sdd-doctor init` to fix check 6 (regenerates settings.json with plugin hook paths)
+- Run `/sdd:doctor init` to fix check 6 (regenerates settings.json with plugin hook paths)
 ```

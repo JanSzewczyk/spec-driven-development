@@ -11,7 +11,7 @@ Use it when:
 - You feel something is off
 - The spec was changed after implementation
 - You have many tasks and aren't sure what is up to date
-- Before `/review` to avoid a NO-GO verdict
+- Before `/sdd:review` to avoid a NO-GO verdict
 
 ## Steps
 
@@ -88,9 +88,9 @@ Generate the conflict matrix:
 ### 4. Suggestions
 
 After the report, propose:
-- Concrete file edits (which to edit manually / which through `/implement`)
-- `/clarify` if the spec is ambiguous
-- `/review` if everything is consistent
+- Concrete file edits (which to edit manually / which through `/sdd:implement`)
+- `/sdd:clarify` if the spec is ambiguous
+- `/sdd:review` if everything is consistent
 
 ## Constraints
 

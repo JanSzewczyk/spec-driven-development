@@ -5,7 +5,7 @@ Runs 10 checks against the target project plus the installed plugin and returns
 a JSON report on stdout.
 
 Usage:
-    python3 skills/sdd-doctor/check.py [--json] [--root <project-path>]
+    python3 skills/doctor/check.py [--json] [--root <project-path>]
 """
 from __future__ import annotations
 
