@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -103,7 +103,7 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@0.4.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required.
+You should see `sdd@0.5.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required. Hook scripts are NOT shipped by the plugin; doctor generates them per-project during init based on the detected stack.
 
 ### 2. Initialize a project
 
@@ -120,7 +120,8 @@ What `init` does:
 - Bootstraps `specs/constitution.md` from the bundled template (skipped if already present — never overwrites).
 - Copies `specs/template.md` (the base for new feature specs) into the project.
 - Generates `specs/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
-- Safe-merges `.claude/settings.json` with PostToolUse hooks pointing at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`. Existing keys (permissions, MCP config, your own hooks) are preserved verbatim.
+- Generates project-local hook scripts at `.claude/hooks/typecheck.sh` and `.claude/hooks/lint.sh` containing ONLY the tools your project actually uses (detected from `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`). Existing hook files are never overwritten — once you customise one, it's yours.
+- Safe-merges `.claude/settings.json` with PostToolUse entries pointing at those project-local hooks. Existing keys (permissions, MCP config, your own hooks) are preserved verbatim.
 
 > **`CLAUDE.md` is not touched.** The project-root `CLAUDE.md` (if you keep one as a Claude Code session loader) is fully owned by you — the SDD framework never reads or writes it. The source of truth is `specs/constitution.md`, edited via `/sdd:constitution`.
 
@@ -222,7 +223,7 @@ This framework adds:
 - 1 skill (`doctor`)
 - 9 slash commands (`/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`)
 - 4 verification agents (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`)
-- 2 hooks (`typecheck.py`, `lint.sh`)
+- 2 hook scripts (`.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`) generated per-project by `/sdd:doctor init` from the detected stack
 
 All **specialist agents and skills already exist** in the plugin marketplace — SDD orchestrates them, it does not duplicate them.
 
@@ -271,14 +272,28 @@ The SDD framework itself does not read, write, or enforce any structure on these
 
 ### 🪝 Verification hooks
 
-PostToolUse hooks in `.claude/settings.json` run after every `Edit`/`Write`/`MultiEdit`:
+Hook scripts are **not shipped by the plugin** — they're technology-specific, so the plugin would have to bake in assumptions about every possible stack. Instead, `/sdd:doctor init` detects what your project actually uses (parsing `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json` and confirming each tool resolves on `$PATH`) and generates minimal hooks for **only those tools** under your project:
 
-- `typecheck.py` — picks the typechecker matching the file's language *and* available on `$PATH`. Supports `.ts/.tsx` (tsc via npx), `.py` (mypy → pyright fallback), `.rs` (cargo check), `.go` (go vet). Unsupported extensions and missing tools → no-op.
-- `lint.sh` — picks the linter matching the file's language. JS/TS preference order: **Biome → ESLint → oxlint** (first available wins). Python → Ruff. Rust → `cargo clippy -- -D warnings`. Go → `golangci-lint run`.
+```text
+<project>/.claude/hooks/typecheck.sh   # e.g. just `tsc` for a Next.js + TS project
+<project>/.claude/hooks/lint.sh        # e.g. just `biome` if Biome is detected
+```
 
-If typecheck or lint fails, the hook exits with code **2**. Claude receives the stderr output and is **forced to fix the issue** before taking the next action. If the relevant tool isn't installed, the hook quietly exits 0 — it never blocks Claude on missing tooling.
+Coverage per stack:
 
-**Setup is stack-aware and non-destructive.** `/sdd:doctor init` detects which typecheck / lint tools the project actually uses (parsing `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`), emits hook entries only for those tools, and **merges them into your existing `.claude/settings.json`** — preserving any user-authored keys (custom permissions, other PostToolUse hooks, MCP server config, model overrides). Re-running init is idempotent: stale SDD-managed entries are stripped and replaced; everything else is left alone.
+- **TypeScript / JavaScript** — `tsc --noEmit` for typecheck; lint preference Biome → ESLint → oxlint (first detected wins)
+- **Python** — `mypy --strict` (preferred) or `pyright` for typecheck; `ruff check` for lint
+- **Rust** — `cargo check --quiet` for typecheck; `cargo clippy -- -D warnings` for lint
+- **Go** — `go vet ./...` for typecheck; `golangci-lint run` for lint
+- **Deno** — `deno check` for typecheck; `deno lint` for lint
+
+PostToolUse entries in `.claude/settings.json` run those scripts after every `Edit`/`Write`/`MultiEdit`. Exit code **2** blocks Claude until the diagnostic is fixed; missing tools exit 0 (safe no-op).
+
+**Stack-aware, non-destructive, idempotent.** `/sdd:doctor init`:
+
+- Generates hook scripts only when they don't exist — your customisations are sacred.
+- Safe-merges `.claude/settings.json`, preserving every non-SDD key (permissions, MCP config, your own hooks, model overrides).
+- On re-init, strips stale SDD-managed entries (including legacy v0.4 plugin-path entries) and re-adds fresh ones built from current detection.
 
 ### 📇 Capabilities registry — hybrid mode
 
@@ -757,11 +772,14 @@ your-project/
 │       ├── tasks.md                       # YAML task list with routing tags
 │       └── review.md                      # generated by /sdd:review
 ├── .claude/
-│   └── settings.json                      # PostToolUse hooks → plugin hook scripts (safe-merged; user keys preserved)
+│   ├── settings.json                      # PostToolUse hook entries → project-local scripts (safe-merged; user keys preserved)
+│   └── hooks/
+│       ├── typecheck.sh                   # generated from detected stack; existing files never overwritten
+│       └── lint.sh                        # generated from detected stack; existing files never overwritten
 └── CLAUDE.md                              # (optional, user-owned) Claude Code session loader — never touched by SDD
 ```
 
-> **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md`, and SDD-tagged hook entries inside `.claude/settings.json`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md` and any non-SDD keys in `.claude/settings.json` — is owned by you and is never modified.
+> **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md`, SDD-tagged hook entries inside `.claude/settings.json`, and (if missing) the generated `.claude/hooks/typecheck.sh` + `.claude/hooks/lint.sh`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md`, any non-SDD keys in `.claude/settings.json`, and any hook script that already exists — is owned by you and is never modified.
 
 ### In the plugin (installed once per machine)
 
@@ -784,15 +802,14 @@ spec-driven-development/                    # or your own forked plugin path
 │   ├── doctor.md
 │   ├── constitution.md / spec.md / clarify.md / plan.md
 │   └── tasks.md / implement.md / review.md / analyze.md
-├── agents/                                # 4 verification sub-agents
-│   ├── spec-guard.md
-│   ├── drift-detector.md
-│   ├── reviewer.md
-│   └── ui-critic.md                       # optional — needs browser MCP
-└── hooks/
-    ├── typecheck.py                       # exit 2 = blocks Claude
-    └── lint.sh
+└── agents/                                # 4 verification sub-agents
+    ├── spec-guard.md
+    ├── drift-detector.md
+    ├── reviewer.md
+    └── ui-critic.md                       # optional — needs browser MCP
 ```
+
+> **No `hooks/` in the plugin.** Hook scripts are technology-specific and are generated per-project by `/sdd:doctor init` under `<project>/.claude/hooks/`. The plugin only carries detection logic and the per-tool shell snippets that get composed into those scripts.
 
 ---
 
@@ -853,9 +870,9 @@ Why this framework looks the way it does:
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `/sdd:doctor check` shows ❌ on check #9 (specialist agents) | No plugins installed | Install relevant plugins (e.g., `@szum-tech` marketplace) and re-run `/sdd:doctor init` |
-| Hooks not firing after Edit | `settings.json` not loaded, or hook entries missing | Verify `.claude/settings.json` exists and its `hooks.PostToolUse` array contains commands pointing at `<plugin-root>/hooks/typecheck.py` and `hooks/lint.sh`. Re-run `/sdd:doctor init` to regenerate hook entries from the detected stack. |
+| Hooks not firing after Edit | `settings.json` not loaded, hook entries missing, or hook files not executable | Verify `.claude/settings.json` exists and its `hooks.PostToolUse` array contains entries pointing at `.claude/hooks/typecheck.sh` / `lint.sh`. Confirm the script files are executable (`chmod +x .claude/hooks/*.sh`). Re-run `/sdd:doctor init` to regenerate hook entries and any missing scripts from the detected stack. |
 | `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
-| `/sdd:implement` keeps producing the same code despite hook failures | typecheck error not propagating | Check that `typecheck.py` exits with code 2 on failure; verify `tsc`/`mypy` is installed |
+| `/sdd:implement` keeps producing the same code despite hook failures | typecheck error not propagating | Run `bash .claude/hooks/typecheck.sh < /dev/null` manually and check it exits 2 on a real failure. Verify the toolchain (`tsc`, `mypy`, etc.) is installed and reachable on `$PATH`. |
 | `/sdd:tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
 | `spec-guard` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
 | Plan Mode disabled but `/sdd:plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |
@@ -870,7 +887,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 In short:
 
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
-2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `hooks/`, `skills/doctor/templates/`)
+2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `skills/doctor/templates/`, or the hook-snippet tables inside `skills/doctor/init.py`)
 3. Run the smoke test (`check.py` then `init.py` against a fresh empty directory)
 4. Update the README's File Structure / reference sections and add a `CHANGELOG.md` entry under `[Unreleased]`
 5. Open a Pull Request

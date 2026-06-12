@@ -1,6 +1,6 @@
 ---
 name: doctor
-version: 0.4.0
+version: 0.5.0
 lastUpdated: 2026-06-12
 description: Preflight audit of project readiness for the SDD framework. Runs 10 checks (specs/constitution.md, specs/template.md, plugin installed + enabled across user/project/local settings, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode copies bundled templates into the target project and bootstraps `specs/constitution.md` when missing. The root `CLAUDE.md` is user-owned and never read or modified by this skill. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
 tags: [sdd, spec-driven-development, tdd, claude-code, plugin]
@@ -89,12 +89,15 @@ The `init.py` script:
 2. **Constitution bootstrap** — if `specs/constitution.md` is missing, copies the bundled template into place. If it already exists, leaves it untouched. The script never reads or writes the project-root `CLAUDE.md`.
 3. Copies `<plugin>/skills/doctor/templates/specs/template.md` → `<project>/specs/template.md` (skipped if exists).
 4. Renders `specs/capabilities.md` by scanning `~/.claude/plugins/cache/<plugin>/{skills,agents}/` for installed capabilities, plus detecting stack from `package.json` / `pyproject.toml`. **Preserves** every `<!-- user-override -->` section from any existing file.
-5. **Safe-merges `.claude/settings.json`**:
+5. **Emits project-local hook scripts** under `<project>/.claude/hooks/`:
    - Detects what typecheck / lint tools the project actually uses (parses `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `deno.json`) AND verifies each candidate is on `$PATH` via `shutil.which`.
-   - Builds PostToolUse hook entries only for the tools it can run. Stacks: TypeScript (`tsc`), JS/TS lint (Biome → ESLint → oxlint, first available wins), Python (mypy/pyright, ruff), Rust (`cargo check`, clippy), Go (`go vet`, golangci-lint), Deno (`deno check`, `deno lint`).
-   - **Never overwrites the file.** Reads existing `settings.json`, deep-copies it, strips only its OWN previously-installed hook entries (identified by their command containing `hooks/typecheck.py` or `hooks/lint.sh`), appends the freshly-built ones. Every other top-level key (`permissions`, `model`, MCP config, user's own PostToolUse hooks) is preserved verbatim.
+   - Generates minimal `typecheck.sh` and `lint.sh` scripts that invoke ONLY the detected tools — no dead branches for stacks the project doesn't use. Stacks supported: TypeScript (`tsc`), JS/TS lint (Biome → ESLint → oxlint), Python (mypy / pyright, ruff), Rust (`cargo check`, clippy), Go (`go vet`, golangci-lint), Deno (`deno check`, `deno lint`).
+   - **Never overwrites an existing hook file.** If `.claude/hooks/typecheck.sh` or `.claude/hooks/lint.sh` already exists, init skips it — the user owns that file and may have customised it. Re-init still wires settings.json to point at it.
+6. **Safe-merges `.claude/settings.json`**:
+   - PostToolUse entries point at the project-local hook paths (`bash .claude/hooks/typecheck.sh`, `bash .claude/hooks/lint.sh`). The plugin no longer ships hook scripts.
+   - **Never overwrites the file.** Reads existing `settings.json`, deep-copies it, strips only its OWN previously-installed hook entries (identified by command substrings `.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`, plus legacy v0.4 plugin-path markers `hooks/typecheck.py` / `hooks/lint.sh`), appends the freshly-built ones. Every other top-level key (`permissions`, `model`, MCP config, user's own PostToolUse hooks) is preserved verbatim.
    - On malformed existing JSON, bails with a clear error to stderr — never touches a corrupt file.
-   - When no hookable tools are detected, leaves PostToolUse empty (or strips stale SDD entries only). Check 6 then reports `warn` — that's honest, not a failure.
+   - When no hookable tools are detected, no hook scripts are emitted and PostToolUse is left empty (or stale SDD entries are stripped only). Check 6 then reports `warn` — that's honest, not a failure.
 
 `/sdd:constitution` is the canonical editor for `specs/constitution.md`. The root `CLAUDE.md`, if you keep one, stays under your manual control.
 

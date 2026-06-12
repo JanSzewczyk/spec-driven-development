@@ -99,14 +99,14 @@ def check_settings_hooks(root: pathlib.Path) -> dict[str, Any]:
     hooks = data.get("hooks", {}).get("PostToolUse", [])
     if not hooks:
         return {"status": "warn", "message": "no PostToolUse hooks configured"}
-    # Verify commands reference the plugin's hook scripts.
+    # Verify commands reference the project-local SDD hook scripts (`.claude/hooks/*.sh`).
     flat_cmds = [
         h.get("command", "")
         for entry in hooks
         for h in entry.get("hooks", [])
     ]
     if not any("hooks/typecheck" in c or "hooks/lint" in c for c in flat_cmds):
-        return {"status": "warn", "message": "hooks present but do not reference plugin hook scripts"}
+        return {"status": "warn", "message": "hooks present but do not reference SDD hook scripts"}
     return {"status": "pass", "message": f"{len(hooks)} PostToolUse hook(s)"}
 
 
