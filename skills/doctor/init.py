@@ -5,10 +5,10 @@ This script runs from inside the installed SDD plugin and:
 
 1. Resolves the plugin root (via `$CLAUDE_PLUGIN_ROOT` or `__file__`).
 2. Sets up the project constitution + CLAUDE.md loader (handles the v0.2.0 → v0.3.0
-   migration from a single-file CLAUDE.md into a dedicated `specs/_constitution.md`
+   migration from a single-file CLAUDE.md into a dedicated `specs/constitution.md`
    plus a condensed `CLAUDE.md` loader).
 3. Copies bundled templates from `<plugin>/skills/doctor/templates/` into the
-   target project — `specs/_template.md`, `.claude/capabilities.md`, `.claude/settings.json`.
+   target project — `specs/template.md`, `.claude/capabilities.md`, `.claude/settings.json`.
 4. Auto-detects installed plugins and the project stack to populate `capabilities.md`
    (preserves every `<!-- user-override -->` section on re-init).
 5. Renders `settings.json.template` with the resolved plugin path so PostToolUse
@@ -100,13 +100,13 @@ def migrate_claude_md_to_constitution(
     constitution: pathlib.Path,
     templates_dir: pathlib.Path,
 ) -> list[str]:
-    """Seed `specs/_constitution.md` from an existing CLAUDE.md.
+    """Seed `specs/constitution.md` from an existing CLAUDE.md.
 
     Reads the constitution template, finds each `<!-- MIGRATED:<heading> -->` marker,
     and replaces it with the matching section from CLAUDE.md (loose heading match).
     Returns the list of headings that were migrated, for reporting.
     """
-    template = (templates_dir / "_constitution.md.template").read_text(encoding="utf-8")
+    template = (templates_dir / "constitution.md.template").read_text(encoding="utf-8")
     old_sections = _extract_h2_sections(claude_md.read_text(encoding="utf-8"))
 
     migrated: list[str] = []
@@ -129,23 +129,57 @@ def migrate_claude_md_to_constitution(
     return migrated
 
 
+def _rename_legacy_underscored_files(project_root: pathlib.Path, *, dry_run: bool) -> list[str]:
+    """v0.3.0 → v0.4.0 path migration: drop the `_` prefix from `specs/_constitution.md`
+    and `specs/_template.md`. Idempotent — if the new name already exists, the legacy file
+    is left untouched (won't clobber). After renaming, also patch any pointer reference in
+    CLAUDE.md from `specs/_constitution.md` → `specs/constitution.md` (path-only fix; never
+    touches user-authored content). Returns status lines.
+    """
+    moves: list[str] = []
+    for legacy_name, new_name in [("_constitution.md", "constitution.md"), ("_template.md", "template.md")]:
+        legacy = project_root / "specs" / legacy_name
+        target = project_root / "specs" / new_name
+        if legacy.exists() and not target.exists():
+            if dry_run:
+                moves.append(f"  legacy rename        — would-rename: specs/{legacy_name} → specs/{new_name}")
+            else:
+                legacy.rename(target)
+                moves.append(f"  legacy rename        — renamed: specs/{legacy_name} → specs/{new_name}")
+
+    # Pointer-string fix in CLAUDE.md (path only — never modifies user-authored content).
+    claude_md = project_root / "CLAUDE.md"
+    if claude_md.exists():
+        text = claude_md.read_text(encoding="utf-8")
+        if "specs/_constitution.md" in text:
+            new_text = text.replace("specs/_constitution.md", "specs/constitution.md")
+            if dry_run:
+                moves.append(f"  CLAUDE.md pointer    — would-patch: specs/_constitution.md → specs/constitution.md")
+            else:
+                claude_md.write_text(new_text, encoding="utf-8")
+                moves.append(f"  CLAUDE.md pointer    — patched: specs/_constitution.md → specs/constitution.md")
+    return moves
+
+
 def setup_constitution(
     project_root: pathlib.Path,
     templates_dir: pathlib.Path,
     *,
     dry_run: bool,
 ) -> list[str]:
-    """Bootstrap `specs/_constitution.md` and `CLAUDE.md` according to the four-case matrix.
+    """Bootstrap `specs/constitution.md` and `CLAUDE.md` according to the four-case matrix.
 
     Returns a list of human-readable status lines for the caller to print.
     """
-    constitution_path = project_root / "specs" / "_constitution.md"
+    # Migrate v0.3.0 underscored filenames (`_constitution.md`, `_template.md`) BEFORE
+    # the case-matrix check so the new paths are visible to the existence tests below.
+    lines: list[str] = _rename_legacy_underscored_files(project_root, dry_run=dry_run)
+
+    constitution_path = project_root / "specs" / "constitution.md"
     claude_md_path = project_root / "CLAUDE.md"
 
     has_constitution = constitution_path.exists()
     has_claude_md = claude_md_path.exists()
-
-    lines: list[str] = []
 
     if has_constitution and has_claude_md:
         lines.append(f"  constitution         — skipped: both files already present")
@@ -175,7 +209,7 @@ def setup_constitution(
             lines.append(f"  CLAUDE.md (loader)   — would-copy fresh: {claude_md_path}")
             return lines
         constitution_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(templates_dir / "_constitution.md.template", constitution_path)
+        shutil.copyfile(templates_dir / "constitution.md.template", constitution_path)
         shutil.copyfile(templates_dir / "CLAUDE.md.template", claude_md_path)
         lines.append(f"  constitution         — created: {constitution_path}")
         lines.append(f"  CLAUDE.md (loader)   — created: {claude_md_path}")
@@ -396,13 +430,13 @@ def main() -> int:
     for line in setup_constitution(project_root, templates_dir, dry_run=args.dry_run):
         print(line)
 
-    # 2. specs/_template.md
+    # 2. specs/template.md
     status, msg = copy_if_absent(
-        templates_dir / "specs" / "_template.md",
-        project_root / "specs" / "_template.md",
+        templates_dir / "specs" / "template.md",
+        project_root / "specs" / "template.md",
         dry_run=args.dry_run,
     )
-    print(f"  specs/_template.md   — {status}: {msg}")
+    print(f"  specs/template.md   — {status}: {msg}")
 
     # 3. .claude/capabilities.md — always regenerate (preserves user-overrides internally)
     caps_path = project_root / ".claude" / "capabilities.md"

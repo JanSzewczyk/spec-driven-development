@@ -110,14 +110,14 @@ You should see `sdd@0.2.0`. Once installed, the plugin's 9 slash commands, 4 ver
 Open the target project in Claude Code and run:
 
 ```text
-/sdd:doctor init      # copies CLAUDE.md.template, specs/_template.md, capabilities.md, settings.json
+/sdd:doctor init      # copies CLAUDE.md.template, specs/template.md, capabilities.md, settings.json
 /sdd:doctor check     # confirms 11/11 — plugin + per-project files present, constitution valid
 /sdd:constitution         # edit CLAUDE.md — must be <2,500 tokens
 ```
 
 What `init` does:
 
-- Copies `CLAUDE.md` and `specs/_template.md` into the project (skips if already present — never overwrites).
+- Copies `CLAUDE.md` and `specs/template.md` into the project (skips if already present — never overwrites).
 - Generates `.claude/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
 - Generates `.claude/settings.json` with PostToolUse hooks pointing at the plugin's own `hooks/typecheck.py` and `hooks/lint.sh`.
 
@@ -139,7 +139,7 @@ If you want a customized copy (e.g. with org-specific routing rules in `capabili
 
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugin.json`.
 2. (Optional) Edit `skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
-3. (Optional) Edit `skills/doctor/templates/_constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale, and `skills/doctor/templates/CLAUDE.md.template` to customize the session loader.
+3. (Optional) Edit `skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale, and `skills/doctor/templates/CLAUDE.md.template` to customize the session loader.
 4. Bump the `version` in `plugin.json` and tag a release.
 5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
 
@@ -174,7 +174,7 @@ flowchart TD
 
 | Phase | Command | What happens |
 |-------|---------|--------------|
-| **Constitution** | `/sdd:constitution` | Edit `specs/_constitution.md` — the long-form source of truth (tech stack, conventions, **WHAT NOT TO DO** with rationale, testing philosophy, out-of-scope). `CLAUDE.md` at the root is a separate condensed session loader, kept independent. |
+| **Constitution** | `/sdd:constitution` | Edit `specs/constitution.md` — the long-form source of truth (tech stack, conventions, **WHAT NOT TO DO** with rationale, testing philosophy, out-of-scope). `CLAUDE.md` at the root is a separate condensed session loader, kept independent. |
 | **Specify** | `/sdd:spec <type> <description>` | Validate clean git, create branch `<type>/<slug>`, generate `specs/<slug>/spec.md` (business only — no code) |
 | **Clarify** | `/sdd:clarify` | AI reads spec.md and asks 5-10 targeted gap questions; updates spec with answers |
 | **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
@@ -318,7 +318,7 @@ Example schema:
 
 ### 🏥 `/sdd:doctor [check|init|fix <ids>]`
 
-Preflight audit and auto-setup. **11 checks**: CLAUDE.md loader (with constitution pointer), specs/_template.md, plugin installed, plugin enabled, capabilities.md valid, settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected, specs/_constitution.md valid.
+Preflight audit and auto-setup. **11 checks**: CLAUDE.md loader (with constitution pointer), specs/template.md, plugin installed, plugin enabled, capabilities.md valid, settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected, specs/constitution.md valid.
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
 - `init` — generate all missing files + auto-detect plugins → fill `capabilities.md` + adjust hooks to detected stack
@@ -326,7 +326,7 @@ Preflight audit and auto-setup. **11 checks**: CLAUDE.md loader (with constituti
 
 ### 📜 `/sdd:constitution`
 
-Edit `specs/_constitution.md` — the long-form project constitution (no token limit). This is the source of truth where every "WHAT NOT TO DO" rule carries its rationale, every architectural decision its trade-off. `CLAUDE.md` at the project root is a separate, independent session loader — this command does NOT modify it. If the constitution file is missing, the command directs the user to run `/sdd:doctor init` first (which bootstraps it, migrating from any existing CLAUDE.md content).
+Edit `specs/constitution.md` — the long-form project constitution (no token limit). This is the source of truth where every "WHAT NOT TO DO" rule carries its rationale, every architectural decision its trade-off. `CLAUDE.md` at the project root is a separate, independent session loader — this command does NOT modify it. If the constitution file is missing, the command directs the user to run `/sdd:doctor init` first (which bootstraps it, migrating from any existing CLAUDE.md content).
 
 ### 🌿 `/sdd:spec <type> <description>`
 
@@ -543,7 +543,7 @@ In Claude Code:
 ```text
 /sdd:doctor init       # auto-detects Next.js 15 + TS + Vitest + Storybook
 /sdd:doctor check      # ✅ READY (11/11)
-/sdd:constitution      # fill specs/_constitution.md: Tech stack, Run/build, WHAT NOT TO DO with rationale
+/sdd:constitution      # fill specs/constitution.md: Tech stack, Run/build, WHAT NOT TO DO with rationale
 ```
 
 ### Spec phase
@@ -741,9 +741,9 @@ Only per-project artifacts. Commands / agents / verification skills live in the 
 
 ```text
 your-project/
-├── CLAUDE.md                              # session loader (<2,500 tokens); points to specs/_constitution.md
+├── CLAUDE.md                              # session loader (<2,500 tokens); points to specs/constitution.md
 ├── specs/
-│   ├── _constitution.md                   # full project constitution (source of truth, no token limit)
+│   ├── constitution.md                   # full project constitution (source of truth, no token limit)
 │   ├── _template.md                       # base template for new specs
 │   └── <feature-slug>/
 │       ├── spec.md                        # business specification
@@ -769,11 +769,11 @@ spec-driven-development/                    # or your own forked plugin path
 │       ├── check.py                       # 11-point readiness check
 │       ├── init.py                        # bootstraps / migrates per-project files
 │       └── templates/                     # bundled templates copied by `init`
-│           ├── _constitution.md.template  # long-form constitution (with MIGRATED markers)
+│           ├── constitution.md.template  # long-form constitution (with MIGRATED markers)
 │           ├── CLAUDE.md.template         # condensed session loader
 │           ├── capabilities.md.template
 │           ├── settings.json.template     # ${PLUGIN_ROOT} placeholder
-│           └── specs/_template.md
+│           └── specs/template.md
 ├── commands/                              # 9 slash commands (auto-discovered)
 │   ├── doctor.md
 │   ├── constitution.md / spec.md / clarify.md / plan.md
@@ -795,7 +795,7 @@ spec-driven-development/                    # or your own forked plugin path
 Eleven actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
 
 1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Hooks make typecheck/lint non-skippable. For **logic** (server actions, hooks, utilities) use classic strict TDD — failing test first, then implementation. For **UI components** use contract-first TDD: define inline props interface + skeleton component, then tests + Storybook story (which now fail with meaningful assertion errors, not module-not-found), then full implementation. Props interface lives inline in the `.tsx` file — never as a separate `.types.ts`.
-2. **📜 Constitution carries the WHY, CLAUDE.md carries the operational surface.** Every "WHAT NOT TO DO" rule in `specs/_constitution.md` should have a `**Why:**` line (and an incident reference when applicable). `CLAUDE.md` summarizes the top operational rules and links back to the constitution. After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken.
+2. **📜 Constitution carries the WHY, CLAUDE.md carries the operational surface.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). `CLAUDE.md` summarizes the top operational rules and links back to the constitution. After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken.
 3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer agent. Break it into Epic → Story → Task. Each specialist receives only its slice.
 4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.
 5. **🔒 Use Plan Mode before edits.** `/sdd:plan` and `/sdd:clarify` ideally run in Plan Mode (Shift+Tab) so Claude cannot accidentally modify files during exploration.

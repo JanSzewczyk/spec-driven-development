@@ -1,6 +1,6 @@
 # Claude Code Loader
 
-> **Full project constitution:** [`specs/_constitution.md`](specs/_constitution.md)
+> **Full project constitution:** [`specs/constitution.md`](specs/constitution.md)
 > Edit it with `/sdd:constitution`. This file is the lightweight operational loader Claude
 > reads each session. Keep it under 2,500 tokens — when in doubt, move detail to the
 > constitution instead of growing this file.
@@ -17,11 +17,11 @@
 - `lint`:
 
 ## Architecture (one sentence)
-<!-- One-sentence summary of repo layout. Detail lives in specs/_constitution.md section 3. -->
+<!-- One-sentence summary of repo layout. Detail lives in specs/constitution.md section 3. -->
 
 ## Most-broken rules (top WHAT-NOT-TO-DO items)
 
-These are the operational anti-patterns Claude most often violates. The full catalogue with WHY each rule exists is in [`specs/_constitution.md`](specs/_constitution.md) section 5.
+These are the operational anti-patterns Claude most often violates. The full catalogue with WHY each rule exists is in [`specs/constitution.md`](specs/constitution.md) section 5.
 
 - DO NOT use `npm install` — only `pnpm`
 - DO NOT create barrel files (`index.ts` re-export aggregators)
@@ -32,5 +32,5 @@ These are the operational anti-patterns Claude most often violates. The full cat
 ## SDD flow
 - Start any feature with `/sdd:doctor check`.
 - Per feature: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement <id>` → `/sdd:review`.
-- Specs live in `specs/<feature-slug>/`; the full project constitution is at [`specs/_constitution.md`](specs/_constitution.md).
+- Specs live in `specs/<feature-slug>/`; the full project constitution is at [`specs/constitution.md`](specs/constitution.md).
 - Routing rules + installed capabilities: `.claude/capabilities.md`.

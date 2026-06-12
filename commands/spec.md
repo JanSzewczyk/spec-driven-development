@@ -50,7 +50,7 @@ Examples:
 mkdir -p specs/<feature_slug>/
 ```
 
-Copy `specs/_template.md` → `specs/<feature_slug>/spec.md` and substitute the placeholders
+Copy `specs/template.md` → `specs/<feature_slug>/spec.md` and substitute the placeholders
 `{{feature_title}}`, `{{feature_slug}}`, `{{type}}`, `{{author}}` (from `git config user.name`),
 `{{date}}` (today).
 

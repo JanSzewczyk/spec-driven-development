@@ -21,8 +21,8 @@ from typing import Any
 # CLAUDE.md is the lightweight session loader. It should at minimum reference the constitution
 # and document the operational essentials.
 REQUIRED_CLAUDE_SECTIONS = ["Tech stack", "Run/build"]
-CONSTITUTION_POINTER = "specs/_constitution.md"
-# specs/_constitution.md is the long-form source of truth. The detailed sections live here.
+CONSTITUTION_POINTER = "specs/constitution.md"
+# specs/constitution.md is the long-form source of truth. The detailed sections live here.
 REQUIRED_CONSTITUTION_SECTIONS = ["Tech stack", "Run/build", "Conventions", "WHAT NOT TO DO"]
 REQUIRED_TEMPLATE_FIELDS = [
     "Summary",
@@ -79,9 +79,9 @@ def check_claude_md(root: pathlib.Path) -> dict[str, Any]:
 
 
 def check_constitution(root: pathlib.Path) -> dict[str, Any]:
-    path = root / "specs" / "_constitution.md"
+    path = root / "specs" / "constitution.md"
     if not path.exists():
-        return {"status": "fail", "message": "specs/_constitution.md does not exist"}
+        return {"status": "fail", "message": "specs/constitution.md does not exist"}
     text = path.read_text(encoding="utf-8")
     missing = [s for s in REQUIRED_CONSTITUTION_SECTIONS if s.lower() not in text.lower()]
     if missing:
@@ -90,9 +90,9 @@ def check_constitution(root: pathlib.Path) -> dict[str, Any]:
 
 
 def check_specs_template(root: pathlib.Path) -> dict[str, Any]:
-    path = root / "specs" / "_template.md"
+    path = root / "specs" / "template.md"
     if not path.exists():
-        return {"status": "fail", "message": "specs/_template.md does not exist"}
+        return {"status": "fail", "message": "specs/template.md does not exist"}
     text = path.read_text(encoding="utf-8")
     missing = [f for f in REQUIRED_TEMPLATE_FIELDS if f not in text]
     if missing:
@@ -294,7 +294,7 @@ def run_all_checks(root: pathlib.Path) -> dict[str, Any]:
     stack = detect_stack(root)
     checks = [
         {"id": 1, "name": "CLAUDE.md (loader)", **check_claude_md(root)},
-        {"id": 2, "name": "specs/_template.md", **check_specs_template(root)},
+        {"id": 2, "name": "specs/template.md", **check_specs_template(root)},
         {"id": 3, "name": "Plugin installed", **check_plugin_installed()},
         {"id": 4, "name": "Plugin enabled", **check_plugin_enabled()},
         {"id": 5, "name": ".claude/capabilities.md", **check_capabilities(root)},
@@ -303,7 +303,7 @@ def run_all_checks(root: pathlib.Path) -> dict[str, Any]:
         {"id": 8, "name": "Tooling", **check_tooling(root, stack)},
         {"id": 9, "name": "Specialist agents", **check_specialist_agents()},
         {"id": 10, "name": "Project type", **check_project_type(stack)},
-        {"id": 11, "name": "specs/_constitution.md", **check_constitution(root)},
+        {"id": 11, "name": "specs/constitution.md", **check_constitution(root)},
     ]
 
     fails = sum(1 for c in checks if c["status"] == "fail")

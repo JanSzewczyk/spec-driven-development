@@ -138,5 +138,5 @@ This list protects future contributors from inheriting goals that were never agr
 
 - Start any feature with `/sdd:doctor check`.
 - Per feature: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement <id>` → `/sdd:review`.
-- Specs live in `specs/<feature-slug>/`; the constitution lives at `specs/_constitution.md`.
+- Specs live in `specs/<feature-slug>/`; the constitution lives at `specs/constitution.md`.
 - Routing rules + installed capabilities: `.claude/capabilities.md`.

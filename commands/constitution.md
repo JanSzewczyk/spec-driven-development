@@ -1,14 +1,14 @@
 ---
-description: Edit the project constitution at specs/_constitution.md (full long-form rules with rationale)
-argument-hint: "(none — opens specs/_constitution.md for editing)"
+description: Edit the project constitution at specs/constitution.md (full long-form rules with rationale)
+argument-hint: "(none — opens specs/constitution.md for editing)"
 allowed-tools: Read, Edit, Bash
 ---
 
-Edit `specs/_constitution.md` — the source-of-truth constitution for this project. This is the long-form
+Edit `specs/constitution.md` — the source-of-truth constitution for this project. This is the long-form
 document where every rule carries its *Why*. `CLAUDE.md` at the project root is a separate, independent
 session loader for Claude Code — **DO NOT modify `CLAUDE.md`** from this command.
 
-If `specs/_constitution.md` does not exist yet, instruct the user to run `/sdd:doctor init` first
+If `specs/constitution.md` does not exist yet, instruct the user to run `/sdd:doctor init` first
 (it bootstraps the constitution and, when applicable, migrates content from an existing legacy
 `CLAUDE.md`).
 
@@ -17,15 +17,15 @@ If `specs/_constitution.md` does not exist yet, instruct the user to run `/sdd:d
 ### 1. Verify constitution exists
 
 ```bash
-test -f specs/_constitution.md && echo present || echo MISSING
+test -f specs/constitution.md && echo present || echo MISSING
 ```
 
-If missing → STOP. Tell the user: "Run `/sdd:doctor init` first to bootstrap `specs/_constitution.md`."
+If missing → STOP. Tell the user: "Run `/sdd:doctor init` first to bootstrap `specs/constitution.md`."
 
 ### 2. Read constitution + reference CLAUDE.md for context
 
 ```bash
-wc -l specs/_constitution.md
+wc -l specs/constitution.md
 ```
 
 Read the full file so you have its current state in context. You MAY also read `CLAUDE.md` to
@@ -52,12 +52,12 @@ If you need a paragraph to explain *why* a rule exists, write the paragraph.
 ### 5. Output
 
 Show the user:
-- ✅ Edited: `specs/_constitution.md`
+- ✅ Edited: `specs/constitution.md`
 - 💡 Reminder: if you changed information that should also surface in `CLAUDE.md` (the loader), update `CLAUDE.md` separately. The two files are intentionally decoupled.
 
 ## Constraints
 
-- ✅ Primary target is `specs/_constitution.md`. Always.
+- ✅ Primary target is `specs/constitution.md`. Always.
 - ✅ Every "WHAT NOT TO DO" entry should carry its rationale.
 - ⛔ DO NOT modify `CLAUDE.md` from this command. It is a separate, user-owned operational loader.
 - ⛔ DO NOT put changelog / ADR-style history here — that belongs in `docs/adr/` or `CHANGELOG.md`.
