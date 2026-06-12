@@ -103,7 +103,7 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@0.2.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required.
+You should see `sdd@0.3.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required.
 
 ### 2. Initialize a project
 
