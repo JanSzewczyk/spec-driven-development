@@ -10,7 +10,7 @@ desktop.ini
 *.swo
 *~
 
-# Python (for the sdd-doctor helpers)
+# Python (for the doctor skill helpers)
 __pycache__/
 *.py[cod]
 *$py.class
