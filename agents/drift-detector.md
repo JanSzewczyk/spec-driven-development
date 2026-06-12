@@ -1,5 +1,5 @@
 ---
-name: sdd-drift-detector
+name: drift-detector
 description: Detects drift between the documentation (spec.md, plan.md, tasks.md) and the current code state. Invoked by /sdd:review and /analyze. Returns a list of concrete conflicts with file paths and line numbers.
 tools: Read, Grep, Glob, Bash
 ---

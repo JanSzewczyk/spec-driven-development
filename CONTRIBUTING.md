@@ -60,7 +60,7 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 ## Style guidelines
 
 - **All framework files are English-only.** The audit grep used during review catches Polish diacritics.
-- **No new generic agents without strong justification.** The framework intentionally only adds 4 (`sdd-spec-guard`, `sdd-drift-detector`, `sdd-reviewer`, `sdd-ui-critic`). Anything else should be a plugin specialist invoked through `capabilities.md` routing.
+- **No new generic agents without strong justification.** The framework intentionally only adds 4 (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`). Anything else should be a plugin specialist invoked through `capabilities.md` routing.
 - **Hooks must exit 0 when nothing applies** (e.g. unknown file extension), exit 2 to block Claude.
 - **Slash commands** should declare `allowed-tools` explicitly. Avoid `"*"` unless the command genuinely needs every tool.
 - **Skills (`SKILL.md`)** must have a clear `description` frontmatter — that is what Claude uses to decide whether to auto-trigger. Include `version`, `lastUpdated`, `tags`, `author` for marketplace consistency.
@@ -73,7 +73,7 @@ This is a documentation-and-config framework, not runtime code, so the test loop
 | New routing rule (task type → agent) | Edit `skills/doctor/templates/capabilities.md.template` |
 | New SDD-doctor check | Add function to `skills/doctor/check.py`, append to `run_all_checks` |
 | New slash command | New file in `commands/<name>.md`. Document in README. |
-| New verification agent | New file in `agents/sdd-<name>.md` + integrate via `/sdd:review` (`commands/review.md` and `agents/sdd-reviewer.md`) |
+| New verification agent | New file in `agents/sdd-<name>.md` + integrate via `/sdd:review` (`commands/review.md` and `agents/reviewer.md`) |
 | New hook | New script in `hooks/<name>.<ext>` + wire into `skills/doctor/templates/settings.json.template` |
 | Bundled per-project template | Place under `skills/doctor/templates/` — `init.py` will copy it |
 | Documentation | `README.md` is the single source of truth. Do not split docs into `docs/`. |

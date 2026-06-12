@@ -1,5 +1,5 @@
 ---
-name: sdd-ui-critic
+name: ui-critic
 description: Visual review of UI components — captures screenshots via browser MCP and evaluates visual quality, design-system adherence, layout regressions, and rendering issues. Invoked by /sdd:review when the diff contains UI files (.tsx components, .stories.tsx). Requires a browser MCP server (e.g. Claude_in_Chrome, Claude_Preview, Playwright MCP) and a running Storybook/dev server. Skips gracefully (warning only, never blocks /sdd:review) when no browser MCP is available.
 tools: "*"
 ---

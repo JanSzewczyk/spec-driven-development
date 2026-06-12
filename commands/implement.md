@@ -90,7 +90,7 @@ ALL tests MUST pass.
 
 ### 6. Spec-guard
 
-Invoke the `sdd-spec-guard` sub-agent (Task tool, `subagent_type: sdd-spec-guard`) to verify diff
+Invoke the `spec-guard` sub-agent (Task tool, `subagent_type: spec-guard`) to verify diff
 compliance with `spec.md`. If it returns `satisfied: false` or `out_of_scope: [...]`,
 DO NOT mark the task as done — address the findings.
 
@@ -115,6 +115,6 @@ In `tasks.md`: `status: in-progress` → `status: review`.
 - ✅ The specialist agent receives ONLY its scope (spec + plan section for this task)
 - ✅ UI props interface lives inline in `.tsx`, NEVER in a separate `.types.ts` file
 - ⛔ DO NOT skip the phase validation (Step 3) — it guarantees a meaningful red phase
-- ⛔ DO NOT skip `sdd-spec-guard`
+- ⛔ DO NOT skip `spec-guard`
 - ⛔ DO NOT batch multiple tasks in one session — one task = one Implement call
 - ⛔ DO NOT commit — that is done by `/sdd:review`

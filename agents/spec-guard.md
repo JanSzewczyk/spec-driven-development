@@ -1,5 +1,5 @@
 ---
-name: sdd-spec-guard
+name: spec-guard
 description: Verifies whether a code diff satisfies ALL Acceptance criteria from spec.md and does NOT introduce out-of-scope changes. Invoked by /sdd:implement (per task) and /sdd:review (full feature). Returns JSON {satisfied, missing, out_of_scope}.
 tools: Read, Grep, Glob, Bash
 ---
@@ -68,6 +68,6 @@ Any diff change that:
 
 - ⛔ DO NOT write code / DO NOT edit files
 - ⛔ DO NOT propose fixes — only report gaps
-- ⛔ DO NOT judge code quality (that is `sdd-reviewer`'s job)
+- ⛔ DO NOT judge code quality (that is `reviewer`'s job)
 - ✅ Be specific — cite line numbers from the diff
 - ✅ JSON output — used programmatically by the orchestrator

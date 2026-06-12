@@ -9,9 +9,9 @@
   "homepage": "https://github.com/JanSzewczyk/spec-driven-development",
   "skills": "./skills/",
   "agents": [
-    "./agents/sdd-spec-guard.md",
-    "./agents/sdd-drift-detector.md",
-    "./agents/sdd-reviewer.md",
-    "./agents/sdd-ui-critic.md"
+    "./agents/spec-guard.md",
+    "./agents/drift-detector.md",
+    "./agents/reviewer.md",
+    "./agents/ui-critic.md"
   ]
 }

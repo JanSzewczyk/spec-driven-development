@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (breaking)
 
 - **Skill renamed `sdd-doctor` → `doctor`.** The skill directory is now `skills/doctor/` and its `name:` is `doctor`; the wrapper command file is `commands/doctor.md`. The redundant `sdd-` prefix is dropped because the plugin namespace already disambiguates.
+- **Verification agents renamed (drop the `sdd-` prefix).** `sdd-spec-guard` → `spec-guard`, `sdd-drift-detector` → `drift-detector`, `sdd-reviewer` → `reviewer`, `sdd-ui-critic` → `ui-critic`. Same reasoning as the doctor rename: the `sdd` plugin namespace already disambiguates these against specialist agents from the marketplace; the prefix added noise without value. `Task` tool invocations updated to use the bare names (`subagent_type: spec-guard`, etc.). `plugin.json` `agents` array updated to the new paths.
 - **Documentation now uses the plugin-namespaced invocation form `/sdd:<command>`** — `/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`. This is how commands are actually invoked when the plugin is installed in another project (`/<plugin>:<command>`). Command files under `commands/` keep their plain names (`spec.md`, `plan.md`, …); the `sdd` namespace comes from `plugin.json`.
 - **Underscore prefix dropped from project artifacts under `specs/`.** Both `specs/_constitution.md` → `specs/constitution.md` and `specs/_template.md` → `specs/template.md`. The underscore was an alphabetical-sort affordance from the template-repo era; in the plugin model it adds noise without value.
 - **Auto-migration in `/sdd:doctor init`.** When a project has the legacy underscored names, init renames them to the new paths and patches `CLAUDE.md`'s pointer string (`specs/_constitution.md` → `specs/constitution.md`). Path-only fix — never touches user-authored content. Idempotent (no-op when already migrated).
@@ -65,7 +66,7 @@ If you already bootstrapped a project with v0.1.0:
 
 - Initial release of the SDD Framework as a template repository with `bootstrap.sh`.
 - 9 slash commands: `doctor`, `constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `analyze`.
-- 4 verification sub-agents: `sdd-spec-guard`, `sdd-drift-detector`, `sdd-reviewer`, `sdd-ui-critic`.
+- 4 verification sub-agents: `spec-guard`, `drift-detector`, `reviewer`, `ui-critic`.
 - `doctor` skill with 10-point readiness check and `init`/`fix` modes (auto-detect installed plugins + stack).
 - Hooks: `typecheck.py` and `lint.sh` (PostToolUse, exit 2 blocks Claude).
 - Project templates: `CLAUDE.md.template`, `specs/template.md`, `capabilities.md.template`, `settings.json`.

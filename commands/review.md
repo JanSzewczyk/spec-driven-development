@@ -1,11 +1,11 @@
 ---
-description: Final audit before PR — runs sdd-spec-guard + sdd-drift-detector + sdd-reviewer (SDD step 6)
+description: Final audit before PR — runs spec-guard + drift-detector + reviewer (SDD step 6)
 argument-hint: "(none)"
 allowed-tools: "*"
 ---
 
 The **Review** phase of SDD. Final audit before commit + PR. Invokes the SDD verification agents
-in sequence (sdd-spec-guard, sdd-drift-detector, sdd-reviewer — plus sdd-ui-critic when UI files
+in sequence (spec-guard, drift-detector, reviewer — plus ui-critic when UI files
 are in the diff) and any domain-specific skills.
 
 ## Steps
@@ -22,7 +22,7 @@ If anything fails → STOP, list the blockers.
 ### 2. Spec-guard (audit vs spec)
 
 ```
-Task tool: subagent_type=sdd-spec-guard
+Task tool: subagent_type=spec-guard
 prompt: "Verify the full diff (git diff main..HEAD) against specs/<current>/spec.md.
          Are ALL Acceptance criteria satisfied? Any out-of-scope changes?"
 ```
@@ -32,7 +32,7 @@ Expected return: JSON `{satisfied: bool, missing: [...], out_of_scope: [...]}`.
 ### 3. Drift-detector
 
 ```
-Task tool: subagent_type=sdd-drift-detector
+Task tool: subagent_type=drift-detector
 prompt: "Detect drift between the documentation (specs/<current>/) and the current code.
          Return a list of mismatches with file paths and line numbers."
 ```
@@ -42,7 +42,7 @@ prompt: "Detect drift between the documentation (specs/<current>/) and the curre
 From `.claude/capabilities.md` check which skills are available. Invoke:
 - `react-doctor` — if the diff contains `.tsx`/`.jsx` files
 - `accessibility-audit` — if the diff contains UI files (components)
-- `sdd-ui-critic` sub-agent — if the diff contains UI files; captures Storybook screenshots and evaluates visual quality. Soft check — never blocks on infrastructure (no MCP / Storybook down → `SKIPPED` verdict, warning only).
+- `ui-critic` sub-agent — if the diff contains UI files; captures Storybook screenshots and evaluates visual quality. Soft check — never blocks on infrastructure (no MCP / Storybook down → `SKIPPED` verdict, warning only).
 - Other skills defined in capabilities.md section "Review hooks"
 
 ### 5. Generate `review.md`
@@ -56,12 +56,12 @@ From `.claude/capabilities.md` check which skills are available. Invoke:
 **Date:** <today>
 **Verdict:** GO | NO-GO
 
-## Spec compliance (sdd-spec-guard)
+## Spec compliance (spec-guard)
 - Satisfied AC: X/Y
 - Missing: ...
 - Out of scope: ...
 
-## Drift (sdd-drift-detector)
+## Drift (drift-detector)
 - ...
 
 ## React doctor
@@ -72,7 +72,7 @@ From `.claude/capabilities.md` check which skills are available. Invoke:
 - Critical: 0
 - Warnings: ...
 
-## Visual review (sdd-ui-critic)
+## Visual review (ui-critic)
 - Verdict: OK | WARNINGS | ISSUES | SKIPPED
 - Components reviewed: ...
 - Screenshots: ./.sdd-screenshots/
@@ -130,6 +130,6 @@ DO NOT commit. List the actions to fix. Suggest:
 ## Constraints
 
 - ⛔ DO NOT commit if verdict = NO-GO
-- ⛔ DO NOT skip the core SDD agents (sdd-spec-guard, sdd-drift-detector, sdd-reviewer). `sdd-ui-critic` is invoked by sdd-reviewer when UI files are in the diff and is allowed to SKIP on infrastructure issues.
+- ⛔ DO NOT skip the core SDD agents (spec-guard, drift-detector, reviewer). `ui-critic` is invoked by reviewer when UI files are in the diff and is allowed to SKIP on infrastructure issues.
 - ✅ Commit message format: Conventional Commits (`<type>(<scope>): <description>`)
 - ✅ PR body contains a link to spec.md

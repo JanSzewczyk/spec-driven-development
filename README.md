@@ -45,7 +45,7 @@ The unique contribution of this framework: **per-task routing to your existing s
 - 🌿 **Conventional Commits branches** — `/sdd:spec feat user login` → branch `feat/user-login`
 - 📐 **TDD-first** — tests always before implementation
 - 🧠 **Context discipline** — sub-agents receive only their scope, skills load on demand
-- 🔍 **Drift detection** — built-in `sdd-drift-detector` and `/sdd:analyze` keep spec, plan, tasks, and code consistent
+- 🔍 **Drift detection** — built-in `drift-detector` and `/sdd:analyze` keep spec, plan, tasks, and code consistent
 
 ---
 
@@ -162,12 +162,12 @@ flowchart TD
     J --> L[Hook: typecheck + lint]
     K --> L
     L -->|fail exit 2| K
-    L -->|pass| M[sdd-spec-guard]
+    L -->|pass| M[spec-guard]
     M -->|missing AC| K
     M -->|satisfied| N{more tasks?}
     N -->|yes| H
     N -->|no| O[/sdd:review/]
-    O --> P[sdd-spec-guard + sdd-drift-detector + sdd-reviewer + skills]
+    O --> P[spec-guard + drift-detector + reviewer + skills]
     P -->|GO| Q[git commit + gh pr create]
     P -->|NO-GO| H
 ```
@@ -180,7 +180,7 @@ flowchart TD
 | **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Decompose plan into YAML tasks with `type`, `agent`, `skills` auto-routed via `capabilities.md` |
 | **Implement** | `/sdd:implement <task-id>` | TDD loop + delegation to specialist agent per `task.agent`; hooks enforce typecheck + lint |
-| **Review** | `/sdd:review` | sdd-spec-guard + sdd-drift-detector + sdd-reviewer + domain skills → verdict GO/NO-GO → commit + PR |
+| **Review** | `/sdd:review` | spec-guard + drift-detector + reviewer + domain skills → verdict GO/NO-GO → commit + PR |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
 ---
@@ -200,10 +200,10 @@ flowchart TD
 ┌───────────────────────────┐  ┌──────────────────────────────┐
 │  SPECIALIST AGENTS         │  │  VERIFICATION AGENTS         │
 │  (plugin-based, YOUR stack)│  │  (generic SDD, 4 agents)     │
-│  • storybook-tester         │  │  • sdd-spec-guard            │
-│  • nextjs-backend-engineer  │  │  • sdd-drift-detector        │
-│  • testing-strategist       │  │  • sdd-reviewer              │
-│  • (other from marketplace) │  │  • sdd-ui-critic             │
+│  • storybook-tester         │  │  • spec-guard            │
+│  • nextjs-backend-engineer  │  │  • drift-detector        │
+│  • testing-strategist       │  │  • reviewer              │
+│  • (other from marketplace) │  │  • ui-critic             │
 └───────────────────────────┘  └──────────────────────────────┘
               ↓ "Use skill: X"
 ┌─────────────────────────────────────────────────────────────┐
@@ -218,7 +218,7 @@ This framework adds:
 
 - 1 skill (`doctor`)
 - 9 slash commands (`/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`)
-- 4 verification agents (`sdd-spec-guard`, `sdd-drift-detector`, `sdd-reviewer`, `sdd-ui-critic`)
+- 4 verification agents (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`)
 - 2 hooks (`typecheck.py`, `lint.sh`)
 
 All **specialist agents and skills already exist** in the plugin marketplace — SDD orchestrates them, it does not duplicate them.
@@ -398,7 +398,7 @@ Phase 5 — Implement one task. Pipeline:
 3. Load skills from `task.skills`
 4. If `task.agent ≠ orchestrator` → delegate via `Task` tool with `subagent_type: <task.agent>`, passing only the relevant spec + plan slice
 5. Hooks run automatically (typecheck + lint, exit 2 on failure)
-6. `sdd-spec-guard` verifies the diff satisfies the task's acceptance criteria
+6. `spec-guard` verifies the diff satisfies the task's acceptance criteria
 7. Mark task `review`
 
 ⛔ One task per `/sdd:implement` invocation. Bulk implementation defeats the purpose.
@@ -408,9 +408,9 @@ Phase 5 — Implement one task. Pipeline:
 Phase 6 — Final audit before PR. Runs in sequence:
 
 1. Full test suite
-2. `sdd-spec-guard` over the entire feature diff
-3. `sdd-drift-detector` over spec ↔ plan ↔ tasks ↔ code
-4. `sdd-reviewer` agent invokes domain skills (`react-doctor`, `accessibility-audit`, etc.) based on the diff
+2. `spec-guard` over the entire feature diff
+3. `drift-detector` over spec ↔ plan ↔ tasks ↔ code
+4. `reviewer` agent invokes domain skills (`react-doctor`, `accessibility-audit`, etc.) based on the diff
 5. Generates `specs/<slug>/review.md` with verdict GO / NO-GO
 6. On GO: `git commit` (Conventional Commits format) + `gh pr create` with body linking to `spec.md`
 7. On NO-GO: list concrete blockers
@@ -433,7 +433,7 @@ Outputs a markdown matrix:
 
 This framework introduces **only 4 new generic agents**. Everything else is your existing plugin specialists, invoked via `Task` tool with `subagent_type`.
 
-### 🛡️ `sdd-spec-guard`
+### 🛡️ `spec-guard`
 
 **Purpose:** Verify that a code diff satisfies all Acceptance Criteria from `spec.md` and does not introduce out-of-scope changes.
 
@@ -455,9 +455,9 @@ This framework introduces **only 4 new generic agents**. Everything else is your
 }
 ```
 
-Strict constraints: **never** writes code, **never** suggests fixes (only reports gaps), **never** judges code quality (that's `sdd-reviewer`'s job).
+Strict constraints: **never** writes code, **never** suggests fixes (only reports gaps), **never** judges code quality (that's `reviewer`'s job).
 
-### 🔀 `sdd-drift-detector`
+### 🔀 `drift-detector`
 
 **Purpose:** Find inconsistencies between documentation layers (`spec.md`, `plan.md`, `tasks.md`) and the current code state.
 
@@ -472,7 +472,7 @@ Cross-checks performed:
 
 **Output:** Markdown report with severity tiers (✅ Aligned / ⚠️ Drift / 🔴 Critical) and a suggested fix per drift item.
 
-### 🧐 `sdd-reviewer`
+### 🧐 `reviewer`
 
 **Purpose:** Final quality audit before PR. Orchestrates domain-specific audits and decides GO/NO-GO.
 
@@ -485,7 +485,7 @@ Pipeline:
 3. Invoke relevant skills + agents based on the diff:
    - `react-doctor` skill if `.tsx`/`.jsx` files changed
    - `accessibility-audit` skill if UI components touched
-   - `sdd-ui-critic` sub-agent if UI files in diff (visual review via browser MCP — see below)
+   - `ui-critic` sub-agent if UI files in diff (visual review via browser MCP — see below)
    - `@szum-tech/server-actions` skill if server actions added
 4. Verify commit messages follow Conventional Commits
 5. Generate `specs/<slug>/review.md` with verdict
@@ -493,11 +493,11 @@ Pipeline:
 
 **Output:** JSON `{verdict: "GO" | "NO_GO", blockers: [...], warnings: [...]}`
 
-### 🎨 `sdd-ui-critic`
+### 🎨 `ui-critic`
 
 **Purpose:** Visual review of changed UI components — captures Storybook screenshots via a browser MCP and evaluates them for design-system adherence, layout regressions, and rendering issues.
 
-**Called by:** `sdd-reviewer` (transitively from `/sdd:review`) when the diff contains `.tsx`/`.stories.tsx` files.
+**Called by:** `reviewer` (transitively from `/sdd:review`) when the diff contains `.tsx`/`.stories.tsx` files.
 
 **Requirements:** A browser MCP server connected (e.g. `Claude_in_Chrome`, `Claude_Preview`, or Playwright MCP) plus a running Storybook (default `http://localhost:6006`). If either is missing, the agent returns verdict `SKIPPED` and the review continues without blocking.
 
@@ -681,7 +681,7 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
 /sdd:implement T1.3
 ```
 
-`type: ui-component` (orchestrator). Prerequisite `T1.2` is done. Orchestrator fleshes out the skeleton until all tests from T1.2 pass. `sdd-spec-guard` confirms diff matches spec AC.
+`type: ui-component` (orchestrator). Prerequisite `T1.2` is done. Orchestrator fleshes out the skeleton until all tests from T1.2 pass. `spec-guard` confirms diff matches spec AC.
 
 ```text
 /sdd:implement T2.1
@@ -704,12 +704,12 @@ Classic strict TDD test task — orchestrator writes failing tests (red phase), 
 Pipeline executes:
 
 1. Tests: 23/23 passed
-2. `sdd-spec-guard`: all 4 AC satisfied
-3. `sdd-drift-detector`: no drift
-4. `sdd-reviewer`: orchestrates skills + visual review
+2. `spec-guard`: all 4 AC satisfied
+3. `drift-detector`: no drift
+4. `reviewer`: orchestrates skills + visual review
    - `react-doctor` skill: 89/100
    - `accessibility-audit` skill: 0 critical
-   - `sdd-ui-critic` sub-agent: verdict `OK` — screenshots saved to `.sdd-screenshots/` (or `SKIPPED` if no browser MCP / Storybook available)
+   - `ui-critic` sub-agent: verdict `OK` — screenshots saved to `.sdd-screenshots/` (or `SKIPPED` if no browser MCP / Storybook available)
    - Conventions: OK
 5. Verdict: **GO**
 6. Commit: `feat(reset-password): add email-based reset flow`
@@ -779,10 +779,10 @@ spec-driven-development/                    # or your own forked plugin path
 │   ├── constitution.md / spec.md / clarify.md / plan.md
 │   ├── tasks.md / implement.md / review.md / analyze.md
 ├── agents/                                # 4 verification sub-agents
-│   ├── sdd-spec-guard.md
-│   ├── sdd-drift-detector.md
-│   ├── sdd-reviewer.md
-│   └── sdd-ui-critic.md                   # optional — needs browser MCP
+│   ├── spec-guard.md
+│   ├── drift-detector.md
+│   ├── reviewer.md
+│   └── ui-critic.md                   # optional — needs browser MCP
 └── hooks/
     ├── typecheck.py                       # exit 2 = blocks Claude
     └── lint.sh
@@ -815,7 +815,7 @@ What to avoid — common failure modes when adopting SDD:
 - ❌ **Skipping `/sdd:clarify`** "because I know what I want." Open questions almost always surface real gaps.
 - ❌ **Skipping human review of `plan.md`.** Claude can hallucinate architecture, especially on unusual stacks.
 - ❌ **Multiple `/sdd:implement` calls in one chat.** Context bloats, hallucinations rise. One task per session is the ideal.
-- ❌ **Manual `git commit` instead of `/sdd:review`.** You bypass `sdd-spec-guard` / `sdd-drift-detector` / `sdd-reviewer`.
+- ❌ **Manual `git commit` instead of `/sdd:review`.** You bypass `spec-guard` / `drift-detector` / `reviewer`.
 - ❌ **Code or tech details in `spec.md`.** The spec is a business document. Implementation belongs in plan.md and code.
 - ❌ **Bloated `CLAUDE.md`.** Above ~2,500 tokens, Claude starts ignoring the bottom. Shard per module.
 - ❌ **`--dangerously-skip-permissions` in production.** A hallucinated bash command can destroy your system.
@@ -851,7 +851,7 @@ Why this framework looks the way it does:
 | `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
 | `/sdd:implement` keeps producing the same code despite hook failures | typecheck error not propagating | Check that `typecheck.py` exits with code 2 on failure; verify `tsc`/`mypy` is installed |
 | `/sdd:tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
-| `sdd-spec-guard` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
+| `spec-guard` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
 | Plan Mode disabled but `/sdd:plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |
 | New specialist agent installed but not appearing in `capabilities.md` | `init` not re-run | `/sdd:doctor init` to rescan plugins |
 

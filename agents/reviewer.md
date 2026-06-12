@@ -1,5 +1,5 @@
 ---
-name: sdd-reviewer
+name: reviewer
 description: Final quality audit before PR. Orchestrates audit skills (react-doctor, accessibility-audit, etc.) and runs the full test suite. Invoked by /review. Returns verdict GO/NO-GO + action list.
 tools: "*"
 ---
@@ -48,7 +48,7 @@ Use skill: accessibility-audit
 ```
 Require 0 critical violations.
 
-**Plus visual review** — invoke the `sdd-ui-critic` sub-agent (Task tool, `subagent_type: sdd-ui-critic`) with the list of changed UI files and the Storybook URL from CLAUDE.md. The critic returns JSON with verdict `OK`/`WARNINGS`/`ISSUES`/`SKIPPED`:
+**Plus visual review** — invoke the `ui-critic` sub-agent (Task tool, `subagent_type: ui-critic`) with the list of changed UI files and the Storybook URL from CLAUDE.md. The critic returns JSON with verdict `OK`/`WARNINGS`/`ISSUES`/`SKIPPED`:
 - `ISSUES` → list findings in `review.md` "Visual review" section; block GO unless the user explicitly accepts.
 - `WARNINGS` → list in review.md, do NOT block.
 - `SKIPPED` → mention infrastructure issue (no MCP, Storybook down) but never block.
@@ -91,7 +91,7 @@ Every commit message should be Conventional Commits format: `<type>(<scope>): <d
 - Critical: 0
 - Warnings: 2 (low contrast in error state, missing aria-describedby)
 
-## Visual review (sdd-ui-critic)
+## Visual review (ui-critic)
 - Verdict: OK | WARNINGS | ISSUES | SKIPPED
 - Components reviewed: LoginForm, Header
 - Screenshots: `./.sdd-screenshots/`
