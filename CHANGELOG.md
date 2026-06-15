@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`/sdd:implement` now works a whole Story per session (recommended), not one micro-task per call.** `/sdd:implement S1` resolves the scope to every task in that Story, runs them in TDD order within a single session (one red→green cycle), makes **one** specialist invocation with the Story's combined scope, runs the filtered tests once, and invokes `spec-guard` **once at the Story boundary** instead of once per task. A single task ID (`/sdd:implement T1.2`) still works for surgical re-runs. This removes the per-micro-task ceremony that multiplied token cost — the previous "⛔ one task per invocation, never batch" rule is inverted. `tasks.md`, `review.md`, and the README walkthroughs/examples updated to match.
+- **One Epic per feature.** `/sdd:tasks` now emits exactly one Epic per `/sdd:spec` feature and never invents extra Epics; if the work feels like several Epics it flags that the feature should have been split into separate specs.
+
+### Added
+
+- **Document status lifecycle is now advanced automatically.** The `**Status:**` headers in `spec.md`/`plan.md` were previously dead metadata stuck at `draft`. They now move through `draft → clarified → planned → in-progress → done` as the pipeline runs: `/sdd:clarify` → `clarified`, `/sdd:plan` → `planned`, `/sdd:implement` (first run) → `in-progress`, `/sdd:review` (GO) → `done`. `/sdd:tasks` sets `plan.md` to `tasks-ready`. Each step only advances forward, never backward.
+
 ## [0.6.0] — 2026-06-12
 
 ### Added

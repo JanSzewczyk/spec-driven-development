@@ -19,6 +19,8 @@ to specialist agents.
 
 From `plan.md` (the "File-by-file change list" section) generate the task list:
 - Hierarchy: **Epic** → **Story** → **Task**
+- **Exactly ONE Epic per feature** — a single `/sdd:spec` run produces one feature, which maps to one Epic. NEVER emit multiple Epics. If the work feels like several Epics, that is a sign the feature is too large and should have been split into separate `/sdd:spec` runs — flag this to the user rather than inventing extra Epics.
+- Stories group cohesive tasks that ship together; `/sdd:implement` executes a **whole Story per session**, so keep each Story self-contained (its own red→green cycle).
 - Maximum size of a single task: ~1-2 hours of work
 - **TDD discipline depends on the task family** (see below):
   - **Logic** (server actions, route handlers, hooks, utilities) → classic strict TDD: the first task in every Story is a failing test, then implementation.
@@ -143,7 +145,9 @@ When a plan.md item is a React component (file ending in `.tsx` that exports a J
 ```
 ```
 
-### 5. Output
+### 5. Advance status + output
+
+Set `specs/<current>/plan.md` header `**Status:**` → `tasks-ready` (unless already at a later state).
 
 Show the user a summary table:
 
@@ -155,7 +159,9 @@ Show the user a summary table:
 | T1.3 | Storybook... | ui-component-test | storybook-tester | draft |
 ```
 
-Plus the suggestion: `/sdd:implement T1.1` to start with the tests.
+Plus the suggestion: `/sdd:implement S1` to implement the whole first Story in one session
+(recommended — one red→green cycle, one spec-guard). A single task ID (`/sdd:implement T1.1`)
+still works for surgical re-runs.
 
 ## Constraints
 

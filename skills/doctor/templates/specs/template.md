@@ -1,7 +1,7 @@
 # Feature: {{feature_title}}
 
 **Branch:** {{type}}/{{feature_slug}}
-**Status:** draft
+**Status:** draft  <!-- lifecycle: draft → clarified → planned → in-progress → done; advanced automatically by each /sdd command -->
 **Type:** {{type}}  <!-- feat | fix | chore | refactor | docs -->
 **Owner:** {{author}}
 **Created:** {{date}}

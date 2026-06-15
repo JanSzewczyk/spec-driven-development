@@ -120,6 +120,8 @@ EOF
 
 All tasks in `tasks.md`: status `review` → `done`.
 
+Advance the document lifecycle: set `spec.md` and `plan.md` headers `**Status:**` → `done`.
+
 ### 7. If verdict = NO-GO
 
 DO NOT commit. List the actions to fix. Suggest:

@@ -79,7 +79,10 @@ flowchart LR
 - ?
 ```
 
-### 4. STOP — human review
+### 4. Advance status + STOP for human review
+
+Set `specs/<current>/spec.md` header `**Status:**` → `planned` (unless already at a later state).
+`plan.md` is created with `**Status:** draft`.
 
 Show the user:
 - ✅ Plan saved to: `specs/<slug>/plan.md`

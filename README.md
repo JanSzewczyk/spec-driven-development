@@ -132,7 +132,7 @@ What `init` does:
 /sdd:clarify
 /sdd:plan                 # run in Plan Mode (Shift+Tab)
 /sdd:tasks
-/sdd:implement T1.1
+/sdd:implement S1         # a whole Story per session (recommended); /sdd:implement S2 ...
 ...
 /sdd:review
 ```
@@ -183,7 +183,7 @@ flowchart TD
 | **Clarify** | `/sdd:clarify` | AI reads spec.md and asks 5-10 targeted gap questions; updates spec with answers |
 | **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Decompose plan into YAML tasks with `type`, `agent`, `skills` auto-routed via `capabilities.md` |
-| **Implement** | `/sdd:implement <task-id>` | TDD loop + delegation to specialist agent per `task.agent`; hooks enforce typecheck + lint |
+| **Implement** | `/sdd:implement <story-id>` | TDD loop over a whole Story per session + delegation to specialist agent per `task.agent`; hooks enforce typecheck + lint |
 | **Review** | `/sdd:review` | spec-guard + drift-detector + reviewer + domain skills → verdict GO/NO-GO → commit + PR |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
@@ -407,22 +407,21 @@ Phase 4 — Tasks. Decompose `plan.md` into a tagged task list:
 
 `/sdd:tasks` auto-emits 3 tasks per component without you asking.
 
-### 🔨 `/sdd:implement <task-id>`
+### 🔨 `/sdd:implement <story-id or task-id>`
 
-Phase 5 — Implement one task. Pipeline:
+Phase 5 — Implement a **whole Story** in one session (recommended), or a single task. Pipeline:
 
-1. Mark task `in-progress`
-2. **Phase validation** — depends on `type`:
-   - **Logic tasks**: if not a test task, require the sibling test task with `status: review|done`.
-   - **UI tasks** (contract-first TDD chain): `ui-component-test` requires sibling `ui-contract` done; `ui-component` (full impl) requires sibling `ui-component-test` done.
-   - On missing prerequisite → STOP, instruct user to run `/sdd:implement <prerequisite-id>` first.
-3. Load skills from `task.skills`
-4. If `task.agent ≠ orchestrator` → delegate via `Task` tool with `subagent_type: <task.agent>`, passing only the relevant spec + plan slice
+1. Resolve scope (all tasks in the Story, in TDD order — or one task) and mark them `in-progress`
+2. **Phase validation** — depends on `type`. When running a whole Story the prerequisite of each sub-chain is satisfied *within the same session* by running tasks in order (test/contract first → observe red → implement to green):
+   - **Logic tasks**: the test task runs first (meaningful red), then its implementation.
+   - **UI tasks** (contract-first TDD chain): `ui-contract` → `ui-component-test` → `ui-component`, in order.
+3. Load the union of skills across the Story's tasks
+4. If the `agent ≠ orchestrator` → delegate via `Task` tool **once per agent group** with `subagent_type: <agent>`, passing only the Story's spec + plan slice
 5. Hooks run automatically (typecheck + lint, exit 2 on failure)
-6. `spec-guard` verifies the diff satisfies the task's acceptance criteria
-7. Mark task `review`
+6. `spec-guard` verifies the Story's combined diff satisfies its acceptance criteria — **once, at the Story boundary** (not per task)
+7. Mark every task in scope `review`
 
-⛔ One task per `/sdd:implement` invocation. Bulk implementation defeats the purpose.
+✅ A whole Story per session is the default — one red→green cycle, one specialist invocation, one spec-guard. This keeps TDD discipline while cutting the per-micro-task cost. A single task ID still works for surgical re-runs.
 
 ### 🔍 `/sdd:review`
 
@@ -458,7 +457,7 @@ This framework introduces **only 4 new generic agents**. Everything else is your
 
 **Purpose:** Verify that a code diff satisfies all Acceptance Criteria from `spec.md` and does not introduce out-of-scope changes.
 
-**Called by:** `/sdd:implement` (per task) and `/sdd:review` (whole feature).
+**Called by:** `/sdd:implement` (once per Story) and `/sdd:review` (whole feature).
 
 **Output:** JSON
 
@@ -687,34 +686,23 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
 ### Implement
 
 ```text
-/sdd:implement T1.1
+/sdd:implement S1
 ```
 
-`type: ui-contract` (orchestrator). Defines the inline `ResetPasswordFormProps` interface and a skeleton component (`<div data-testid="reset-password-form" />`) — no logic yet. Hook validates typecheck/lint.
+Runs the whole Story S1 (the `ResetPasswordForm` UI chain) in **one session**, in TDD order:
+- `T1.1` `ui-contract` — defines the inline `ResetPasswordFormProps` interface + a skeleton (`<div data-testid="reset-password-form" />`).
+- `T1.2` `ui-component-test` (`storybook-tester`) — tests + Storybook story that import the skeleton and fail with meaningful assertion errors (not module-not-found).
+- `T1.3` `ui-component` — fleshes out the skeleton until T1.2's tests pass.
+
+One specialist invocation for the Story, filtered tests at the end, and **one** `spec-guard` at the Story boundary. All three tasks flip to `review`.
 
 ```text
-/sdd:implement T1.2
+/sdd:implement S2
 ```
 
-`type: ui-component-test` (`agent: storybook-tester`). Prerequisite `T1.1` is done, so tests CAN import the component meaningfully. Specialist writes tests + Storybook story. Tests fail with meaningful assertion errors (not module-not-found).
+Runs Story S2 (the `resetPassword` server action) in one session: the classic strict-TDD test task (red) then the implementation by `nextjs-backend-engineer`, with proper validation, error handling, and env-var validation per the loaded skills. One spec-guard at the boundary.
 
-```text
-/sdd:implement T1.3
-```
-
-`type: ui-component` (orchestrator). Prerequisite `T1.2` is done. Orchestrator fleshes out the skeleton until all tests from T1.2 pass. `spec-guard` confirms diff matches spec AC.
-
-```text
-/sdd:implement T2.1
-```
-
-Classic strict TDD test task — orchestrator writes failing tests (red phase), confirms proper failure reasons.
-
-```text
-/sdd:implement T2.2
-```
-
-`agent: nextjs-backend-engineer` — Task tool with `subagent_type: nextjs-backend-engineer`. Specialist implements the server action with proper validation, error handling, and env-var validation per loaded skills.
+> Need to re-run just one task after a fix? A task ID still works: `/sdd:implement T1.3`.
 
 ### Review
 
@@ -840,7 +828,7 @@ What to avoid — common failure modes when adopting SDD:
 
 - ❌ **Skipping `/sdd:clarify`** "because I know what I want." Open questions almost always surface real gaps.
 - ❌ **Skipping human review of `plan.md`.** Claude can hallucinate architecture, especially on unusual stacks.
-- ❌ **Multiple `/sdd:implement` calls in one chat.** Context bloats, hallucinations rise. One task per session is the ideal.
+- ❌ **Running unrelated Stories in one chat.** Context bloats, hallucinations rise. One **Story** per session is the ideal — its tasks share scope and a single red→green cycle; don't chain Story after Story in the same chat.
 - ❌ **Manual `git commit` instead of `/sdd:review`.** You bypass `spec-guard` / `drift-detector` / `reviewer`.
 - ❌ **Code or tech details in `spec.md`.** The spec is a business document. Implementation belongs in plan.md and code.
 - ❌ **Bloated `CLAUDE.md`.** Above ~2,500 tokens, Claude starts ignoring the bottom. Shard per module.

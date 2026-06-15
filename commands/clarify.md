@@ -52,6 +52,9 @@ OR use `/sdd:plan` if everything is clear.
 Edit `spec.md`, filling in the gaps based on the answers. **Do not** delete existing content,
 only append. Update the "Open questions" section — remove questions that were answered.
 
+Then advance the document lifecycle: set the `**Status:**` header to `clarified` (only if it is
+currently `draft`; never move it backwards from a later state).
+
 ## Constraints
 
 - ⛔ DO NOT generate architecture / plan / code
