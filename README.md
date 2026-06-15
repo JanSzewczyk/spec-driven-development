@@ -397,15 +397,15 @@ Phase 4 — Tasks. Decompose `plan.md` into a tagged task list:
   files: [<files to create or modify>]
 ```
 
-**TDD discipline depends on the task family:**
+**Pick the TDD shape per unit — test-first is the default, contract-first the narrow exception** (technology-neutral, biased toward fewer tasks):
 
-- **Logic tasks** (server actions, route handlers, hooks, utilities): classic strict TDD — the first task in each Story is a failing unit test, then implementation.
-- **UI components** (React/Next.js): **contract-first TDD in 3 tasks per component** — strict TDD fails for components because a test importing a non-existent component breaks with "Module not found" (not a meaningful red phase). The 3-task decomposition is:
-  1. `ui-contract` — define the inline TypeScript props interface and a skeleton component returning `<div data-testid="..." />`. **Props live inline in the `.tsx` file — never as a separate `.types.ts`.**
-  2. `ui-component-test` — import the component (no module-not-found), write tests + Storybook story that fail with **meaningful assertion errors**.
-  3. `ui-component` — flesh out the skeleton until tests pass.
+- **Test-first** (default): the normal case — the failing test first, then the implementation. A missing export doesn't force contract-first; just stub it trivially so the test compiles and fails on a **real assertion**. *Examples: a function, a service method, an HTTP handler, a CLI command.*
+- **Contract-first** (exception, 3 tasks): use **only** when the unit's deliverable *is itself a public interface/contract* other code references by shape, so a trivial stub isn't enough to write meaningful tests:
+  1. **contract** — declare the unit's public interface/signature so consumers and tests can reference it (a minimal stub with no real behavior only if the language needs one to compile). Follow the project's own convention for where interfaces live.
+  2. **tests** — reference the contract and fail with **meaningful assertion errors** (not unresolved-reference / not-found).
+  3. **implementation** — flesh out the unit until the tests pass.
 
-`/sdd:tasks` auto-emits 3 tasks per component without you asking.
+  *Examples of contract-first units: a UI component's props, a typed service interface, an API/RPC schema. When in doubt, choose test-first.* `/sdd:tasks` emits the 3 tasks automatically for such units.
 
 ### 🔨 `/sdd:implement <story-id or task-id>`
 
@@ -629,14 +629,14 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
 # Story S1: UI — ResetPasswordForm (contract-first TDD, 3 tasks)
 
 - id: T1.1
-  title: ResetPasswordForm contract + skeleton
+  title: ResetPasswordForm contract
   type: ui-contract
   agent: orchestrator
   skills: [design-system]
   status: draft
   acceptance: |
-    Inline TypeScript props interface defined in ResetPasswordForm.tsx.
-    Component exports a skeleton returning <div data-testid="reset-password-form" />.
+    The component's public props interface is declared so tests and consumers can reference it.
+    The project's typecheck/build passes.
   files: [apps/web/src/components/ResetPasswordForm.tsx]
 
 - id: T1.2
@@ -646,9 +646,8 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
   skills: [storybook-testing, design-system]
   status: draft
   acceptance: |
-    Tests import the component (no module-not-found).
-    Assertions fail with meaningful errors.
-    Storybook story renders skeleton.
+    Tests reference the contract (no unresolved-reference / not-found errors).
+    Assertions fail with meaningful errors describing missing behavior.
   files:
     - apps/web/src/components/__tests__/ResetPasswordForm.test.tsx
     - apps/web/src/components/ResetPasswordForm.stories.tsx
@@ -662,7 +661,7 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
   acceptance: All tests from T1.2 pass. spec AC1 satisfied.
   files: [apps/web/src/components/ResetPasswordForm.tsx]
 
-# Story S2: backend logic — classic strict TDD (2 tasks)
+# Story S2: backend logic — test-first TDD (2 tasks)
 
 - id: T2.1
   title: Tests for resetPassword server action
@@ -690,9 +689,9 @@ Generates tasks (note the contract-first 3-task decomposition for the UI compone
 ```
 
 Runs the whole Story S1 (the `ResetPasswordForm` UI chain) in **one session**, in TDD order:
-- `T1.1` `ui-contract` — defines the inline `ResetPasswordFormProps` interface + a skeleton (`<div data-testid="reset-password-form" />`).
-- `T1.2` `ui-component-test` (`storybook-tester`) — tests + Storybook story that import the skeleton and fail with meaningful assertion errors (not module-not-found).
-- `T1.3` `ui-component` — fleshes out the skeleton until T1.2's tests pass.
+- `T1.1` `ui-contract` — declares the `ResetPasswordForm` public props interface so tests can reference it.
+- `T1.2` `ui-component-test` (`storybook-tester`) — tests + Storybook story that reference the contract and fail with meaningful assertion errors.
+- `T1.3` `ui-component` — implements the component until T1.2's tests pass.
 
 One specialist invocation for the Story, filtered tests at the end, and **one** `spec-guard` at the Story boundary. All three tasks flip to `review`.
 
@@ -808,7 +807,7 @@ spec-driven-development/                    # or your own forked plugin path
 
 Eleven actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
 
-1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Hooks make typecheck/lint non-skippable. For **logic** (server actions, hooks, utilities) use classic strict TDD — failing test first, then implementation. For **UI components** use contract-first TDD: define inline props interface + skeleton component, then tests + Storybook story (which now fail with meaningful assertion errors, not module-not-found), then full implementation. Props interface lives inline in the `.tsx` file — never as a separate `.types.ts`.
+1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Hooks make typecheck/lint non-skippable. Default to **test-first** TDD (failing test first, then implementation; trivially stub a missing symbol so the test fails on a real assertion). Use **contract-first** TDD only when the unit's deliverable is itself a public interface/contract other code references by shape: declare the contract first, then the tests (which now fail with meaningful assertion errors), then the implementation — following the project's own conventions for where interfaces live.
 2. **📜 The constitution is the WHY.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken. If you also maintain a Claude Code session loader (`CLAUDE.md`), use it to surface the most-broken rules and point at the constitution for detail — but that file is yours to shape, not the framework's.
 3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer agent. Break it into Epic → Story → Task. Each specialist receives only its slice.
 4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.

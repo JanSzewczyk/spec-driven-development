@@ -50,9 +50,9 @@
 
 <!-- Test framework, test file locations, what to test at each layer -->
 
-- **TDD strategy:**
-  - **Logic** (server actions, route handlers, hooks, utilities) → classic strict TDD: write failing test first, then implementation.
-  - **UI components** (React/Next.js) → contract-first TDD in 3 phases: contract + skeleton (props interface inline in `.tsx`), then tests + Storybook story, then full implementation. This is required because a test importing a non-existent component fails with "Module not found" instead of a meaningful red.
+- **TDD strategy** (technology-neutral; test-first is the default):
+  - **Test-first (default)** → write the failing test first, then the implementation. If a missing symbol stops the test compiling, add a trivial stub so it fails on a real assertion. Use for anything whose deliverable is behavior.
+  - **Contract-first (exception, 3 phases)** → use only when the unit's deliverable *is itself a public interface/contract* other code references by shape (a UI component's props, a typed service interface, an API/RPC schema): define the contract first, then the failing tests, then the implementation. When in doubt, choose test-first.
 - Unit:
 - Integration:
 - E2E:

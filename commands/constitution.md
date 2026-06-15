@@ -72,7 +72,7 @@ Help the user fill in or update the canonical sections, integrating discovered c
 3. **Architecture** — one paragraph + Mermaid diagram. The *Boundaries we maintain* list is the high-value piece — fold in each role's stated ownership and "never touches" lines.
 4. **Code conventions** — short list + concrete good/bad code examples from the repo. **Cross-check against the conventions roles enforce; raise contradictions explicitly.**
 5. **WHAT NOT TO DO ⛔** — every entry MUST include a `**Why:**` line and (when available) `**Incident:**` reference. **For every "DO NOT" rule pulled from a role file without a stated reason, ask the user for the rationale instead of guessing.**
-6. **Testing philosophy** — split between logic (strict TDD) and UI (contract-first TDD). Reconcile with each role's testing posture.
+6. **Testing philosophy** — the two technology-neutral TDD shapes (test-first by default; contract-first only when the unit's deliverable is itself a public interface/contract other code references by shape). Reconcile with each role's testing posture.
 7. **Error handling philosophy** — typed errors, no silent catches, expected vs unexpected.
 8. **Out of scope** — explicit non-goals. Protects future contributors.
 

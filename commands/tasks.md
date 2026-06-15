@@ -22,53 +22,54 @@ From `plan.md` (the "File-by-file change list" section) generate the task list:
 - **Exactly ONE Epic per feature** — a single `/sdd:spec` run produces one feature, which maps to one Epic. NEVER emit multiple Epics. If the work feels like several Epics, that is a sign the feature is too large and should have been split into separate `/sdd:spec` runs — flag this to the user rather than inventing extra Epics.
 - Stories group cohesive tasks that ship together; `/sdd:implement` executes a **whole Story per session**, so keep each Story self-contained (its own red→green cycle).
 - Maximum size of a single task: ~1-2 hours of work
-- **TDD discipline depends on the task family** (see below):
-  - **Logic** (server actions, route handlers, hooks, utilities) → classic strict TDD: the first task in every Story is a failing test, then implementation.
-  - **UI components** (React/Next.js) → contract-first TDD in **3 tasks per component**: contract+skeleton, then tests+story, then full implementation. Strict TDD fails for components because a test importing a not-yet-existing component breaks with "Module not found" — not a meaningful red phase.
+- **Pick the TDD shape per unit. Test-first is the DEFAULT; contract-first is a narrow exception** (technology-neutral, biased toward fewer tasks):
+  - **Test-first (default, 1 test task + implementation)** — the normal case. Write the failing test first, then the implementation. A missing export/symbol does NOT make a unit contract-first: just stub it trivially (e.g. an empty function) so the test compiles and fails on a real assertion. *Use for: functions, service methods, HTTP handlers, CLI commands, scripts — anything whose deliverable is behavior.*
+  - **Contract-first (exception, 3 tasks)** — use **only** when the unit's deliverable *is itself a public interface/contract that other code must reference by shape* before any behavior exists, so a trivial stub isn't enough to write meaningful tests. Define the contract, then the tests, then the implementation. *Use for: a UI component's props, a typed service interface other modules implement/consume, an API/RPC schema. When in doubt, choose test-first.*
 
-### 2a. Contract-first TDD for UI components
+### 2a. Contract-first decomposition (3 tasks)
 
-When a plan.md item is a React component (file ending in `.tsx` that exports a JSX component), emit **3 tasks** instead of one:
+For the **exception** units above — where the deliverable is a public interface/contract other code references by shape — emit **3 tasks** instead of one. Pick the `type` for each phase from `capabilities.md` (the per-project routing table names them):
 
 ```yaml
 - id: T<n>.1
-  title: <Component> contract + skeleton
-  type: ui-contract
-  agent: orchestrator
-  skills: [design-system]
+  title: <Unit> contract
+  type: <contract-phase type from capabilities.md>
+  agent: <from capabilities routing OR orchestrator>
+  skills: [<from routing>]
   status: draft
   acceptance: |
-    Inline TypeScript props interface defined in <Component>.tsx.
-    Component exports a skeleton returning <div data-testid="<kebab-name>" />.
-    TypeScript compiles.
-  files: [<path>/<Component>.tsx]
+    The unit's public interface/signature is declared so consumers and tests can reference it.
+    If the language needs a definition to compile/resolve, add a MINIMAL stub with no real
+    behavior (returns a default/empty value or raises "not implemented").
+    The project's typecheck/build passes.
+  files: [<path to the unit>]
 
 - id: T<n>.2
-  title: <Component> tests + story
-  type: ui-component-test
-  agent: <from capabilities routing — usually storybook-tester>
-  skills: [storybook-testing, design-system]
+  title: <Unit> tests
+  type: <test-phase type from capabilities.md>
+  agent: <from capabilities routing OR orchestrator>
+  skills: [<from routing>]
   status: draft
   acceptance: |
-    Tests import the component (no module-not-found).
-    Assertions fail with MEANINGFUL errors (e.g. "expected submit button, got empty div").
-    Storybook story renders the skeleton without errors.
-  files: [<path>/<Component>.stories.tsx, <path>/__tests__/<Component>.test.tsx]
+    Tests reference the contract (no unresolved-reference / not-found errors).
+    Assertions fail with MEANINGFUL errors describing missing behavior (a real red phase).
+  files: [<test file(s) for the unit>]
 
 - id: T<n>.3
-  title: <Component> implementation
-  type: ui-component
-  agent: orchestrator
-  skills: [design-system]
+  title: <Unit> implementation
+  type: <implementation-phase type from capabilities.md>
+  agent: <from capabilities routing OR orchestrator>
+  skills: [<from routing>]
   status: draft
   acceptance: |
     All tests from T<n>.2 pass.
-    Storybook play function assertions green.
     AC from spec.md satisfied.
-  files: [<path>/<Component>.tsx]
+  files: [<path to the unit>]
 ```
 
-**Important**: Props interface lives **inline** in the `.tsx` file. DO NOT emit separate `.types.ts` files.
+**Keep the contract where the project keeps interfaces.** Follow the project's existing conventions
+(discovered in `plan.md` / the codebase) for where a type or interface lives — do not impose a
+separate-file or inline rule from the framework.
 
 ### 3. Auto-tagging — for every task, assign
 
@@ -85,20 +86,14 @@ When a plan.md item is a React component (file ending in `.tsx` that exports a J
 
 **Auto-routing logic:**
 
-1. Choose a `type` from the task description:
-   - "Component contract" / "skeleton" → `ui-contract`
-   - "Storybook story" / "interaction test" → `ui-component-test`
-   - "React component" / "JSX" / full impl → `ui-component`
-   - "Server action" / "use server" → `server-action`
-   - "API route" / "route handler" → `route-handler`
-   - "Unit test" (non-component) → `unit-test`
-   - "E2E test" / "Playwright" → `e2e-test`
-   - "A11y" / "ARIA" → `a11y-audit`
-   - "Test plan" / "coverage strategy" → `test-strategy`
-   - Otherwise → `generic`
-
+1. Choose a `type` for the task. **The set of available types comes from the project's
+   `capabilities.md` routing table** — that file is where stack-specific work types live. Match the
+   task to the closest type by the nature of the work, e.g.:
+   - a contract / interface phase → the project's contract-phase type
+   - a test phase (unit, integration, e2e, contract test) → the matching test type
+   - an implementation phase → the matching implementation type
+   - anything with no dedicated row → `generic`
 2. From `capabilities.md` find the row matching `type` and pull `agent` + `skills`.
-
 3. If no routing rule matches → `agent: orchestrator`, `skills: []`.
 
 ### 4. Write `tasks.md`
@@ -114,6 +109,9 @@ When a plan.md item is a React component (file ending in `.tsx` that exports a J
 ## Epic: <name>
 
 ### Story S1: <name>
+
+<!-- Illustrative example — a React feature. The `type` values come from this project's
+     capabilities.md; another stack would use its own types and tools. -->
 
 ```yaml
 - id: T1.1
@@ -166,8 +164,9 @@ still works for surgical re-runs.
 ## Constraints
 
 - ⛔ DO NOT write actual code
-- ✅ Logic tasks: first in a Story is a failing test (classic TDD)
-- ✅ UI components: 3-task decomposition (`ui-contract` → `ui-component-test` → `ui-component`)
-- ✅ Props interface inline in `.tsx`, NEVER in a separate `.types.ts` file
+- ✅ Test-first by default: the first task in the Story is a failing test, then implementation
+- ✅ Contract-first only when the unit's deliverable is itself a public interface/contract other code references by shape: 3-task decomposition (contract → tests → implementation)
+- ✅ Follow the project's own conventions for where interfaces/types live — the framework imposes no file-layout rule
+- ✅ `type` values are drawn from the project's `capabilities.md` routing table
 - ✅ Every task has `agent` and `skills` assigned (even if empty)
 - ✅ `acceptance` must be measurable (NOT "works correctly")

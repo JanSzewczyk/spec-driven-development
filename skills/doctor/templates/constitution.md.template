@@ -103,8 +103,8 @@ async function loadUser(id: any) { try { ... } catch {} }
 
 ## 6. Testing philosophy
 
-- **Logic** (server actions, hooks, utilities) — classic strict TDD: write failing tests first, then implementation.
-- **UI components** (React/Next.js) — contract-first TDD: contract + skeleton, then tests + Storybook story, then full implementation. Props interface lives inline in the `.tsx`.
+- **Test-first (default)** — write the failing test first, then the implementation; add a trivial stub if a missing symbol would otherwise stop the test compiling.
+- **Contract-first (exception)** — use only when the unit's deliverable is itself a public interface/contract other code references by shape (a UI component's props, a typed service interface, an API/RPC schema): declare the contract first, then the failing tests, then the implementation. Follow this project's own conventions for where interfaces live.
 - **Coverage targets:** unit > 70%, integration > 50%, E2E covers happy paths only.
 - **What we DO NOT test:** generated code, trivial getters, third-party library internals.
 

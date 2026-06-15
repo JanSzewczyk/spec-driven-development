@@ -43,32 +43,25 @@ Different TDD strategies apply to different task families. Validate the prerequi
 > in the session and observe the red phase before writing the implementation. The rules below
 > still govern the ordering and the meaningful-red requirement.
 
-**Logic tasks** (`server-action`, `route-handler`, `unit-test`, `generic`, hooks, utilities):
-- If `type` ends in `-test`: this IS the test task. Generate ONLY test files. Tests MUST fail (meaningful red phase, not "Module not found"). Confirm failure reasons are correct.
-- If `type` does NOT end in `-test`: locate the sibling test task `T<X>.0` (or the first `-test` task in the same Story). If `status ≠ done|review`, STOP — require it first.
+The two shapes are **technology-neutral**; ordering is what matters. Within a Story it is enforced
+**by the listed task order** (the preceding task in the Story is the prerequisite), not by parsing
+`type` strings. Test-first is the default; contract-first is the narrow exception (see `/sdd:tasks`).
 
-**UI component tasks** (`ui-contract`, `ui-component-test`, `ui-component`) — contract-first TDD:
+**Test-first units** (the default — the deliverable is behavior):
+- The test task runs first. Generate ONLY the test(s). If a missing symbol stops them compiling, add a trivial stub so they compile and then fail on a **meaningful assertion** (not on an unresolved reference / "not found"). Confirm the failure reasons are correct.
+- The implementation task runs after, until those tests pass. In single-task mode, the prerequisite is the preceding task in the Story; if it is not yet `review|done`, STOP and require it first.
 
-| Current task `type` | Prerequisite | Failure mode |
+**Contract-first units** (the exception — the deliverable is itself a public interface/contract other code references by shape) — three phases, run in this order:
+
+| Phase | Runs after | Red/green expectation |
 |---|---|---|
-| `ui-contract` | none (first in chain) | — |
-| `ui-component-test` | sibling `ui-contract` with `status: review|done` | tests fail with meaningful assertion errors (not module-not-found) |
-| `ui-component` (full impl) | sibling `ui-component-test` with `status: review|done` | full implementation makes the tests pass |
+| **contract** | first in the chain | declare the unit's public interface/signature so consumers and tests can reference it; add a minimal stub only if the language needs one to compile/resolve |
+| **tests** | the contract | tests reference the contract and fail with **meaningful assertion** errors (not unresolved-reference / not-found) |
+| **implementation** | the tests | flesh out the unit until those tests pass |
 
-If the prerequisite is not satisfied → STOP, instruct the user to run `/sdd:implement <prerequisite-id>` first.
+In single-task mode, if a phase's prerequisite is not yet `review|done` → STOP and instruct the user to run `/sdd:implement <prerequisite-id>` first. In whole-Story mode you satisfy each prerequisite by running the phases in order in this session (see the note above).
 
-For `ui-contract` tasks:
-1. Define the inline TypeScript props interface (e.g. `type LoginFormProps = {...}`) in the `.tsx` file.
-2. Export a skeleton component returning `<div data-testid="<kebab-name>" />`.
-3. NEVER write `.types.ts` — types live inline with the component.
-
-For `ui-component-test` tasks:
-1. Import the contract from the existing `.tsx`.
-2. Write tests and Storybook stories that assert on props, render output, and interactions.
-3. Tests MUST fail with meaningful assertions (not module-not-found, since the skeleton already exists).
-
-For `ui-component` (full impl):
-1. Flesh out the skeleton body until all tests from the sibling `ui-component-test` pass.
+When building the contract, follow the **project's own conventions** for where interfaces/types live (inline, a dedicated file, a header, an `.proto`, etc.) — the framework imposes no file-layout rule. The stub must carry no real behavior (return a default/empty value or raise "not implemented").
 
 ### 4. Implementation step
 
@@ -133,11 +126,11 @@ In `tasks.md`: set `status: in-progress` → `status: review` for **every task i
 
 ## Constraints
 
-- ✅ TDD-first for logic tasks; contract-first TDD for UI components
+- ✅ Test-first by default; contract-first only when the unit's deliverable is itself a public interface/contract other code references by shape
 - ✅ Default unit is a **whole Story** — batch its tasks in one session, preserving red→green order
 - ✅ Load the union of `skills` for the Story before writing code
 - ✅ The specialist agent receives ONLY the Story's scope (spec + the plan section for this Story)
-- ✅ UI props interface lives inline in `.tsx`, NEVER in a separate `.types.ts` file
+- ✅ Follow the project's own conventions for where interfaces/types live — the framework imposes no file-layout rule
 - ✅ Run `spec-guard` and the filtered tests ONCE per Story, at its boundary — not per task
 - ⛔ DO NOT skip the phase validation (Step 3) — it guarantees a meaningful red phase
 - ⛔ DO NOT skip `spec-guard`

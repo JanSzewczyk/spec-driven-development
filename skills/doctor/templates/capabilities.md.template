@@ -20,21 +20,31 @@
 ## Task type → routing rules
 
 <!-- user-override -->
+<!-- These are technology-neutral defaults. `/sdd:tasks` picks a task `type` from this table and
+     `/sdd:implement` routes the task to the listed agent + skills. Add stack-specific types
+     (and their agents/skills) below or in "Custom routing rules" — see the example block. -->
 | Task type           | Specialist agent          | Skills to load                          |
 |---------------------|---------------------------|-----------------------------------------|
-| ui-contract         | (orchestrator)            | design-system                           |
-| ui-component-test   | storybook-tester          | storybook-testing, design-system        |
-| ui-component        | (orchestrator)            | design-system                           |
-| server-action       | nextjs-backend-engineer   | server-actions, error-handling          |
-| route-handler       | nextjs-backend-engineer   | server-actions, structured-logging      |
-| unit-test           | (orchestrator)            | unit-testing                            |
-| e2e-test            | (orchestrator)            | playwright-cli                          |
-| a11y-audit          | (orchestrator)            | accessibility-audit                     |
-| test-strategy       | testing-strategist        | unit-testing, playwright-cli            |
-| refactor            | (orchestrator)            | react-doctor (post)                     |
+| contract            | (orchestrator)            | —                                       |
+| contract-test       | (orchestrator)            | —                                       |
+| unit-test           | (orchestrator)            | —                                       |
+| integration-test    | (orchestrator)            | —                                       |
+| e2e-test            | (orchestrator)            | —                                       |
+| implementation      | (orchestrator)            | —                                       |
+| refactor            | (orchestrator)            | —                                       |
 | generic             | (orchestrator)            | —                                       |
 
 ## Custom routing rules
 
 <!-- user-override -->
-<!-- Add your own task types and routing rules. /sdd:tasks uses these alongside the defaults above. -->
+<!-- Add your own task types and routing rules. /sdd:tasks uses these alongside the defaults above.
+
+     Example — how a React/Next.js project might specialize the generic phases (delete if N/A):
+     | Task type         | Specialist agent          | Skills to load                    |
+     |-------------------|---------------------------|-----------------------------------|
+     | ui-contract       | (orchestrator)            | design-system                     |
+     | ui-component-test | storybook-tester          | storybook-testing, design-system  |
+     | ui-component      | (orchestrator)            | design-system                     |
+     | server-action     | nextjs-backend-engineer   | server-actions, error-handling    |
+-->
+
