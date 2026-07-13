@@ -118,7 +118,7 @@ All checks green. Safe to PR.
 
 JSON at the end of the session:
 
-```json
+```
 {
   "verdict": "GO" | "NO_GO",
   "blockers": [

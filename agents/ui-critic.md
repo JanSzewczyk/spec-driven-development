@@ -64,7 +64,7 @@ For each component with a story:
 
 ### 6. Output JSON
 
-```json
+```
 {
   "verdict": "OK" | "WARNINGS" | "ISSUES" | "SKIPPED",
   "skip_reason": "no_mcp | storybook_unreachable | null",

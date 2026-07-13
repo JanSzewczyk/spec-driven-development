@@ -50,7 +50,7 @@ Any diff change that:
 
 ### 5. Return JSON
 
-```json
+```
 {
   "satisfied": true | false,
   "ac_satisfied": ["AC1", "AC2"],
