@@ -8,6 +8,9 @@ The **Plan** phase of SDD. Generate an architecture document `plan.md`. **DO NOT
 
 > ⚠️ Recommended to run this command in **Plan Mode** (Shift+Tab in Claude Code) — that way
 > Claude has file edits disabled and can only read + plan.
+>
+> 💰 **Recommended session model: Opus** — architecture is judgement-heavy and this is the cheapest
+> moment to get it right (a bad plan multiplies cost downstream).
 
 ## Steps
 
@@ -25,6 +28,18 @@ Use the **Task tool** (sub-agent of type `Explore`) to scan the current codebase
 - TypeScript/Python/etc. conventions
 
 The sub-agent returns **only a summary** — saving main-session tokens.
+
+### 2a. Design source — extract once, cache the style spec
+
+If `spec.md` references a design source (a Figma link in its "Links" section, or another design
+tool exposed via an MCP server), extract it **once, inside a Task sub-agent** — pull only the
+metadata and targeted screenshots you need, parse them in the sub-agent, and have it return a
+**distilled style spec** (tokens, spacing, typography, component-to-code mapping). Write that
+distilled spec into `plan.md` (see the "Design reference" section below) so downstream phases
+(`/sdd:tasks`, `/sdd:implement`, `ui-critic`) read the cache instead of re-pulling the large MCP
+output into the main context. Never pull raw design-tool output into the main session.
+
+If there is no design source, skip this step.
 
 ### 3. Generate `plan.md`
 
@@ -71,6 +86,13 @@ flowchart LR
 - `packages/errors/AuthError` (from `packages/errors/src/auth.ts`)
 - `packages/db/prismaClient` (from `packages/db/src/client.ts`)
 
+## Design reference
+<!-- Only when a design source exists — the distilled style spec cached from Step 2a.
+     Omit this section entirely if there is no Figma/design source. -->
+- Tokens / spacing / typography: ...
+- Component-to-code mapping: <Figma component> → `<code component>`
+- Source: <Figma link> (extracted once; do not re-pull)
+
 ## Risks & mitigations
 - **Risk**: rate limit on external API
   **Mitigation**: exponential backoff in `packages/http/retry.ts`
@@ -87,7 +109,8 @@ Set `specs/<current>/spec.md` header `**Status:**` → `planned` (unless already
 Show the user:
 - ✅ Plan saved to: `specs/<slug>/plan.md`
 - 👉 READ the plan and edit manually before continuing
-- Next step: `/sdd:tasks`
+- Next step: `/clear`, then `/sdd:tasks` (it re-reads `plan.md` + `capabilities.md` from disk, so
+  clearing the transcript first starts the next phase from a small context and loses nothing)
 
 ## Constraints
 

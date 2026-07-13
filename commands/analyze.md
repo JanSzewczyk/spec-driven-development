@@ -7,6 +7,8 @@ allowed-tools: Read, Glob, Grep, Bash
 A diagnostic tool for SDD. Scans all documentation layers and the current code state
 and detects **inconsistencies**.
 
+> 💰 **Recommended session model: Sonnet** — this is a mechanical cross-check, not a design phase.
+
 Use it when:
 - You feel something is off
 - The spec was changed after implementation
@@ -20,7 +22,11 @@ Use it when:
 - `specs/<current>/spec.md`
 - `specs/<current>/plan.md` (if it exists)
 - `specs/<current>/tasks.md` (if it exists)
-- `git diff main..HEAD` — the full diff
+- `specs/capabilities.md` — read the `Generated / out-of-band paths` globs
+- The diff, **excluding** those generated globs so they never enter context:
+  ```bash
+  git diff main..HEAD -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…other globs>
+  ```
 - `git log main..HEAD --oneline`
 
 ### 2. Cross-check matrix
@@ -95,5 +101,6 @@ After the report, propose:
 ## Constraints
 
 - ⛔ DO NOT edit files — this is diagnostics only
+- ⛔ NEVER flag `Generated / out-of-band paths` (from `capabilities.md`) as drift or out-of-scope — they are regenerated artifacts, not authored changes
 - ✅ Be concrete — quote line numbers, task IDs, file paths
 - ✅ Classify severity: ✅ Consistent / ⚠️ Drift / 🔴 Critical

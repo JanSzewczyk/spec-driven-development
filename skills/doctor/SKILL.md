@@ -57,7 +57,10 @@ Read/Glob/Grep/Bash to inspect, then assign `pass` ✅ / `warn` ⚠️ / `fail` 
    `<project>/.claude/settings.local.json` (local). Name which layer(s). Strip any `@version`
    suffix when matching. Not listed anywhere → warn (may still auto-load).
 5. **`specs/capabilities.md`** — exists and contains the sections: `Specialist agents`,
-   `Skills`, `Stack profile`, `Task type` (routing). Missing → fail; partial → warn.
+   `Skills`, `Stack profile`, `Task type` (routing). Missing → fail; partial → warn. A `Model`
+   column in the routing table and a `Generated / out-of-band paths` section are expected on
+   freshly-initialized files but are optional on legacy files (their absence → warn, not fail;
+   suggest re-running `init`).
 6. **`.claude/settings.json` hooks** — exists, valid JSON, and `hooks.PostToolUse` contains an
    entry whose command references `.claude/hooks/typecheck.sh` or `.claude/hooks/lint.sh`.
    Missing file → fail; present but no SDD hook entry → warn.
@@ -185,6 +188,11 @@ sections (**keep these exact headings — other commands read them**):
 - `## Skills (load into context on demand)` + `<!-- auto-generated -->` — bullet list of skills.
 - `## Stack profile` + `<!-- auto-generated -->` — the detected stack as `- **key**: value`.
 - `## Task type → routing rules` and `## Custom routing rules` — these carry `<!-- user-override -->`.
+  The routing table includes a **`Model`** column (advisory cost tier per task type). Seed the
+  defaults from the template: `sonnet` for contract/test/implementation types, `haiku` for
+  `refactor`/`generic`. `opus` is reserved for session-level reasoning phases, not task rows.
+- `## Generated / out-of-band paths` + `<!-- user-override -->` — glob list of generated /
+  non-hand-authored files that the diff-consuming agents exclude from context and never flag.
 
 **Idempotency — get this exactly right (it has bitten us before):** re-running init must produce
 a **byte-stable** file, not a growing one. Follow these rules:
@@ -205,8 +213,9 @@ a **byte-stable** file, not a growing one. Follow these rules:
    before (no new duplicates, none lost). If `init` is run twice with no other change, the second
    write must be identical to the first.
 
-If the file doesn't exist, take the routing sections (`Task type → routing rules`,
-`Custom routing rules`) verbatim from `templates/capabilities.md.template`.
+If the file doesn't exist, take the user-override sections (`Task type → routing rules`,
+`Custom routing rules`, `Generated / out-of-band paths`) verbatim from
+`templates/capabilities.md.template`.
 
 ### 4. Generate hook scripts for the tools you found
 Generate `.claude/hooks/typecheck.sh` and `.claude/hooks/lint.sh` tailored to the command(s) you

@@ -7,6 +7,9 @@ allowed-tools: Read, Edit
 The **Clarify** phase of SDD. Your job is to actively probe gaps in the specification.
 **Do not** generate code or a plan.
 
+> 💰 **Recommended session model: Opus** — surfacing the right gap questions is judgement-heavy and
+> saves far more downstream than it costs.
+
 ## Steps
 
 ### 1. Find the spec

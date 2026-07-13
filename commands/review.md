@@ -8,6 +8,10 @@ The **Review** phase of SDD. Final audit before commit + PR. Invokes the SDD ver
 in sequence (spec-guard, drift-detector, reviewer — plus ui-critic when UI files
 are in the diff) and any domain-specific skills.
 
+> 💰 **Recommended session model: Opus.** This is the judgement-heavy final gate. (The verification
+> sub-agents carry their own `model:` frontmatter — spec-guard/drift-detector/ui-critic on Sonnet,
+> reviewer on Opus — so they run at their own tier regardless of the session model.)
+
 ## Steps
 
 ### 1. Pre-flight
@@ -24,7 +28,8 @@ If anything fails → STOP, list the blockers.
 ```
 Task tool: subagent_type=spec-guard
 prompt: "Verify the full diff (git diff main..HEAD) against specs/<current>/spec.md.
-         Are ALL Acceptance criteria satisfied? Any out-of-scope changes?"
+         Are ALL Acceptance criteria satisfied? Any out-of-scope changes?
+         Exclude the globs in specs/capabilities.md 'Generated / out-of-band paths' from the diff."
 ```
 
 Expected return: JSON `{satisfied: bool, missing: [...], out_of_scope: [...]}`.
@@ -34,7 +39,8 @@ Expected return: JSON `{satisfied: bool, missing: [...], out_of_scope: [...]}`.
 ```
 Task tool: subagent_type=drift-detector
 prompt: "Detect drift between the documentation (specs/<current>/) and the current code.
-         Return a list of mismatches with file paths and line numbers."
+         Return a list of mismatches with file paths and line numbers.
+         Exclude the globs in specs/capabilities.md 'Generated / out-of-band paths' from the diff."
 ```
 
 ### 4. Domain-specific audits (if relevant)
@@ -133,5 +139,8 @@ DO NOT commit. List the actions to fix. Suggest:
 
 - ⛔ DO NOT commit if verdict = NO-GO
 - ⛔ DO NOT skip the core SDD agents (spec-guard, drift-detector, reviewer). `ui-critic` is invoked by reviewer when UI files are in the diff and is allowed to SKIP on infrastructure issues.
+- ⛔ Run spec-guard / drift-detector / reviewer ONCE feature-wide — do not loop them.
+- ✅ The verification agents exclude the `Generated / out-of-band paths` globs from `specs/capabilities.md` — generated files are never flagged out-of-scope or as drift.
 - ✅ Commit message format: Conventional Commits (`<type>(<scope>): <description>`)
 - ✅ PR body contains a link to spec.md
+- 💬 Ask the user to batch NO-GO fixes / QA tweaks into one message per round — each turn reprocesses the full context.

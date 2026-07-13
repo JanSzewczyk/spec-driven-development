@@ -7,6 +7,9 @@ allowed-tools: Read, Edit, Bash, Glob
 Edit `specs/constitution.md` — the source-of-truth constitution for this project. This is the long-form
 document where every rule carries its *Why*. This command operates only on `specs/constitution.md`.
 
+> 💰 **Recommended session model: Opus** — reconciling roles, conventions, and rationale is
+> judgement-heavy.
+
 If `specs/constitution.md` does not exist yet, instruct the user to run `/sdd:doctor init` first
 (it bootstraps the constitution from the bundled template).
 

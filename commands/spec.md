@@ -7,6 +7,9 @@ allowed-tools: Read, Write, Glob, Bash
 Invoke the **Specify** phase of Spec-Driven Development. Execute the steps in order. DO NOT
 write any implementation code — only the business specification.
 
+> 💰 **Recommended session model: Opus** — framing the problem is judgement-heavy and cheap to get
+> right here; errors here propagate through every later phase.
+
 ## Argument
 
 `$ARGUMENTS` — format: `<type> <description>`, where:

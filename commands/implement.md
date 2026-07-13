@@ -10,6 +10,11 @@ specialist invocation with the Story's full scope, one spec-guard at the Story b
 keeps the TDD discipline while cutting the per-micro-task ceremony (and cost) that batching avoids.
 A single task ID (e.g. `T1.2`) is still accepted for surgical re-runs.
 
+> 💰 **Recommended session model: Sonnet** (Haiku for a trivial Story). Implementation is
+> mechanical TDD + edits — reserve Opus for the judgement-heavy phases (`/sdd:spec`, `/sdd:clarify`,
+> `/sdd:plan`, `/sdd:review`). Each task also carries an advisory `model:` tier from `tasks.md`;
+> run this session on the Story's tier for the lowest cost.
+
 ## Steps
 
 ### 1. Parse `tasks.md` and resolve scope
@@ -19,7 +24,7 @@ Locate `specs/<current>/tasks.md`. From `$ARGUMENTS`:
 - **Story ID** (e.g. `S1`) → the scope is **all tasks in that Story**, in listed order. This is the default mode.
 - **Task ID** (e.g. `T1.2`) → the scope is that single task only.
 
-For every task in scope, extract from YAML: `title`, `type`, `agent`, `skills`, `acceptance`, `files`.
+For every task in scope, extract from YAML: `title`, `type`, `agent`, `skills`, `model`, `acceptance`, `files`.
 
 When the scope is a Story, group the tasks into their natural TDD sub-chains so the red→green
 ordering is preserved in a single session:
@@ -81,6 +86,7 @@ If the `agent` ≠ `orchestrator`:
   - Only the plan.md section that concerns this Story
   - The combined list of `files` across the group's tasks
   - The acceptance criteria of every task in the group
+  - The group's advisory `model` tier (the specialist should run at that cost tier where it can).
   - Instruction: "Implement these tasks in TDD order (tests/contract first, observe red, then
     implement to green). Run the affected tests. Return with a diff + per-task status."
 
@@ -121,8 +127,13 @@ In `tasks.md`: set `status: in-progress` → `status: review` for **every task i
 - Files changed: <list>
 - Tests: <X> passed (filtered to the Story)
 - Spec-guard: satisfied=true (one check for the whole Story)
-- Next: /sdd:implement S2  OR  /sdd:review (if this was the last Story)
+- Model: this Story's tasks are tagged `model: <tier>` — run the next Story's session on its tier
+- Next: /clear, then /sdd:implement S2  OR  /sdd:review (if this was the last Story)
+  (each command re-reads the spec files from disk, so /clear between Stories loses no context)
 ```
+
+> 💬 Collect visual/QA tweaks into a **single message per round** instead of many small turns —
+> each turn reprocesses the full context and multiplies cost.
 
 ## Constraints
 
@@ -132,6 +143,9 @@ In `tasks.md`: set `status: in-progress` → `status: review` for **every task i
 - ✅ The specialist agent receives ONLY the Story's scope (spec + the plan section for this Story)
 - ✅ Follow the project's own conventions for where interfaces/types live — the framework imposes no file-layout rule
 - ✅ Run `spec-guard` and the filtered tests ONCE per Story, at its boundary — not per task
+- ⛔ DO NOT re-run `spec-guard` mid-Story — at most once, at the Story boundary
+- ⛔ DO NOT spawn a subagent solely to run typecheck/lint/tests — run them inline (the PostToolUse
+  hook handles typecheck+lint after each Edit/Write); summarize only large or failing output
 - ⛔ DO NOT skip the phase validation (Step 3) — it guarantees a meaningful red phase
 - ⛔ DO NOT skip `spec-guard`
 - ⛔ DO NOT commit — that is done by `/sdd:review`

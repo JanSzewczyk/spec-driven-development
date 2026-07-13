@@ -805,7 +805,7 @@ spec-driven-development/                    # or your own forked plugin path
 
 ## ⭐ Best Practices
 
-Eleven actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
+Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
 
 1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Hooks make typecheck/lint non-skippable. Default to **test-first** TDD (failing test first, then implementation; trivially stub a missing symbol so the test fails on a real assertion). Use **contract-first** TDD only when the unit's deliverable is itself a public interface/contract other code references by shape: declare the contract first, then the tests (which now fail with meaningful assertion errors), then the implementation — following the project's own conventions for where interfaces live.
 2. **📜 The constitution is the WHY.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken. If you also maintain a Claude Code session loader (`CLAUDE.md`), use it to surface the most-broken rules and point at the constitution for detail — but that file is yours to shape, not the framework's.
@@ -816,8 +816,10 @@ Eleven actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, O
 7. **🌿 One branch per feature.** `/sdd:spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
 8. **🤝 Use sub-agents for large reads.** Don't grep 50 files in the main session — invoke a `Task` tool sub-agent and receive only a summary.
 9. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/sdd:analyze` to detect drift periodically.
-10. **💬 Fresh chat per Story.** Open a new Claude session when switching to a new Story. `tasks.md` status is your handover document.
+10. **💬 Fresh chat per Story — and `/clear` between phases.** Open a new Claude session when switching to a new Story, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
 11. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
+12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:tasks`, `/sdd:implement`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
+13. **📦 Batch human feedback.** Collect visual/QA tweaks and NO-GO fixes into one message per round instead of many small turns — each turn reprocesses the full context and multiplies cost.
 
 ---
 
@@ -833,6 +835,28 @@ What to avoid — common failure modes when adopting SDD:
 - ❌ **Bloated `CLAUDE.md`.** Above ~2,500 tokens, Claude starts ignoring the bottom. Shard per module.
 - ❌ **`--dangerously-skip-permissions` in production.** A hallucinated bash command can destroy your system.
 - ❌ **Implementing without a spec.** SDD only works if every feature has its `specs/<slug>/spec.md` first.
+- ❌ **Running Opus for mechanical phases.** Decomposition, TDD edits, and drift checks don't need the top tier — you pay Opus rates for Sonnet work.
+- ❌ **Drip-feeding feedback.** Ten small "move this 2px" turns each reprocess the whole context. Batch them into one message per round.
+- ❌ **Pulling generated diffs into the loop.** Regenerated clients/mocks/schemas (`*.msw.ts`, `*.schemas.ts`, …) balloon context and trigger false out-of-scope/drift findings. Declare them in `capabilities.md` → `Generated / out-of-band paths`.
+
+---
+
+## 💰 Cost & model tiering
+
+The single biggest cost lever is **which model runs which phase**. A slash command can't switch the session model itself, so this is operating guidance the framework encodes as recommendations:
+
+| Phase | Recommended model | Why |
+|---|---|---|
+| `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review` | **Opus** | Judgement-heavy — framing, architecture, and the final gate. Cheap to get right here, expensive to get wrong downstream. |
+| `/sdd:tasks`, `/sdd:analyze` | **Sonnet** | Mechanical decomposition / cross-check. |
+| `/sdd:implement` | **Sonnet** (Haiku for trivial Stories) | Mechanical TDD + edits. |
+
+Two supporting mechanisms:
+
+- **Per-task tier.** `capabilities.md`'s routing table carries a `Model` column; `/sdd:tasks` stamps each task with an advisory `model:` tier, and `/sdd:implement` surfaces the Story's tier so you can pick the session model. Defaults: `sonnet` for test/implementation types, `haiku` for `refactor`/`generic`.
+- **Per-agent tier.** The verification sub-agents carry their own `model:` frontmatter — `reviewer` on Opus (last line of defense), `spec-guard` / `drift-detector` / `ui-critic` on Sonnet — so they run at their own tier regardless of the session model.
+
+Keep large and generated output **out of the main loop**: verification agents exclude the `Generated / out-of-band paths` globs from every diff, `/sdd:plan` extracts a design source (Figma/MCP) **once** inside a sub-agent and caches the distilled style spec into `plan.md`, and large codebase scans return only a summary via a sub-agent.
 
 ---
 

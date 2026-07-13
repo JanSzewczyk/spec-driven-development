@@ -26,8 +26,11 @@ Extract the list of **Acceptance criteria** (AC1, AC2, ...) and **Non-goals**.
 
 ### 2. Read the diff
 
+First read the `Generated / out-of-band paths` globs from `specs/capabilities.md`, then **exclude**
+them so generated artifacts never enter your context:
+
 ```bash
-git diff <range>
+git diff <range> -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…globs from capabilities.md>
 ```
 
 Identify every modified file and the essence of the change.
@@ -71,5 +74,6 @@ Any diff change that:
 - ⛔ DO NOT write code / DO NOT edit files
 - ⛔ DO NOT propose fixes — only report gaps
 - ⛔ DO NOT judge code quality (that is `reviewer`'s job)
+- ⛔ NEVER flag `Generated / out-of-band paths` (from `capabilities.md`) as out-of-scope — they are regenerated artifacts, not authored changes
 - ✅ Be specific — cite line numbers from the diff
 - ✅ JSON output — used programmatically by the orchestrator

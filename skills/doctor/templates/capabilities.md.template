@@ -21,18 +21,24 @@
 
 <!-- user-override -->
 <!-- These are technology-neutral defaults. `/sdd:tasks` picks a task `type` from this table and
-     `/sdd:implement` routes the task to the listed agent + skills. Add stack-specific types
-     (and their agents/skills) below or in "Custom routing rules" — see the example block. -->
-| Task type           | Specialist agent          | Skills to load                          |
-|---------------------|---------------------------|-----------------------------------------|
-| contract            | (orchestrator)            | —                                       |
-| contract-test       | (orchestrator)            | —                                       |
-| unit-test           | (orchestrator)            | —                                       |
-| integration-test    | (orchestrator)            | —                                       |
-| e2e-test            | (orchestrator)            | —                                       |
-| implementation      | (orchestrator)            | —                                       |
-| refactor            | (orchestrator)            | —                                       |
-| generic             | (orchestrator)            | —                                       |
+     `/sdd:implement` routes the task to the listed agent + skills, on the listed model tier.
+     Add stack-specific types (and their agents/skills/model) below or in "Custom routing rules".
+
+     Model = an ADVISORY cost tier for the executing session/subagent, NOT a hard switch (a slash
+     command cannot change the session model itself). Reserve `opus` for judgement-heavy REASONING
+     phases run at the session level (/sdd:spec, /sdd:clarify, /sdd:plan, /sdd:review); keep the
+     mechanical implement-phase task tiers cheap. `haiku` for trivial/mechanical work, `sonnet` for
+     normal test + implementation work. -->
+| Task type           | Specialist agent          | Skills to load                          | Model   |
+|---------------------|---------------------------|-----------------------------------------|---------|
+| contract            | (orchestrator)            | —                                       | sonnet  |
+| contract-test       | (orchestrator)            | —                                       | sonnet  |
+| unit-test           | (orchestrator)            | —                                       | sonnet  |
+| integration-test    | (orchestrator)            | —                                       | sonnet  |
+| e2e-test            | (orchestrator)            | —                                       | sonnet  |
+| implementation      | (orchestrator)            | —                                       | sonnet  |
+| refactor            | (orchestrator)            | —                                       | haiku   |
+| generic             | (orchestrator)            | —                                       | haiku   |
 
 ## Custom routing rules
 
@@ -40,11 +46,28 @@
 <!-- Add your own task types and routing rules. /sdd:tasks uses these alongside the defaults above.
 
      Example — how a React/Next.js project might specialize the generic phases (delete if N/A):
-     | Task type         | Specialist agent          | Skills to load                    |
-     |-------------------|---------------------------|-----------------------------------|
-     | ui-contract       | (orchestrator)            | design-system                     |
-     | ui-component-test | storybook-tester          | storybook-testing, design-system  |
-     | ui-component      | (orchestrator)            | design-system                     |
-     | server-action     | nextjs-backend-engineer   | server-actions, error-handling    |
+     | Task type         | Specialist agent          | Skills to load                    | Model   |
+     |-------------------|---------------------------|-----------------------------------|---------|
+     | ui-contract       | (orchestrator)            | design-system                     | sonnet  |
+     | ui-component-test | storybook-tester          | storybook-testing, design-system  | sonnet  |
+     | ui-component      | (orchestrator)            | design-system                     | sonnet  |
+     | server-action     | nextjs-backend-engineer   | server-actions, error-handling    | sonnet  |
 -->
+
+## Generated / out-of-band paths
+
+<!-- user-override -->
+<!-- Glob patterns for files that are GENERATED or otherwise not hand-authored (regenerated API
+     clients, mocks, schemas, snapshots, lockfiles). SDD's diff-consuming agents (spec-guard,
+     drift-detector, reviewer, /sdd:analyze) EXCLUDE these from any `git diff` they pull into
+     context and NEVER flag them as out-of-scope or drift. Tailor the list to your project. -->
+- `**/*.msw.ts`
+- `**/*.schemas.ts`
+- `**/*.generated.*`
+- `**/generated/**`
+- `**/__snapshots__/**`
+- `**/*.snap`
+- `**/pnpm-lock.yaml`
+- `**/package-lock.json`
+- `**/yarn.lock`
 

@@ -33,7 +33,12 @@ From the prompt you receive the path to the feature folder (`specs/<slug>/`).
 
 #### Tasks → Code
 - Tasks with `status: done`/`review` → actually committed their declared `files`
-- In the diff (`git diff main..HEAD --name-only`) there should be no files NOT covered by any task
+- In the diff there should be no files NOT covered by any task. Read the `Generated / out-of-band
+  paths` globs from `specs/capabilities.md` and **exclude** them from the diff — they are
+  regenerated artifacts, never drift:
+  ```bash
+  git diff main..HEAD --name-only -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…globs>
+  ```
 
 #### Spec → Code
 - AC in spec.md → covered by tests (check the matching files in `__tests__/` or `.test.*`)
@@ -71,6 +76,7 @@ Markdown list:
 ## Constraints
 
 - ⛔ DO NOT edit files — only report
+- ⛔ NEVER flag `Generated / out-of-band paths` (from `capabilities.md`) as drift — they are regenerated artifacts, not authored changes
 - ✅ Every drift = a concrete line / file / task ID
 - ✅ Classify: ✅ aligned / ⚠️ drift / 🔴 critical (e.g. spec says X, code does contradictory Y)
 - ✅ Suggest a fix for every drift

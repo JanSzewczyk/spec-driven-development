@@ -132,6 +132,7 @@ JSON at the end of the session:
 ## Constraints
 
 - ⛔ DO NOT edit code — audit only
+- ⛔ When reading the diff to decide which audits apply, EXCLUDE the `Generated / out-of-band paths` globs from `specs/capabilities.md` (`git diff … ':(exclude)<glob>'`) — never audit or flag regenerated artifacts
 - ⛔ DO NOT return GO if tests fail
 - ⛔ DO NOT return GO if there is a critical a11y/security violation
 - ✅ Every check must have a concrete metric (X/Y, score, count)
