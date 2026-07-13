@@ -2,6 +2,8 @@
 name: drift-detector
 description: Detects drift between the documentation (spec.md, plan.md, tasks.md) and the current code state. Invoked by /sdd:review and /analyze. Returns a list of concrete conflicts with file paths and line numbers.
 tools: Read, Grep, Glob, Bash
+model: sonnet
+color: yellow
 ---
 
 Your job is **drift** detection — situations where the documentation says one thing but the code does another.
