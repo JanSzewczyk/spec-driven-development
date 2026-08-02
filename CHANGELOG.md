@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-08-02
+
+### Added
+
+- **`drift-detector`, `spec-guard`, and `reviewer` now exclude generated/out-of-band paths from diff analysis.** Files matching the `Generated / out-of-band paths` globs declared in `specs/capabilities.md` (e.g. regenerated mocks, schemas, hook scripts written by `/sdd:doctor init`) are no longer flagged as drift or out-of-scope changes. `capabilities.md.template` gained a dedicated `Generated / out-of-band paths` section for project-specific glob declarations, and `/sdd:tasks`, `/sdd:implement`, and the lifecycle docs were updated to reflect the exclusion rule.
+- **Verification agents (`drift-detector`, `reviewer`, `spec-guard`, `ui-critic`) now declare explicit `model` and `color` frontmatter attributes**, for clearer per-agent configuration and UI distinction.
+
+### Fixed
+
+- Corrected `json` code-block language annotations in `reviewer.md`, `spec-guard.md`, and `ui-critic.md` that were rendering incorrectly.
+
 ### Changed
 
 - **The TDD model is now technology-neutral — no frontend tools are mandated by the flow.** The old "Logic → strict TDD vs UI components (React/Next.js) → contract-first TDD" dichotomy is replaced by a stack-agnostic, cost-aware criterion: **test-first is the default** (trivially stub a missing symbol so the test fails on a real assertion), and **contract-first** (contract → tests → implementation, 3 tasks) is the **narrow exception** — used only when the unit's deliverable is itself a public interface/contract other code references by shape. This biases decomposition toward fewer tasks (avoids re-inflating task count in statically-typed languages where every not-yet-built unit fails to resolve). A UI component is now *one example* of a contract-first unit, alongside typed service interfaces and API/RPC schemas — not the definition. Within a Story, phase ordering is enforced by task order, not by parsing `type` strings.
