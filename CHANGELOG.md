@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.1] — 2026-11-03
 
 ### Changed
 
 - **The plugin manifest moved to `.claude-plugin/plugin.json`**, where Claude Code reads it; `/sdd:doctor check` #3 now looks there. Both manifests open with a SchemaStore `$schema`, and `plugin.json` gained `displayName` and `keywords` for the `/plugin` browser.
+- **Versioning policy**: the version is now bumped in every change that touches the plugin (managed `CLAUDE.md` block and `plugin-checks` CI, which fails a pull request without a bump). CI uses the shared `plugin-checks` action from `claude-plugins`.
 - **Removed unread frontmatter keys** (`version`, `lastUpdated`, `tags`, `author`) from `skills/doctor/SKILL.md`.
 
 ### Added

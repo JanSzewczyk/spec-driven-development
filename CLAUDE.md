@@ -60,7 +60,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 ## Conventions
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
-- **Versioning is manual and multi-file**: a release bumps the version in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md`. Keep them in sync.
+- **Versioning is manual and multi-file**: every change to the plugin bumps the version in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md`. Keep them in sync.
 - Command/agent references in docs use the `/sdd:<command>` form.
 - Behavior lives in Markdown prompts, not code. To change what an asset does, edit its prose. Generated hook scripts (`.claude/hooks/*.sh`) must exit 0 when nothing applies and exit 2 to block.
 
@@ -99,24 +99,24 @@ Managed by `/plugin-dev-setup`; re-run it to refresh this section instead of edi
 
 Do these in the same change, without being asked. A change is unfinished until they are done.
 
-1. **Record the change, do not bump yet.** Add a user-visible change under `## [Unreleased]` in
-   `CHANGELOG.md`. The version is bumped only at release (see Releasing).
+1. **Bump the version.** Set the same new version in `.claude-plugin/plugin.json`, the `sdd` entry
+   in `.claude-plugin/marketplace.json` and the README badge, and add a matching section to
+   `CHANGELOG.md`. A pinned version keeps users on the cached copy until the string changes.
 2. **Update the docs that list capabilities by hand:** `README.md` (command/agent reference and
    File Structure), this file's Architecture and "Where to make a change" sections, and
    `CONTRIBUTING.md` when the repo layout changes.
 3. **Run `/marketplace-doctor`** and fix what it reports before committing. It checks manifests,
    docs and frontmatter against what is on disk.
+4. **Check the bump** with `/plugin-release` in plan mode: it proposes the semver size. Do not let
+   it tag.
 
 ### Releasing
 
-A release bumps the version in `.claude-plugin/plugin.json`, the `sdd` entry in
-`.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md` (rename `[Unreleased]`),
-all to the same value. Use `/plugin-release` in plan mode to size the semver bump. The repo does
-not tag releases yet; tagging publishes, so it stays a deliberate decision.
+The repo does not tag releases yet; tagging publishes, so it stays a deliberate decision.
 
 ### What runs on its own
 
 Nothing in the background. The steps above happen because this file asks for them; CI
-(`.github/workflows/plugin-checks.yml`) fails a pull request whose manifests or docs drifted.
-It does not require a version bump per PR, because versions move only at release.
+(`.github/workflows/plugin-checks.yml`) fails a pull request whose manifests or docs drifted, or
+that changed the plugin without bumping its version.
 <!-- END:plugin-dev -->
