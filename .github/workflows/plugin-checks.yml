@@ -2,7 +2,8 @@ name: plugin-checks
 
 # Added by /plugin-dev-setup. Fails a pull request whose manifests or docs drifted from the plugins
 # on disk. The per-PR version-bump check is left out: this repo bumps versions only at release.
-# The script comes from the plugin-dev release named below, so nothing is vendored here.
+# The script is pinned to a claude-plugins commit carrying plugin-dev 3.4.0 (not yet tagged;
+# plugin-dev--v3.0.0 mis-reads a `source: "./"` marketplace). Nothing is vendored here.
 
 on:
   push:
@@ -10,7 +11,7 @@ on:
   pull_request:
 
 env:
-  PLUGIN_DEV: https://raw.githubusercontent.com/JanSzewczyk/claude-plugins/plugin-dev--v3.0.0/plugins/plugin-dev/skills
+  PLUGIN_DEV: https://raw.githubusercontent.com/JanSzewczyk/claude-plugins/5fb59840500887642b82d1bdd8528970c0bd8987/plugins/plugin-dev/skills
 
 jobs:
   checks:
