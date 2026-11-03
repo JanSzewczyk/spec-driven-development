@@ -54,6 +54,7 @@ The unique contribution of this framework: **per-task routing to your existing s
 - [👋 Why SDD](#-why-sdd)
 - [✨ Features](#-features)
 - [🚀 Quick Start](#-quick-start)
+- [📦 Plugin](#-plugin)
 - [🔄 The SDD Flow](#-the-sdd-flow)
 - [🏗️ Architecture](#-architecture)
   - [🧱 Three-tier agent hierarchy](#-three-tier-agent-hierarchy)
@@ -154,6 +155,16 @@ If you want a customized copy (e.g. with org-specific routing rules in `capabili
 3. (Optional) Edit `skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
 4. Bump the `version` in `.claude-plugin/plugin.json` and tag a release.
 5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
+
+---
+
+## 📦 Plugin
+
+| Plugin | Description | Commands | Agents | Skills |
+| --- | --- | --- | --- | --- |
+| [**sdd**](./.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with TDD and per-task routing to your specialist agents | 9 | 4 | 1 |
+
+See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Reference](#-sub-agents-reference) for each one.
 
 ---
 

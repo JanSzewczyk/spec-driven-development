@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`plugin-checks` CI workflow** runs the marketplace-doctor drift check on every pull request and push to `main`.
+- **Plugin tables in `CLAUDE.md` and `README.md`**, so `marketplace-doctor` audits the listed commands, agents and skills against the plugin.
 - **Plugin development section in `CLAUDE.md`** (managed by `/plugin-dev-setup`) describing layout, per-change steps and the release procedure.
 
 ## [0.7.0] — 2026-08-02

@@ -8,6 +8,12 @@ This is **not an application** — it is a **Claude Code plugin** named `sdd` th
 
 The plugin is installed into a *target* project (`~/.claude/plugins/cache/sdd`) and operates on that project's `specs/` directory and git repo. When developing here, you are editing the plugin; to see behavior you exercise it against a separate target project.
 
+## Plugins
+
+| Plugin  | Description                                                     | Commands                                                                         | Agents                                          | Skills |
+| ------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------- | ------ |
+| **sdd** | Spec-Driven Development flow with TDD and per-task agent routing | constitution, spec, clarify, plan, tasks, implement, review, analyze, doctor | spec-guard, drift-detector, reviewer, ui-critic | doctor |
+
 ## Commands
 
 There is no `npm`/`make` and no script to run — the doctor skill is LLM-driven. To exercise
