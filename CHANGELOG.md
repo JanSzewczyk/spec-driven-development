@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The plugin manifest moved to `.claude-plugin/plugin.json`**, where Claude Code reads it; `/sdd:doctor check` #3 now looks there. Both manifests open with a SchemaStore `$schema`, and `plugin.json` gained `displayName` and `keywords` for the `/plugin` browser.
+- **Removed unread frontmatter keys** (`version`, `lastUpdated`, `tags`, `author`) from `skills/doctor/SKILL.md`.
+
+### Added
+
+- **`plugin-checks` CI workflow** runs the marketplace-doctor drift check on every pull request and push to `main`.
+- **Plugin development section in `CLAUDE.md`** (managed by `/plugin-dev-setup`) describing layout, per-change steps and the release procedure.
+
 ## [0.7.0] — 2026-08-02
 
 ### Added

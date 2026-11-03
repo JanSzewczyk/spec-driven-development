@@ -1,5 +1,7 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "sdd",
+  "displayName": "Spec-Driven Development",
   "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), TDD enforcement with contract-first UI, blocking hooks, and orchestration of your existing specialist sub-agents from the plugin marketplace.",
   "version": "0.7.0",
   "author": {
@@ -7,6 +9,14 @@
   },
   "license": "MIT",
   "homepage": "https://github.com/JanSzewczyk/spec-driven-development",
+  "keywords": [
+    "spec-driven-development",
+    "sdd",
+    "tdd",
+    "specification",
+    "workflow",
+    "agents"
+  ],
   "skills": "./skills/",
   "agents": [
     "./agents/spec-guard.md",
