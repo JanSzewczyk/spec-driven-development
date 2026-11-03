@@ -32,7 +32,7 @@ The SDD flow is a fixed pipeline of slash commands, each writing artifacts under
 /sdd:constitution → /sdd:spec → /sdd:clarify → /sdd:plan → /sdd:tasks → /sdd:implement → /sdd:review
 ```
 
-Three kinds of plugin asset, each in its own top-level dir, wired together by `plugin.json`:
+Three kinds of plugin asset, each in its own top-level dir, wired together by `.claude-plugin/plugin.json`:
 
 - **`commands/*.md`** — the 9 user-facing slash commands (`/sdd:<name>`). Each is a markdown prompt with YAML frontmatter (`description`, `argument-hint`, `allowed-tools`). The *body is the instruction set Claude executes* — editing behavior means editing prose, not code. `spec.md` creates the branch + skeleton; `implement.md` is the heart (TDD loop + per-task routing); `review.md` orchestrates the verification agents.
 
@@ -54,7 +54,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `p
 ## Conventions
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
-- **Versioning is manual and multi-file**: a release bumps the version in `plugin.json`, `.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md`. Keep them in sync.
+- **Versioning is manual and multi-file**: a release bumps the version in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md`. Keep them in sync.
 - Command/agent references in docs use the `/sdd:<command>` form.
 - Behavior lives in Markdown prompts, not code. To change what an asset does, edit its prose. Generated hook scripts (`.claude/hooks/*.sh`) must exit 0 when nothing applies and exit 2 to block.
 
@@ -68,3 +68,49 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `p
 | A doctor readiness check | edit the `check` procedure in `skills/doctor/SKILL.md` |
 | The settings.json merge behavior | `skills/doctor/reference/settings-merge.md` |
 | Files seeded into target projects | `skills/doctor/templates/` |
+
+<!-- BEGIN:plugin-dev -->
+## Plugin development
+
+Managed by `/plugin-dev-setup`; re-run it to refresh this section instead of editing it here.
+
+### Where things live
+
+- Single plugin `sdd` at the repo root, listed in its own marketplace: manifest
+  `.claude-plugin/plugin.json`, marketplace `.claude-plugin/marketplace.json` (entry `sdd`,
+  `source: "./"`). Components (`commands/`, `agents/`, `skills/`) sit at the repo root.
+
+- The manifest is `.claude-plugin/plugin.json`. `skills/`, `agents/`, `commands/` and every
+  other component sit at the plugin root, never inside `.claude-plugin/`.
+- A new **plugin** is registered in `.claude-plugin/marketplace.json`. A new skill or agent inside
+  an existing plugin is not.
+- `plugin.json` sets an explicit `agents` array, which replaces the default `agents/` scan: a new
+  agent file must be added to that array or it never loads.
+- Every manifest opens with `$schema`: `https://www.schemastore.org/claude-code-plugin-manifest.json`
+  for a plugin, `https://www.schemastore.org/claude-code-marketplace.json` for the marketplace.
+
+### After every change to a plugin
+
+Do these in the same change, without being asked. A change is unfinished until they are done.
+
+1. **Record the change, do not bump yet.** Add a user-visible change under `## [Unreleased]` in
+   `CHANGELOG.md`. The version is bumped only at release (see Releasing).
+2. **Update the docs that list capabilities by hand:** `README.md` (command/agent reference and
+   File Structure), this file's Architecture and "Where to make a change" sections, and
+   `CONTRIBUTING.md` when the repo layout changes.
+3. **Run `/marketplace-doctor`** and fix what it reports before committing. It checks manifests,
+   docs and frontmatter against what is on disk.
+
+### Releasing
+
+A release bumps the version in `.claude-plugin/plugin.json`, the `sdd` entry in
+`.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md` (rename `[Unreleased]`),
+all to the same value. Use `/plugin-release` in plan mode to size the semver bump. The repo does
+not tag releases yet; tagging publishes, so it stays a deliberate decision.
+
+### What runs on its own
+
+Nothing in the background. The steps above happen because this file asks for them; CI
+(`.github/workflows/plugin-checks.yml`) fails a pull request whose manifests or docs drifted.
+It does not require a version bump per PR, because versions move only at release.
+<!-- END:plugin-dev -->

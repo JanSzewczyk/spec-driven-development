@@ -1,10 +1,6 @@
 ---
 name: doctor
-version: 0.7.0
-lastUpdated: 2026-08-02
 description: Preflight audit and setup of project readiness for the SDD framework. Runs 10 checks (specs/constitution.md, specs/template.md, plugin installed + enabled across user/project/local settings, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode creates the per-project artifacts (constitution, specs/template.md, capabilities.md, stack-specific hook scripts, settings.json hook entries) directly with file tools — no helper scripts. The root `CLAUDE.md` is user-owned and never read or modified by this skill. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
-tags: [sdd, spec-driven-development, tdd, claude-code, plugin]
-author: Jan Szewczyk
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task
 ---
 
@@ -50,7 +46,7 @@ Read/Glob/Grep/Bash to inspect, then assign `pass` ✅ / `warn` ⚠️ / `fail` 
    Run/build, Conventions, WHAT NOT TO DO). Missing file → fail; present but missing sections → warn.
 2. **`specs/template.md`** — exists with all required fields: Summary, User stories,
    Acceptance criteria, Edge cases, Open questions, Testing guidelines. Missing → fail; partial → warn.
-3. **Plugin installed** — `${CLAUDE_PLUGIN_ROOT}/plugin.json` (fallback `$HOME/.claude/plugins/cache/sdd/plugin.json`)
+3. **Plugin installed** — `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (fallback `$HOME/.claude/plugins/cache/sdd/.claude-plugin/plugin.json`)
    is readable and its `name` is `sdd`. Report `name@version`.
 4. **Plugin enabled** — `sdd` appears under `enabledPlugins` (or `plugins`) in **any** of three
    layers: `~/.claude/settings.json` (user), `<project>/.claude/settings.json` (project),

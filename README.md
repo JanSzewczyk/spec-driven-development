@@ -81,6 +81,14 @@ The unique contribution of this framework: **per-task routing to your existing s
 
 ### 1. Install the plugin (one-time, per machine)
 
+Inside Claude Code (2.1.275 or later):
+
+```
+/plugin install sdd --marketplace JanSzewczyk/spec-driven-development
+```
+
+Or from the shell:
+
 ```bash
 claude plugin install https://github.com/JanSzewczyk/spec-driven-development
 ```
@@ -141,10 +149,10 @@ What `init` does:
 
 If you want a customized copy (e.g. with org-specific routing rules in `capabilities.md.template`):
 
-1. Fork this repo to your GitHub org and update the `homepage` field in `plugin.json`.
+1. Fork this repo to your GitHub org and update the `homepage` field in `.claude-plugin/plugin.json`.
 2. (Optional) Edit `skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
 3. (Optional) Edit `skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
-4. Bump the `version` in `plugin.json` and tag a release.
+4. Bump the `version` in `.claude-plugin/plugin.json` and tag a release.
 5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
 
 ---
@@ -772,7 +780,9 @@ your-project/
 
 ```text
 spec-driven-development/                    # or your own forked plugin path
-├── plugin.json                            # manifest
+├── .claude-plugin/
+│   ├── plugin.json                        # plugin manifest
+│   └── marketplace.json                   # marketplace entry
 ├── README.md / LICENSE / CHANGELOG.md / CONTRIBUTING.md / .github/
 ├── skills/
 │   └── doctor/                            # LLM-driven skill — no Python helpers
