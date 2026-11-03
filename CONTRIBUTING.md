@@ -80,8 +80,8 @@ plugin and exercise the real skill against a target project, then verify the art
 - [ ] All affected `.md` / `.sh` files reviewed for stale references via the grep above.
 - [ ] Doctor exercised against a fresh project: `/sdd:doctor check` → `init` → `check`, artifacts verified by hand and idempotency confirmed.
 - [ ] If a new command / agent / hook was added, the README's File Structure and reference sections reflect it.
-- [ ] `CHANGELOG.md` entry added under `[Unreleased]`.
-- [ ] `.claude-plugin/plugin.json` `version` bumped if there is a user-visible change.
+- [ ] `CHANGELOG.md` section added for the new version.
+- [ ] `.claude-plugin/plugin.json` `version` bumped (same value in `marketplace.json` and the README badge).
 
 ## Reporting issues
 

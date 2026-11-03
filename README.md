@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.1-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -924,7 +924,7 @@ In short:
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
 2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `skills/doctor/templates/`, `skills/doctor/reference/`, or the per-tool blocks in `skills/doctor/templates/hooks/*.sh.template`)
 3. Exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
-4. Update the README's File Structure / reference sections and add a `CHANGELOG.md` entry under `[Unreleased]`
+4. Update the README's File Structure / reference sections and bump the version (`plugin.json`, `marketplace.json`, README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request
 
 ---

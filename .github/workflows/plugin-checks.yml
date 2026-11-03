@@ -1,17 +1,13 @@
 name: plugin-checks
 
 # Added by /plugin-dev-setup. Fails a pull request whose manifests or docs drifted from the plugins
-# on disk. The per-PR version-bump check is left out: this repo bumps versions only at release.
-# The script is pinned to a claude-plugins commit carrying plugin-dev 3.4.0 (not yet tagged;
-# plugin-dev--v3.0.0 mis-reads a `source: "./"` marketplace). Nothing is vendored here.
+# on disk, or that changed a plugin without bumping its version.
+# The checks come from the shared action on claude-plugins `main`, so nothing is vendored here.
 
 on:
   push:
     branches: [main]
   pull_request:
-
-env:
-  PLUGIN_DEV: https://raw.githubusercontent.com/JanSzewczyk/claude-plugins/5fb59840500887642b82d1bdd8528970c0bd8987/plugins/plugin-dev/skills
 
 jobs:
   checks:
@@ -21,20 +17,4 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 26
-
-      - name: Fetch the plugin-dev scripts
-        run: |
-          mkdir -p "$RUNNER_TEMP/plugin-dev"
-          curl -fsSL "$PLUGIN_DEV/marketplace-doctor/scripts/check-marketplace.mjs" -o "$RUNNER_TEMP/plugin-dev/check-marketplace.mjs"
-
-      # The native `claude plugin validate` pass needs the CLI; without it the doctor skips that part.
-      - name: Install Claude Code
-        continue-on-error: true
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Manifests and documentation agree
-        run: node "$RUNNER_TEMP/plugin-dev/check-marketplace.mjs" .
-
+      - uses: JanSzewczyk/claude-plugins/.github/actions/plugin-checks@main
