@@ -6,9 +6,10 @@ import { dotsSvg, progressSvg, stepperSvg } from './svg.ts'
 export type Actions = {
   tab: (t: 'current' | 'all') => void
   fill: (text: string) => void
+  run: (command: string, args: string) => void
   pin: (slug: string) => void
   toggle: (storyId: string) => void
-  doc: (kind: string | null) => void
+  doc: (kind: string) => void
   filter: (v: string) => void
 }
 
@@ -21,7 +22,6 @@ export type Ctx = {
   branch: string
   running: string | null
   expanded: Record<string, boolean>
-  doc: { kind: string; text: string } | null
   filter: string
   hasSpecs: boolean
   now: number
@@ -41,6 +41,17 @@ function chip(el: any, status: string, label?: string) {
   const { Text } = el
   const key = status in TEXT_COLOR ? status : 'draft'
   return Text({ color: TEXT_COLOR[key], weight: 'semibold', children: [' ' + (label ?? status) + ' '] })
+}
+
+// Status badge: a small bordered pill on Desktop/VS Code, a plain colored label in the terminal.
+function badge(el: any, ctx: Ctx, status: string) {
+  const { Box, Text } = el
+  const key = status in TEXT_COLOR ? status : 'draft'
+  if (!rich(ctx.surface)) return chip(el, status)
+  return Box({
+    borderStyle: 'round', borderColor: TEXT_COLOR[key], paddingX: 1,
+    children: [Text({ color: TEXT_COLOR[key], weight: 'semibold', children: [status] })],
+  })
 }
 
 function tabBar(el: any, ctx: Ctx) {
@@ -95,6 +106,11 @@ function nextCard(el: any, ctx: Ctx, f: Feature) {
   })
 }
 
+function specFacts(f: Feature): string {
+  const s = f.spec
+  return ['AC ' + s.acDone + '/' + s.acTotal, s.openQuestions ? s.openQuestions + ' open question(s)' : 'no open questions'].join(' · ')
+}
+
 function progress(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Svg } = el
   const c = taskCounts(f.stories)
@@ -108,9 +124,6 @@ function progress(el: any, ctx: Ctx, f: Feature) {
         : Text({ color: 'green', children: [bar(done, c.total, ctx.cols - 12)] }),
     )
   }
-  const s = f.spec
-  const facts = ['AC ' + s.acDone + '/' + s.acTotal, s.openQuestions ? s.openQuestions + ' open question(s)' : 'no open questions']
-  rows.push(Text({ dimColor: true, children: [facts.join(' · ')] }))
   return Box({ flexDirection: 'column', rowGap: 1, children: rows })
 }
 
@@ -154,56 +167,99 @@ function docSwitch(el: any, ctx: Ctx, f: Feature) {
   return Box({
     flexDirection: 'row', columnGap: 2,
     children: [
-      Text({ dimColor: true, children: ['Open:'] }),
-      ...kinds.map((k) =>
-        Button({ key: 'doc-' + k, label: k, plain: true, dimColor: ctx.doc?.kind !== k, onPress: () => ctx.actions.doc(ctx.doc?.kind === k ? null : k) }),
-      ),
+      Text({ dimColor: true, children: ['Open in a new tab:'] }),
+      ...kinds.map((k) => Button({ key: 'doc-' + k, label: k, plain: true, onPress: () => ctx.actions.doc(k) })),
+    ],
+  })
+}
+
+function startCard(el: any, ctx: Ctx, title: string, body: string) {
+  const { Box, Text, Button } = el
+  return Box({
+    borderStyle: 'round', padding: 'md', flexDirection: 'column', rowGap: 1,
+    children: [
+      Text({ weight: 'semibold', children: [title] }),
+      Text({ dimColor: true, wrap: 'wrap', children: [body] }),
+      Button({ key: 'fill-empty', label: 'Start a new spec', variant: 'primary', onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
     ],
   })
 }
 
 function emptyState(el: any, ctx: Ctx) {
   const { Box, Text, Button } = el
-  const missing = !ctx.hasSpecs
-  const cmd = missing ? '/sdd:doctor init' : '/sdd:spec feat '
+  if (!ctx.hasSpecs) {
+    return Box({
+      borderStyle: 'round', padding: 'md', flexDirection: 'column', rowGap: 1,
+      children: [
+        Text({ weight: 'semibold', children: ['SDD is not set up in this project'] }),
+        Text({ dimColor: true, wrap: 'wrap', children: ['We could not find an SDD configuration here (no specs/ folder). To use Spec-Driven Development in this project, click the button: it runs the setup in this session and creates specs/, the constitution and the project hooks.'] }),
+        Button({ key: 'init-sdd', label: 'Init SDD in this project', variant: 'primary', onPress: () => ctx.actions.run('sdd:doctor', 'init') }),
+      ],
+    })
+  }
+  if (ctx.features.length === 0) return startCard(el, ctx, 'No features yet', 'Start with a spec: describe the feature in a few words and the flow takes it from there.')
+  return startCard(el, ctx, 'Nothing in progress', 'All your features are finished. Want to build something new? Start a new spec for the next feature or piece of functionality.')
+}
+
+function doneCard(el: any, ctx: Ctx) {
+  const { Box, Text, Button } = el
   return Box({
-    borderStyle: 'round', padding: 'md', flexDirection: 'column', rowGap: 1,
+    borderStyle: 'round', borderColor: 'green', padding: 'md', flexDirection: 'column', rowGap: 1,
     children: [
-      Text({ weight: 'semibold', children: [missing ? 'This project has no SDD setup yet' : 'No features yet'] }),
-      Text({ dimColor: true, wrap: 'wrap', children: [missing ? 'Run the doctor to create specs/, the constitution and the project hooks.' : 'Start with a spec: describe the feature in a few words.'] }),
-      Button({ key: 'fill-empty', label: 'Put ' + cmd.trim() + ' in prompt', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),
+      Text({ color: 'green', weight: 'semibold', children: ['✓ Feature done'] }),
+      Text({ dimColor: true, wrap: 'wrap', children: ['Review passed. Open the pull request when you are ready, or start the next feature.'] }),
+      Button({ key: 'fill-empty', label: 'Start a new spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
     ],
   })
 }
 
+// What each phase shows below the header (everything else stays hidden until it matters):
+//   clarify, plan, tasks -> next step, spec facts (acceptance criteria, open questions)
+//   implement            -> next step, task progress, stories (first open one expanded)
+//   review               -> next step, task progress, review verdict, stories
+//   done                 -> "Feature done" card above the stepper, nothing else
 export function renderCurrent(el: any, ctx: Ctx) {
-  const { Box, Text, Markdown } = el
+  const { Box, Text } = el
   const f = ctx.current
   if (!f) return emptyState(el, ctx)
   const d = derive(f)
+  const done = d.phase === 'done'
   const warn = warnings(f, ctx.branch)
   const kids: any[] = [
     Box({
-      flexDirection: 'column',
+      flexDirection: 'column', rowGap: 1,
       children: [
-        Text({ size: 'title', weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }),
-        Box({ flexDirection: 'row', columnGap: 1, children: [chip(el, f.spec.status || 'draft'), Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.spec.branch || f.slug] })] }),
+        Text({ size: 'title', weight: 'semibold', wrap: 'wrap', children: [f.spec.title || f.slug] }),
+        Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [badge(el, ctx, done ? 'done' : f.spec.status || 'draft'), Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.spec.branch || f.slug] })] }),
         Text({ dimColor: true, children: [[f.spec.type, f.spec.owner, ago(f.modified, ctx.now)].filter(Boolean).join(' · ')] }),
       ],
     }),
   ]
   if (ctx.running) kids.push(Text({ color: 'yellow', children: ['⟳ ' + ctx.running + ' running…'] }))
+  if (done) kids.push(doneCard(el, ctx))
   kids.push(stepper(el, ctx, f))
-  kids.push(nextCard(el, ctx, f))
-  kids.push(progress(el, ctx, f))
-  if (f.review) kids.push(Text({ color: f.review === 'GO' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review] }))
+  if (!done) kids.push(nextCard(el, ctx, f))
+  if (d.phase === 'implement' || d.phase === 'review') kids.push(progress(el, ctx, f))
+  else if (!done) kids.push(Text({ dimColor: true, children: [specFacts(f)] }))
+  if (!done && f.review) kids.push(Text({ color: f.review === 'GO' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review] }))
   for (const w of warn) kids.push(Text({ color: 'red', wrap: 'wrap', children: ['⚠ ' + w] }))
-  const st = stories(el, ctx, f)
-  if (st) kids.push(st)
+  if (d.phase === 'implement' || d.phase === 'review') {
+    const st = stories(el, ctx, f)
+    if (st) kids.push(st)
+  }
   kids.push(docSwitch(el, ctx, f))
-  if (ctx.doc) kids.push(Markdown({ key: 'doc-body', text: ctx.doc.text.slice(0, 12000) }))
-  void d
   return Box({ flexDirection: 'column', rowGap: 1, children: kids })
+}
+
+export function renderDoc(el: any, doc: { slug: string; kind: string; text: string | null }) {
+  const { Box, Text, Markdown } = el
+  return Box({
+    flexDirection: 'column', rowGap: 1, padding: 'sm',
+    children: [
+      Text({ dimColor: true, mono: true, children: ['specs/' + doc.slug + '/' + doc.kind + '.md'] }),
+      doc.text === null ? Text({ dimColor: true, children: ['This file does not exist (any more).'] }) : Markdown({ key: 'doc-body', text: doc.text }),
+    ],
+  })
 }
 
 export function renderAll(el: any, ctx: Ctx) {
@@ -220,7 +276,7 @@ export function renderAll(el: any, ctx: Ctx) {
     return Box({
       borderStyle: 'round', borderColor: isCurrent ? 'yellow' : undefined, paddingX: 1, flexDirection: 'column',
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }), chip(el, f.spec.status || 'draft')] }),
+        Box({ flexDirection: 'row', columnGap: 1, children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }), chip(el, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
         Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.slug] }),
         rich(ctx.surface)
           ? el.Svg({ alt: 'Phase: ' + d.phase, width: d.steps.length * 16, height: 12, source: dotsSvg(d.steps) })
@@ -245,6 +301,8 @@ export function renderAll(el: any, ctx: Ctx) {
 
 export function renderPane(el: any, ctx: Ctx) {
   const { Box, Text } = el
+  // No specs/ folder: the tabs have nothing to show, so only the setup card is drawn.
+  if (!ctx.hasSpecs) return Box({ flexDirection: 'column', padding: 'sm', children: [emptyState(el, ctx)] })
   return Box({
     flexDirection: 'column', rowGap: 1, padding: 'sm',
     children: [tabBar(el, ctx), Text({ children: [' '] }), ctx.tab === 'current' ? renderCurrent(el, ctx) : renderAll(el, ctx)],
