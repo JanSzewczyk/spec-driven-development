@@ -3,9 +3,11 @@
   "name": "sdd-board",
   "displayName": "SDD Board",
   "description": "Side panel for Claude Code Desktop that shows where each Spec-Driven Development feature stands: current spec with its pipeline phase and tasks, plus an overview of all specs. Companion to the sdd plugin.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
-    "name": "Jan Szewczyk"
+    "name": "Szum Tech Team",
+    "email": "szum.tech@gmail.com",
+    "url": "https://github.com/JanSzewczyk"
   },
   "license": "MIT",
   "homepage": "https://github.com/JanSzewczyk/spec-driven-development",
