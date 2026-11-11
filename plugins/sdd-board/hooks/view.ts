@@ -275,7 +275,7 @@ export function renderAll(el: any, ctx: Ctx) {
     const c = taskCounts(f.stories)
     const isCurrent = ctx.current?.slug === f.slug
     return Box({
-      borderStyle: 'round', borderColor: isCurrent ? 'yellow' : undefined, paddingX: 1, flexDirection: 'column',
+      borderStyle: 'round', borderColor: isCurrent ? 'blue' : undefined, paddingX: 1, flexDirection: 'column',
       children: [
         Box({ flexDirection: 'row', columnGap: 1, children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }), chip(el, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
         Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.slug] }),
@@ -283,7 +283,7 @@ export function renderAll(el: any, ctx: Ctx) {
           ? el.Svg({ alt: 'Phase: ' + d.phase, width: d.steps.length * 16, height: 12, source: dotsSvg(d.steps) })
           : Text({ children: [d.steps.map((s) => (s.state === 'done' ? '●' : s.state === 'current' ? '◉' : '○')).join(' ')] }),
         Text({ dimColor: true, children: [(d.phase === 'done' ? 'done' : 'phase: ' + (STEP_LABELS.find((s) => s[0] === d.phase)?.[1] ?? d.phase)) + (c.total ? ' · ' + (c.done + c.review) + '/' + c.total + ' tasks' : '') + (f.modified ? ' · ' + ago(f.modified, ctx.now) : '')] }),
-        Button({ key: 'show-' + f.slug, label: isCurrent ? 'Showing' : 'Show', plain: true, dimColor: isCurrent, onPress: () => ctx.actions.pin(f.slug) }),
+        Button({ key: 'show-' + f.slug, label: isCurrent ? '● Showing' : 'Show', plain: true, dimColor: isCurrent, onPress: () => ctx.actions.pin(f.slug) }),
       ],
     })
   })
