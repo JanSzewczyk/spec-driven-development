@@ -8,6 +8,7 @@ on:
   push:
     branches: [main]
   pull_request:
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -38,3 +39,27 @@ jobs:
       - name: Check every changed plugin has a version bump 🏷️
         uses: JanSzewczyk/claude-plugins/.github/actions/version-bump-check@main
         # Inputs: strict (also fail a bump that is too small), ignore-plugins, base-ref, path.
+
+  plugins-cli:
+    name: Plugins in the CLI 🔌
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check every plugin loads 🔌
+        uses: JanSzewczyk/claude-plugins/.github/actions/plugin-load-check@main
+      - name: Check every plugin installs from the marketplace 📦
+        uses: JanSzewczyk/claude-plugins/.github/actions/plugin-install-check@main
+      - name: Check the always-on token budget ⚖️
+        uses: JanSzewczyk/claude-plugins/.github/actions/plugin-budget-check@main
+        # Inputs: api-key (counted instead of estimated tokens), budget-warn, budget-fail.
+
+  skills:
+    name: Skill Audit 🔎
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Audit every skill 🔎
+        uses: JanSzewczyk/claude-plugins/.github/actions/skill-audit@main
+        # Inputs: path, skills-glob (default plugins/*/skills/*/).
