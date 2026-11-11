@@ -1,0 +1,19 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "sdd-board",
+  "displayName": "SDD Board",
+  "description": "Side panel for Claude Code Desktop that shows where each Spec-Driven Development feature stands: current spec with its pipeline phase and tasks, plus an overview of all specs. Companion to the sdd plugin.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jan Szewczyk"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/JanSzewczyk/spec-driven-development",
+  "keywords": [
+    "spec-driven-development",
+    "sdd",
+    "mod",
+    "panel",
+    "dashboard"
+  ]
+}
