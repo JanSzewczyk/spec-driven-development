@@ -66,7 +66,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 ## Conventions
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
-- **Versioning is manual and multi-file**: every change to a plugin bumps its version in `plugins/<name>/.claude-plugin/plugin.json`, its entry in `.claude-plugin/marketplace.json`, and `CHANGELOG.md`; for `sdd` also the README badge. Keep them in sync.
+- **Versioning is manual and multi-file**: a bump (only when the user asks, see Versions below) touches `plugins/<name>/.claude-plugin/plugin.json`, its entry in `.claude-plugin/marketplace.json`, and `CHANGELOG.md`; for `sdd` also the README badge. Keep them in sync.
 - Command/agent references in docs use the `/sdd:<command>` form.
 - Behavior lives in Markdown prompts, not code. To change what an asset does, edit its prose. Generated hook scripts (`.claude/hooks/*.sh`) must exit 0 when nothing applies and exit 2 to block.
 
@@ -102,20 +102,24 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 - Every manifest opens with `$schema`: `https://www.schemastore.org/claude-code-plugin-manifest.json`
   for a plugin, `https://www.schemastore.org/claude-code-marketplace.json` for the marketplace.
 
-### After every change to a plugin
+### After a change to a plugin
 
-Do these in the same change, without being asked. A change is unfinished until they are done.
-
-1. **Bump the version.** Both plugins pin `version`. Set the same new version in the changed plugin's
-   `plugin.json`, its entry in `.claude-plugin/marketplace.json`, and (for `sdd`) the README badge,
-   and add a matching section to `CHANGELOG.md`. A pinned version keeps users on the cached copy
-   until the string changes.
-2. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure),
+1. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure),
    `plugins/sdd-board/README.md`, the Plugins table and Architecture sections of this file, and
    `CONTRIBUTING.md` when the repo layout changes.
-3. **Run `/marketplace-creator audit`** and fix what it reports before committing. It checks manifests,
+2. **Run `/marketplace-creator audit`** and fix what it reports before committing. It checks manifests,
    docs and frontmatter against what is on disk.
-4. **Check the bump** with `/plugin-release` in plan mode: it proposes the semver size per plugin. Do not let it tag.
+
+### Versions
+
+Plugins pin `version`, so users stay on the cached copy until it changes; semver sizes are in
+`/plugin-release`. A bump touches the changed plugin's `plugin.json`, its entry in
+`.claude-plugin/marketplace.json`, `CHANGELOG.md` and, for `sdd`, the README badge.
+
+**Never bump a version on your own.** Editing a skill or an agent is not a request to bump: change
+a `version` only when the user asks for it in this conversation, and then through `/plugin-release`,
+which proposes the size from the diff and writes nothing until the user agrees. A pull request that
+changed a plugin and left its version alone is caught by CI, not by a standing instruction.
 
 ### Releasing
 
