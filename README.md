@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-0.7.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.2-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -54,7 +54,7 @@ The unique contribution of this framework: **per-task routing to your existing s
 - [👋 Why SDD](#-why-sdd)
 - [✨ Features](#-features)
 - [🚀 Quick Start](#-quick-start)
-- [📦 Plugin](#-plugin)
+- [📦 Plugins](#-plugins)
 - [🔄 The SDD Flow](#-the-sdd-flow)
 - [🏗️ Architecture](#-architecture)
   - [🧱 Three-tier agent hierarchy](#-three-tier-agent-hierarchy)
@@ -151,20 +151,36 @@ What `init` does:
 If you want a customized copy (e.g. with org-specific routing rules in `capabilities.md.template`):
 
 1. Fork this repo to your GitHub org and update the `homepage` field in `.claude-plugin/plugin.json`.
-2. (Optional) Edit `skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
-3. (Optional) Edit `skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
+2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
+3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
 4. Bump the `version` in `.claude-plugin/plugin.json` and tag a release.
 5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
 
 ---
 
-## 📦 Plugin
+## 📦 Plugins
 
 | Plugin | Description | Commands | Agents | Skills |
 | --- | --- | --- | --- | --- |
-| [**sdd**](./.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with TDD and per-task routing to your specialist agents | 9 | 4 | 1 |
+| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with TDD and per-task routing to your specialist agents | 9 | 4 | 1 |
+| [**sdd-board**](./plugins/sdd-board/.claude-plugin/plugin.json) | Claude Code Desktop side panel (a mod): current spec with phase, next command and tasks, plus an overview of all specs | | | |
 
 See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Reference](#-sub-agents-reference) for each one.
+
+### sdd-board — SDD panel for Claude Code Desktop
+
+An optional companion mod (needs Claude Code 2.1.287+). It docks a panel beside the transcript that reads your project's `specs/` folder, so you can see where each feature stands without opening the markdown files:
+
+- **Current** tab — the active spec (from the git branch, or the one you pinned): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, Stories with their tasks, and a viewer for `spec` / `plan` / `tasks` / `review`.
+- **All** tab — every spec with its phase and task progress, filterable; **Show** pins one as current.
+- Refreshes by itself: after Claude writes a file under `specs/`, after each turn, and on a 4 s poll for edits made elsewhere. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
+
+```
+/plugin install sdd-board@spec-driven-development
+/sdd-board        # open or focus the panel (it also opens by itself when the project has specs/)
+```
+
+Try it from a checkout without installing: `claude --plugin-dir plugins/sdd-board`.
 
 ---
 
@@ -787,37 +803,43 @@ your-project/
 
 > **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md`, SDD-tagged hook entries inside `.claude/settings.json`, and (if missing) the generated `.claude/hooks/typecheck.sh` + `.claude/hooks/lint.sh`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md`, any non-SDD keys in `.claude/settings.json`, and any hook script that already exists — is owned by you and is never modified.
 
-### In the plugin (installed once per machine)
+### In the repository (installed once per machine)
 
 ```text
 spec-driven-development/                    # or your own forked plugin path
 ├── .claude-plugin/
-│   ├── plugin.json                        # plugin manifest
-│   └── marketplace.json                   # marketplace entry
+│   └── marketplace.json                   # marketplace: sdd + sdd-board
 ├── README.md / LICENSE / CHANGELOG.md / CONTRIBUTING.md / .github/
-├── skills/
-│   └── doctor/                            # LLM-driven skill — no Python helpers
-│       ├── SKILL.md                       # the full procedure for `check` + `init`
-│       ├── reference/
-│       │   └── settings-merge.md          # mechanical safe-merge procedure for settings.json
-│       └── templates/                     # bundled seed files read by `init`
-│           ├── constitution.md.template   # long-form project constitution
-│           ├── capabilities.md.template   # auto-generated + user-override hybrid
-│           ├── specs/template.md          # base for new feature specs
-│           └── hooks/                     # per-tool shell snippets composed into project hooks
-│               ├── typecheck.sh.template
-│               └── lint.sh.template
-│       # settings.json is NOT a template — init builds hook entries from detected
-│       # tools and safely merges them into any existing file.
-├── commands/                              # 9 slash commands (auto-discovered)
-│   ├── doctor.md
-│   ├── constitution.md / spec.md / clarify.md / plan.md
-│   └── tasks.md / implement.md / review.md / analyze.md
-└── agents/                                # 4 verification sub-agents
-    ├── spec-guard.md
-    ├── drift-detector.md
-    ├── reviewer.md
-    └── ui-critic.md                       # optional — needs browser MCP
+└── plugins/
+    ├── sdd-board/                         # Desktop side panel (mod)
+    │   ├── .claude-plugin/plugin.json
+    │   ├── hooks/                         # hooks.json + register.ts (hooks), parse/model/view/svg (pure modules)
+    │   └── tests/                         # run with `claude plugin test`
+    └── sdd/                               # the SDD plugin
+        ├── .claude-plugin/plugin.json     # plugin manifest
+        ├── skills/
+        │   └── doctor/                    # LLM-driven skill — no Python helpers
+        │       ├── SKILL.md               # the full procedure for `check` + `init`
+        │       ├── reference/
+        │       │   └── settings-merge.md  # mechanical safe-merge procedure for settings.json
+        │       └── templates/             # bundled seed files read by `init`
+        │           ├── constitution.md.template   # long-form project constitution
+        │           ├── capabilities.md.template   # auto-generated + user-override hybrid
+        │           ├── specs/template.md          # base for new feature specs
+        │           └── hooks/                     # per-tool shell snippets composed into project hooks
+        │               ├── typecheck.sh.template
+        │               └── lint.sh.template
+        │       # settings.json is NOT a template — init builds hook entries from detected
+        │       # tools and safely merges them into any existing file.
+        ├── commands/                      # 9 slash commands (auto-discovered)
+        │   ├── doctor.md
+        │   ├── constitution.md / spec.md / clarify.md / plan.md
+        │   └── tasks.md / implement.md / review.md / analyze.md
+        └── agents/                        # 4 verification sub-agents
+            ├── spec-guard.md
+            ├── drift-detector.md
+            ├── reviewer.md
+            └── ui-critic.md               # optional — needs browser MCP
 ```
 
 > **No `hooks/` in the plugin.** Hook scripts are technology-specific and are generated per-project by `/sdd:doctor init` under `<project>/.claude/hooks/`. The plugin only carries the per-tool shell snippets (`templates/hooks/`) that doctor composes into those scripts, keeping only the blocks for the tools your project actually has.
@@ -922,7 +944,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 In short:
 
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
-2. Make changes inside the plugin (`commands/`, `agents/`, `skills/`, `skills/doctor/templates/`, `skills/doctor/reference/`, or the per-tool blocks in `skills/doctor/templates/hooks/*.sh.template`)
+2. Make changes inside the plugin (`plugins/sdd/commands/`, `plugins/sdd/agents/`, `plugins/sdd/skills/`, `plugins/sdd/skills/doctor/templates/`, `plugins/sdd/skills/doctor/reference/`, or the per-tool blocks in `plugins/sdd/skills/doctor/templates/hooks/*.sh.template`)
 3. Exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and bump the version (`plugin.json`, `marketplace.json`, README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request

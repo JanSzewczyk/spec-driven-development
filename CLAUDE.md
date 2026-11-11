@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-This is **not an application** — it is a **Claude Code plugin** named `sdd` that ships the Spec-Driven Development framework. It contains slash commands, sub-agents, and a setup skill, all consumed by Claude Code itself. Blocking hooks (typecheck / lint) are NOT shipped by the plugin — they're generated per-project by `/sdd:doctor init` into `<target>/.claude/hooks/`. There is no build step and **no runtime code**: every asset is a Markdown prompt that Claude executes. The doctor skill, once script-based, is now fully **LLM-driven** — Claude performs the checks and file operations itself (see Architecture).
+This is **not an application** — it is a plugin marketplace with two plugins under `plugins/`: **`sdd`** (below) and **`sdd-board`**, a Claude Code mod that docks an SDD status panel in Claude Code Desktop (hooks module `plugins/sdd-board/hooks/register.ts`, pure parsers/model/views in the sibling files, tests in `plugins/sdd-board/tests/`; run `cd plugins/sdd-board && claude plugin test`). The rest of this file describes `sdd`, whose paths are relative to `plugins/sdd/`.
+
+`sdd` is a **Claude Code plugin** that ships the Spec-Driven Development framework. It contains slash commands, sub-agents, and a setup skill, all consumed by Claude Code itself. Blocking hooks (typecheck / lint) are NOT shipped by the plugin — they're generated per-project by `/sdd:doctor init` into `<target>/.claude/hooks/`. There is no build step and **no runtime code**: every asset is a Markdown prompt that Claude executes. The doctor skill, once script-based, is now fully **LLM-driven** — Claude performs the checks and file operations itself (see Architecture).
 
 The plugin is installed into a *target* project (`~/.claude/plugins/cache/sdd`) and operates on that project's `specs/` directory and git repo. When developing here, you are editing the plugin; to see behavior you exercise it against a separate target project.
 
@@ -13,6 +15,7 @@ The plugin is installed into a *target* project (`~/.claude/plugins/cache/sdd`) 
 | Plugin  | Description                                                     | Commands                                                                         | Agents                                          | Skills |
 | ------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------- | ------ |
 | **sdd** | Spec-Driven Development flow with TDD and per-task agent routing | constitution, spec, clarify, plan, tasks, implement, review, analyze, doctor | spec-guard, drift-detector, reviewer, ui-critic | doctor |
+| **sdd-board** | Claude Code Desktop side panel: current spec with phase, next command and tasks, plus all specs (a mod: hooks module, no commands/agents/skills) | | | |
 
 ## Commands
 
@@ -82,15 +85,16 @@ Managed by `/plugin-dev-setup`; re-run it to refresh this section instead of edi
 
 ### Where things live
 
-- Single plugin `sdd` at the repo root, listed in its own marketplace: manifest
-  `.claude-plugin/plugin.json`, marketplace `.claude-plugin/marketplace.json` (entry `sdd`,
-  `source: "./"`). Components (`commands/`, `agents/`, `skills/`) sit at the repo root.
+- Two plugins under `plugins/`, listed in one marketplace `.claude-plugin/marketplace.json`
+  (entries `sdd` → `./plugins/sdd`, `sdd-board` → `./plugins/sdd-board`). Each has its own
+  `.claude-plugin/plugin.json`; `sdd` keeps `commands/`, `agents/`, `skills/` at its root,
+  `sdd-board` keeps `hooks/` (hooks module) and `tests/`.
 
-- The manifest is `.claude-plugin/plugin.json`. `skills/`, `agents/`, `commands/` and every
+- Each manifest is `<plugin>/.claude-plugin/plugin.json`. `skills/`, `agents/`, `commands/` and every
   other component sit at the plugin root, never inside `.claude-plugin/`.
 - A new **plugin** is registered in `.claude-plugin/marketplace.json`. A new skill or agent inside
   an existing plugin is not.
-- `plugin.json` sets an explicit `agents` array, which replaces the default `agents/` scan: a new
+- `plugins/sdd/.claude-plugin/plugin.json` sets an explicit `agents` array, which replaces the default `agents/` scan: a new
   agent file must be added to that array or it never loads.
 - Every manifest opens with `$schema`: `https://www.schemastore.org/claude-code-plugin-manifest.json`
   for a plugin, `https://www.schemastore.org/claude-code-marketplace.json` for the marketplace.
@@ -99,8 +103,8 @@ Managed by `/plugin-dev-setup`; re-run it to refresh this section instead of edi
 
 Do these in the same change, without being asked. A change is unfinished until they are done.
 
-1. **Bump the version.** Set the same new version in `.claude-plugin/plugin.json`, the `sdd` entry
-   in `.claude-plugin/marketplace.json` and the README badge, and add a matching section to
+1. **Bump the version.** Set the same new version in the changed plugin's `plugin.json`, its entry
+   in `.claude-plugin/marketplace.json` and (for `sdd`) the README badge, and add a matching section to
    `CHANGELOG.md`. A pinned version keeps users on the cached copy until the string changes.
 2. **Update the docs that list capabilities by hand:** `README.md` (command/agent reference and
    File Structure), this file's Architecture and "Where to make a change" sections, and

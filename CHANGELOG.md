@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] — 2026-11-11
+
+### Changed
+
+- **The `sdd` plugin moved to `plugins/sdd/`** so the repository can host several plugins in one marketplace. Content is unchanged; the marketplace entry now points at `./plugins/sdd`. Install it as before with `/plugin install sdd@spec-driven-development`, or load a checkout with `claude --plugin-dir plugins/sdd`.
+
+### Added
+
+- **`sdd-board` 0.1.0** — a new companion plugin (a Claude Code mod) that docks an SDD panel next to the transcript in Claude Code Desktop. *Current* tab: the active spec with its phase stepper, the next `/sdd:*` command (one button puts it in the prompt), progress, Stories with their tasks, and a spec/plan/tasks/review viewer. *All* tab: every spec with its phase. See `plugins/sdd-board/`.
+
 ## [0.7.1] — 2026-11-03
 
 ### Changed
