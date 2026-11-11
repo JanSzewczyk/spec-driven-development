@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] — 2026-11-11
+
+### Added
+
+- **`plugins/sdd/README.md`**, a short plugin README with the install line, pointing at the repository README for the full guide.
+
+### Fixed
+
+- **Install instructions in the README** now use `/plugin marketplace add` followed by `/plugin install sdd@spec-driven-development`, and the fork instructions point at `plugins/sdd/.claude-plugin/plugin.json`.
+
 ## [0.7.2] — 2026-11-11
 
 ### Changed
