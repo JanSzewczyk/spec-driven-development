@@ -1,20 +1,40 @@
-name: plugin-checks
+name: Plugin Checks ✅
 
-# Added by /plugin-dev-setup. Fails a pull request whose manifests or docs drifted from the plugins
-# on disk, or that changed a plugin without bumping its version.
-# The checks come from the shared action on claude-plugins `main`, so nothing is vendored here.
+# Added by /plugin-setup. Fails a pull request whose manifests or docs drifted from the plugins
+# on disk, or in which a plugin changed and its version did not. Every job runs one shared action
+# at the ref named below, so nothing is vendored into this repository.
 
 on:
   push:
     branches: [main]
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  checks:
+  manifests:
+    name: Manifests and Docs 🔍
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check manifests and documentation 🔍
+        uses: JanSzewczyk/claude-plugins/.github/actions/marketplace-audit@main
+        # Inputs: strict, path.
 
-      - uses: JanSzewczyk/claude-plugins/.github/actions/plugin-checks@main
+  version-bumps:
+    name: Version Bumps 🏷️
+    # Fails a pull request in which a plugin changed and its version did not. Works in a marketplace
+    # and in a single-plugin repo, and fetches the base history itself, so no fetch-depth: 0.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check every changed plugin has a version bump 🏷️
+        uses: JanSzewczyk/claude-plugins/.github/actions/version-bump-check@main
+        # Inputs: strict (also fail a bump that is too small), ignore-plugins, base-ref, path.
