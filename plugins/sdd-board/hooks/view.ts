@@ -277,7 +277,7 @@ export function renderAll(el: any, ctx: Ctx) {
     return Box({
       borderStyle: 'round', borderColor: isCurrent ? 'blue' : undefined, paddingX: 1, flexDirection: 'column',
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }), chip(el, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
+        Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }), badge(el, ctx, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
         Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.slug] }),
         rich(ctx.surface)
           ? el.Svg({ alt: 'Phase: ' + d.phase, width: d.steps.length * 16, height: 12, source: dotsSvg(d.steps) })
