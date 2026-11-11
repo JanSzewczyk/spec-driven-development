@@ -111,7 +111,8 @@ export function currentSlug(list: Feature[], branch: string, pinned: string | nu
   if (pinned && list.some((f) => f.slug === pinned)) return pinned
   const slug = branch.includes('/') ? branch.slice(branch.indexOf('/') + 1) : branch
   if (slug && list.some((f) => f.slug === slug)) return slug
-  const latest = [...list].sort((a, b) => b.modified - a.modified)[0]
+  // Fallback: the newest feature still in progress. Finished ones are never "current" by themselves.
+  const latest = [...list].filter((f) => derive(f).phase !== 'done').sort((a, b) => b.modified - a.modified)[0]
   return latest ? latest.slug : null
 }
 
@@ -129,7 +130,7 @@ export function warnings(f: Feature, branch: string): string[] {
   const out: string[] = []
   const d = derive(f)
   if (f.spec.openQuestions > 0 && d.phase !== 'clarify' && d.phase !== 'done') out.push(f.spec.openQuestions + ' open question(s) in the spec')
-  if (f.spec.branch && branch && f.spec.branch !== branch) out.push('You are on ' + branch + ', the spec belongs to ' + f.spec.branch)
+  if (d.phase !== 'done' && f.spec.branch && branch && f.spec.branch !== branch) out.push('You are on ' + branch + ', the spec belongs to ' + f.spec.branch)
   if (f.review === 'NO-GO') out.push('Last review verdict: NO-GO')
   return out
 }

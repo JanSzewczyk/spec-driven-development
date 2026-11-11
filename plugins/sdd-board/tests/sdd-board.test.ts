@@ -114,9 +114,13 @@ const PANE = {
   props: { title: 'SDD', isFocused: true, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
 } as const
 
-function stubProject($: any, on: any, withSpecs: boolean) {
-  mock.clock(on)
+function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts: { branch?: string; files?: Record<string, string> } = {}) {
+  const all = { ...files, ...(opts.files ?? {}) }
+  const has = () => (typeof withSpecs === 'function' ? withSpecs() : withSpecs)
+  const clock = mock.clock(on)
   const filled: string[] = []
+  const ran: any[] = []
+  let refuse = false
   on('session.start', () => ({ cwd: '/work' }))
   on('store.get', () => ({ value: undefined }))
   on('store.set', () => ({ value: undefined }))
@@ -124,14 +128,20 @@ function stubProject($: any, on: any, withSpecs: boolean) {
   on('ui.toast', () => ({ value: undefined }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   const rel = (p: string) => p.replace(/^.*?\/specs/, 'specs')
-  on('fs.exists', (_: any, e: any) => ({ value: withSpecs && (rel(e.path) === 'specs' || rel(e.path) in files) }))
+  on('fs.exists', (_: any, e: any) => ({ value: has() && (rel(e.path) === 'specs' || rel(e.path) in all) }))
   on('fs.list', () => ({ value: [{ name: 'user-login', kind: 'directory', size: 0, isLink: false }] }))
-  on('fs.read', (_: any, e: any) => ({ value: files[rel(e.path)] ?? '' }))
+  on('fs.read', (_: any, e: any) => ({ value: all[rel(e.path)] ?? '' }))
   on('fs.stat', () => ({ value: { mtimeMs: 1000 } }))
-  on('process.run', () => ({ value: { exitCode: 0, stdout: 'feat/user-login\n', stderr: '' } }))
+  on('process.run', () => ({ value: { exitCode: 0, stdout: (opts.branch ?? 'feat/user-login') + '\n', stderr: '' } }))
   on('prompt.fill', (_: any, e: any) => { filled.push(e.text); return { isFilled: true } })
+  on('command.run', (_: any, e: any) => {
+    if (e.command === 'sdd-board') return {}
+    ran.push(e.command + ' ' + e.args)
+    if (refuse) throw new Error('the session was stopped and nobody has sent input since')
+    return {}
+  })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
-  return filled
+  return Object.assign(filled, { clock, ran, refuseSubmit: () => { refuse = true } })
 }
 
 test('the current tab shows the spec, its next step, and fills the prompt', async ($, on) => {
@@ -157,12 +167,43 @@ test('the all tab lists every spec and can pin one', async ($, on) => {
   await ui.unmount()
 })
 
-test('a project without specs offers the doctor', async ($, on) => {
+test('a project without specs shows only the setup card and runs the doctor', async ($, on) => {
   const filled = stubProject($, on, false)
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  await ui.press({ key: 'fill-empty' })
+  expect(await ui.find({ type: 'Text', text: 'SDD is not set up in this project' })).toBeDefined()
+  expect(await ui.find({ key: 'tab-current' })).toBeUndefined()
+  expect(await ui.find({ key: 'tab-all' })).toBeUndefined()
+  await ui.press({ key: 'init-sdd' })
+  await filled.clock.settle()
+  expect(filled.ran).toEqual(['sdd:doctor init'])
+  expect(filled).toEqual([])
+  await ui.unmount()
+})
+
+test('a doctor run that cannot start is left in the prompt box', async ($, on) => {
+  const filled = stubProject($, on, false)
+  filled.refuseSubmit()
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'init-sdd' })
+  await filled.clock.settle()
   expect(filled).toEqual(['/sdd:doctor init'])
+  await ui.unmount()
+})
+
+test('the tabs appear once specs/ shows up', async ($, on) => {
+  let created = false
+  const filled = stubProject($, on, () => created)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ key: 'tab-current' })).toBeUndefined()
+  await ui.unmount()
+  created = true
+  await filled.clock.advance(4000)
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ key: 'tab-current' })).toBeDefined()
+  expect(await ui.find({ key: 'tab-all' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -171,5 +212,39 @@ test("another mod's pane is left alone", async ($, on) => {
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, requestId: 'other', surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'drawn by Claude Code' })).toBeDefined()
+  await ui.unmount()
+})
+
+const DONE = { 'specs/user-login/review.md': 'Verdict: GO' }
+
+test('a finished feature shows the done card and hides tasks and stories', async ($, on) => {
+  stubProject($, on, true, { files: DONE })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: '✓ Feature done' })).toBeDefined()
+  expect(await ui.find({ key: 'fill-next' })).toBeUndefined()
+  expect(await ui.find({ key: 'story-S1' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^Tasks / })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('on a branch without a spec, finished features are not current: offer a new spec', async ($, on) => {
+  const filled = stubProject($, on, true, { files: DONE, branch: 'main' })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'Nothing in progress' })).toBeDefined()
+  await ui.press({ key: 'fill-empty' })
+  expect(filled).toEqual(['/sdd:spec feat '])
+  await ui.unmount()
+})
+
+test('documents open in their own pane', async ($, on) => {
+  stubProject($, on, true)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'doc-plan' })
+  const docs = await $.ui.mount({ ...PANE, requestId: 'sdd-board-doc', surface: 'terminal' })
+  expect(await docs.find({ key: 'doc-body' })).toBeDefined()
+  await docs.unmount()
   await ui.unmount()
 })

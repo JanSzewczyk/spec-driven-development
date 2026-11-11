@@ -1,9 +1,11 @@
 import { parsePlanStatus, parseReview, parseSpec, parseTasks } from './parse.ts'
 import { currentSlug, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
-import { renderPane } from './view.ts'
+import { renderDoc, renderPane } from './view.ts'
 
 const PANE = 'sdd-board'
+const DOC_PANE = 'sdd-board-doc'
+const TITLE = 'Spec-driven Development by Szum-Tech'
 
 // Module state: disposable, rebuilt from disk on every load.
 let features: Feature[] = []
@@ -14,7 +16,7 @@ let tab: 'current' | 'all' = 'current'
 let pinned: string | null = null
 let filter = 'all'
 let running: string | null = null
-let doc: { kind: string; text: string } | null = null
+let docView: { slug: string; kind: string } | null = null
 let expanded: Record<string, boolean> = {}
 let isClosedByUser = false
 
@@ -34,6 +36,22 @@ async function modifiedOf($: any, path: string): Promise<number> {
     return typeof m === 'number' ? m : Date.parse(String(m)) || 0
   } catch {
     return 0
+  }
+}
+
+// Runs a slash command in this session as if the user typed it (prompt.submit refuses text that
+// starts with "/"). If the command cannot run (unknown name, session stopped), leave it in the
+// prompt box instead so the user can send it.
+async function runCommand($: any, command: string, args: string): Promise<void> {
+  try {
+    const r = await $.command.run({ command, args })
+    if (r && (r.deny || r.drop)) throw new Error('refused')
+  } catch {
+    try {
+      await $.prompt.fill({ text: '/' + command + (args ? ' ' + args : '') })
+    } catch {
+      // nothing else to try
+    }
   }
 }
 
@@ -106,7 +124,7 @@ export function register(on) {
     })
     if (hasSpecs && !isClosedByUser) {
       try {
-        const placed = await $.ui.open({ id: PANE, title: 'SDD', columns: 48 })
+        const placed = await $.ui.open({ id: PANE, title: TITLE, columns: 48 })
         if (!placed.isPlaced) $.ui.toast('SDD panel ready: type /sdd-board')
       } catch {
         // the panel can be opened with /sdd-board
@@ -118,7 +136,7 @@ export function register(on) {
   on('command.run', { command: 'sdd-board' }, async ($) => {
     isClosedByUser = false
     await scan($)
-    await $.ui.open({ id: PANE, title: 'SDD', focus: true, closeOnEscape: true, columns: 48 })
+    await $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true, columns: 48 })
     return {}
   })
 
@@ -173,6 +191,12 @@ export function register(on) {
   })
 
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
+    if (e.requestId === DOC_PANE) {
+      const el = $.ui.resolve(e)
+      const view = docView
+      const text = view ? await readText($, 'specs/' + view.slug + '/' + view.kind + '.md') : null
+      return renderDoc(el, { slug: view ? view.slug : '', kind: view ? view.kind : '', text })
+    }
     if (e.requestId !== PANE) return next(e)
     const el = $.ui.resolve(e)
     const redraw = () => $.ui.invalidate('ui.render')
@@ -188,10 +212,12 @@ export function register(on) {
       fill: (text) => {
         $.prompt.fill({ text })
       },
+      run: (command, args) => {
+        runCommand($, command, args) // not awaited: it resolves when the command finishes
+      },
       pin: (s) => {
         pinned = s
         tab = 'current'
-        doc = null
         redraw()
       },
       toggle: (id) => {
@@ -200,14 +226,16 @@ export function register(on) {
         redraw()
       },
       doc: async (kind) => {
-        if (kind === null || !current) {
-          doc = null
-          redraw()
-          return
+        if (!current) return
+        docView = { slug: current.slug, kind }
+        let placed: any = null
+        try {
+          placed = await $.ui.open({ id: DOC_PANE, title: kind + ' · ' + current.slug, focus: true, closeOnEscape: true, columns: 80 })
+        } catch {
+          // reported below
         }
-        const text = await $.fs.read('specs/' + current.slug + '/' + kind + '.md')
-        doc = { kind, text: String(text) }
-        redraw()
+        if (!placed || !placed.isPlaced) $.ui.toast('No room for the document: widen the window and try again')
+        $.ui.invalidate('ui.render')
       },
       filter: (v) => {
         filter = v
@@ -224,7 +252,6 @@ export function register(on) {
       branch,
       running,
       expanded,
-      doc,
       filter,
       hasSpecs,
       now: Date.now(),
