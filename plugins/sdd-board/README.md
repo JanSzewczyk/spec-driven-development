@@ -8,6 +8,7 @@ Needs Claude Code 2.1.287 or later (tested with 2.1.309).
 
 - **Current** tab — the active spec (picked from the git branch, the one you pinned, or the newest one still in progress): title, a status badge, branch, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), the next `/sdd:*` command with a **Put in prompt** button, task progress, Stories with their tasks, warnings, and buttons that open `spec`, `plan`, `tasks` and `review` in their own tab. What shows depends on the phase: the early phases show the next step and the spec's open questions, *Implement* and *Review* add task progress and Stories, and a finished feature shows only a "Feature done" card above the stepper. When every feature is finished (and you are on no feature branch) it offers **Start a new spec**.
 - **No SDD in the project** — only a setup card is shown (no tabs). **Init SDD in this project** runs `/sdd:doctor init` in the session; the tabs appear on their own once `specs/` exists.
+- **+ New spec** in the tab bar puts `/sdd:spec feat ` in the prompt at any time, so you can start a spec from `main` while another feature is in progress.
 - **All** tab — every spec with its phase and task progress, a filter, and **Show** to make one current.
 - Updates on its own: after Claude writes under `specs/`, after a branch switch, after each turn, and every 4 seconds for edits made elsewhere.
 - Desktop and VS Code draw SVG (stepper, progress bar); the terminal gets a text version of the same layout.

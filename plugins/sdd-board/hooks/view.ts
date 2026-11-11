@@ -1,7 +1,7 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
 import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, derive, storyDone, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
-import { dotsSvg, progressSvg, stepperSvg } from './svg.ts'
+import { badgeSvg, dotsSvg, progressSvg, stepperSvg } from './svg.ts'
 
 export type Actions = {
   tab: (t: 'current' | 'all') => void
@@ -43,15 +43,12 @@ function chip(el: any, status: string, label?: string) {
   return Text({ color: TEXT_COLOR[key], weight: 'semibold', children: [' ' + (label ?? status) + ' '] })
 }
 
-// Status badge: a small bordered pill on Desktop/VS Code, a plain colored label in the terminal.
+// Status badge: a small tinted pill on Desktop/VS Code, a plain colored label in the terminal.
 function badge(el: any, ctx: Ctx, status: string) {
-  const { Box, Text } = el
-  const key = status in TEXT_COLOR ? status : 'draft'
   if (!rich(ctx.surface)) return chip(el, status)
-  return Box({
-    borderStyle: 'round', borderColor: TEXT_COLOR[key], paddingX: 1,
-    children: [Text({ color: TEXT_COLOR[key], weight: 'semibold', children: [status] })],
-  })
+  const key = status in PALETTE ? status : 'draft'
+  const b = badgeSvg(status, PALETTE[key])
+  return el.Svg({ alt: 'Status: ' + status, width: b.width, height: b.height, source: b.source })
 }
 
 function tabBar(el: any, ctx: Ctx) {
@@ -68,7 +65,11 @@ function tabBar(el: any, ctx: Ctx) {
   return Box({
     flexDirection: 'row',
     columnGap: 3,
-    children: [mk('current', 'Current', '1'), mk('all', 'All (' + ctx.features.length + ')', '2')],
+    children: [
+      mk('current', 'Current', '1'),
+      mk('all', 'All (' + ctx.features.length + ')', '2'),
+      Button({ key: 'new-spec', label: '+ New spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
+    ],
   })
 }
 
