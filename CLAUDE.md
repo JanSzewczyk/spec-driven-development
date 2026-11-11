@@ -81,21 +81,19 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 <!-- BEGIN:plugin-dev -->
 ## Plugin development
 
-Managed by `/plugin-dev-setup`; re-run it to refresh this section instead of editing it here.
+Managed by `/plugin-setup`; re-run it to refresh this section instead of editing it here.
 
 ### Where things live
 
 - Two plugins under `plugins/`, listed in one marketplace `.claude-plugin/marketplace.json`
-  (entries `sdd` → `./plugins/sdd`, `sdd-board` → `./plugins/sdd-board`). Each has its own
-  `.claude-plugin/plugin.json`; `sdd` keeps `commands/`, `agents/`, `skills/` at its root,
-  `sdd-board` keeps `hooks/` (hooks module) and `tests/`.
+  (`sdd` → `./plugins/sdd`, `sdd-board` → `./plugins/sdd-board`). `sdd` keeps `commands/`,
+  `agents/` and `skills/` at its root; `sdd-board` (a mod) keeps `hooks/` and `tests/`.
 
-- Each manifest is `<plugin>/.claude-plugin/plugin.json`. `skills/`, `agents/`, `commands/` and every
+- Each manifest is `<plugin>/.claude-plugin/plugin.json`. `skills/`, `agents/`, `hooks/` and every
   other component sit at the plugin root, never inside `.claude-plugin/`.
 - A new **plugin** is registered in `.claude-plugin/marketplace.json`. A new skill or agent inside
   an existing plugin is not.
-- `plugins/sdd/.claude-plugin/plugin.json` sets an explicit `agents` array, which replaces the default `agents/` scan: a new
-  agent file must be added to that array or it never loads.
+- `plugins/sdd/.claude-plugin/plugin.json` sets an explicit `agents` array, which replaces the default `agents/` scan: a new agent file must be added to that array or it never loads.
 - Every manifest opens with `$schema`: `https://www.schemastore.org/claude-code-plugin-manifest.json`
   for a plugin, `https://www.schemastore.org/claude-code-marketplace.json` for the marketplace.
 
@@ -103,16 +101,16 @@ Managed by `/plugin-dev-setup`; re-run it to refresh this section instead of edi
 
 Do these in the same change, without being asked. A change is unfinished until they are done.
 
-1. **Bump the version.** Set the same new version in the changed plugin's `plugin.json`, its entry
-   in `.claude-plugin/marketplace.json` and (for `sdd`) the README badge, and add a matching section to
-   `CHANGELOG.md`. A pinned version keeps users on the cached copy until the string changes.
-2. **Update the docs that list capabilities by hand:** `README.md` (command/agent reference and
-   File Structure), this file's Architecture and "Where to make a change" sections, and
+1. **Bump the version.** Both plugins pin `version`. Set the same new version in the changed plugin's
+   `plugin.json`, its entry in `.claude-plugin/marketplace.json`, and (for `sdd`) the README badge,
+   and add a matching section to `CHANGELOG.md`. A pinned version keeps users on the cached copy
+   until the string changes.
+2. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure),
+   `plugins/sdd-board/README.md`, the Plugins table and Architecture sections of this file, and
    `CONTRIBUTING.md` when the repo layout changes.
-3. **Run `/marketplace-doctor`** and fix what it reports before committing. It checks manifests,
+3. **Run `/marketplace-creator audit`** and fix what it reports before committing. It checks manifests,
    docs and frontmatter against what is on disk.
-4. **Check the bump** with `/plugin-release` in plan mode: it proposes the semver size. Do not let
-   it tag.
+4. **Check the bump** with `/plugin-release` in plan mode: it proposes the semver size per plugin. Do not let it tag.
 
 ### Releasing
 
@@ -120,7 +118,6 @@ The repo does not tag releases yet; tagging publishes, so it stays a deliberate 
 
 ### What runs on its own
 
-Nothing in the background. The steps above happen because this file asks for them; CI
-(`.github/workflows/plugin-checks.yml`) fails a pull request whose manifests or docs drifted, or
-that changed the plugin without bumping its version.
+Nothing in the background. The steps above happen because this file asks for them; CI, if
+`.github/workflows/plugin-checks.yml` exists, fails a pull request with drift or a missing bump.
 <!-- END:plugin-dev -->

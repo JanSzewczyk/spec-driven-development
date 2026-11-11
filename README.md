@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-0.7.2-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.3-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -85,13 +85,15 @@ The unique contribution of this framework: **per-task routing to your existing s
 Inside Claude Code (2.1.275 or later):
 
 ```
-/plugin install sdd --marketplace JanSzewczyk/spec-driven-development
+/plugin marketplace add JanSzewczyk/spec-driven-development
+/plugin install sdd@spec-driven-development
 ```
 
 Or from the shell:
 
 ```bash
-claude plugin install https://github.com/JanSzewczyk/spec-driven-development
+claude plugin marketplace add JanSzewczyk/spec-driven-development
+claude plugin install sdd@spec-driven-development
 ```
 
 Then enable it in your user settings (`~/.claude/settings.json`):
@@ -150,11 +152,11 @@ What `init` does:
 
 If you want a customized copy (e.g. with org-specific routing rules in `capabilities.md.template`):
 
-1. Fork this repo to your GitHub org and update the `homepage` field in `.claude-plugin/plugin.json`.
+1. Fork this repo to your GitHub org and update the `homepage` field in `plugins/sdd/.claude-plugin/plugin.json`.
 2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
 3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
-4. Bump the `version` in `.claude-plugin/plugin.json` and tag a release.
-5. Users install your fork with `claude plugin install https://github.com/<your-org>/sdd-plugin`.
+4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`, and tag a release.
+5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install with `/plugin install sdd@spec-driven-development`.
 
 ---
 
