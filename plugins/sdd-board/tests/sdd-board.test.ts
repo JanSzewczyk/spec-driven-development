@@ -248,3 +248,15 @@ test('documents open in their own pane', async ($, on) => {
   await docs.unmount()
   await ui.unmount()
 })
+
+test('a new spec can be started from the tab bar, also while a feature is in progress', async ($, on) => {
+  const filled = stubProject($, on, true, { branch: 'main' })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ type: 'Text', text: 'User Login' })).toBeDefined()
+    await ui.press({ key: 'new-spec' })
+    await ui.unmount()
+  }
+  expect(filled).toEqual(['/sdd:spec feat ', '/sdd:spec feat '])
+})

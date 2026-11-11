@@ -75,3 +75,13 @@ export function dotsSvg(steps: Step[]): string {
   const w = steps.length * 16
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' 12" width="' + w + '" height="12">' + body + '</svg>'
 }
+
+// Status badge: small pill, tinted fill and a hairline border in the status color.
+export function badgeSvg(label: string, color: string): { source: string; width: number; height: number } {
+  const height = 20
+  const width = Math.round(label.length * 6.4 + 18)
+  const body =
+    '<rect x="0.5" y="0.5" width="' + (width - 1) + '" height="' + (height - 1) + '" rx="10" fill="' + color + '" fill-opacity="0.16" stroke="' + color + '" stroke-opacity="0.4"/>' +
+    '<text x="' + width / 2 + '" y="14" text-anchor="middle" font-size="11" font-weight="600" fill="' + color + '" font-family="system-ui,sans-serif">' + esc(label) + '</text>'
+  return { source: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' + body + '</svg>', width, height }
+}
