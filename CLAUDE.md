@@ -8,7 +8,7 @@ This is **not an application** — it is a plugin marketplace with two plugins u
 
 `sdd` is a **Claude Code plugin** that ships the Spec-Driven Development framework. It contains slash commands, sub-agents, and a setup skill, all consumed by Claude Code itself. Blocking hooks (typecheck / lint) are NOT shipped by the plugin — they're generated per-project by `/sdd:doctor init` into `<target>/.claude/hooks/`. There is no build step and **no runtime code**: every asset is a Markdown prompt that Claude executes. The doctor skill, once script-based, is now fully **LLM-driven** — Claude performs the checks and file operations itself (see Architecture).
 
-The plugin is installed into a *target* project (`~/.claude/plugins/cache/sdd`) and operates on that project's `specs/` directory and git repo. When developing here, you are editing the plugin; to see behavior you exercise it against a separate target project.
+The plugin is installed into a *target* project (`/plugin install sdd@spec-driven-development`) and operates on that project's `specs/` directory and git repo. When developing here, you are editing the plugin; to see behavior you exercise it against a separate target project.
 
 ## Plugins
 
@@ -31,7 +31,10 @@ it you install the plugin and invoke the skill against a target project (see CON
 
 Smoke-test loop: `check` against a fresh project → `init` → `check` again, then verify by hand
 that the artifacts landed under the **project root** (not the plugin) and that a re-`init` is
-idempotent. There is no automated test in this repo; manual exercise of the skill is the test.
+idempotent. `sdd` has no automated test; manual exercise of the skill is the test.
+
+`sdd-board` has tests (`cd plugins/sdd-board && claude plugin test`). Try the panel locally with
+`claude --plugin-dir plugins/sdd-board` in a project that has `specs/`, then `/sdd-board`.
 
 ## Architecture
 
@@ -63,7 +66,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 ## Conventions
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
-- **Versioning is manual and multi-file**: every change to the plugin bumps the version in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, the README badge, and `CHANGELOG.md`. Keep them in sync.
+- **Versioning is manual and multi-file**: every change to a plugin bumps its version in `plugins/<name>/.claude-plugin/plugin.json`, its entry in `.claude-plugin/marketplace.json`, and `CHANGELOG.md`; for `sdd` also the README badge. Keep them in sync.
 - Command/agent references in docs use the `/sdd:<command>` form.
 - Behavior lives in Markdown prompts, not code. To change what an asset does, edit its prose. Generated hook scripts (`.claude/hooks/*.sh`) must exit 0 when nothing applies and exit 2 to block.
 
@@ -77,6 +80,8 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 | A doctor readiness check | edit the `check` procedure in `skills/doctor/SKILL.md` |
 | The settings.json merge behavior | `skills/doctor/reference/settings-merge.md` |
 | Files seeded into target projects | `skills/doctor/templates/` |
+| What the Desktop panel shows or how it derives the next step | `plugins/sdd-board/hooks/{model,view,svg}.ts` (logic, drawing); `register.ts` holds only hooks and `$` calls |
+| How `specs/` files are parsed by the panel | `plugins/sdd-board/hooks/parse.ts`, with a test in `plugins/sdd-board/tests/` |
 
 <!-- BEGIN:plugin-dev -->
 ## Plugin development
