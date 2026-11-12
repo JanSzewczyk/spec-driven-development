@@ -1,5 +1,5 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
-import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, derive, gate, storyDone, taskCounts, warnings } from './model.ts'
+import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, storyDone, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
 import { badgeSvg, checkSvg, dotsSvg, progressSvg, stepperSvg } from './svg.ts'
 
@@ -171,17 +171,19 @@ function stories(el: any, ctx: Ctx, f: Feature) {
         children: [(open ? '▾ ' : '▸ ') + s.id + ' · ' + (s.name || 'Story') + '  ' + n + '/' + s.tasks.length + (done ? ' ✓' : '')],
       })
       const rows = open
-        ? s.tasks.map((t) =>
-            Box({
+        ? s.tasks.map((t) => {
+            const waits = blockedBy(t, f.stories)
+            return Box({
               flexDirection: 'row', columnGap: 1, paddingLeft: 2,
               children: [
                 Text({ color: TEXT_COLOR[t.status] ?? 'gray', children: [GLYPH[t.status] ?? '○'] }),
                 Text({ mono: true, dimColor: true, children: [t.id] }),
                 Text({ wrap: 'truncate-end', children: [t.title || t.type] }),
-                Text({ dimColor: true, wrap: 'truncate-end', children: [[t.agent, t.model].filter(Boolean).join(' · ')] }),
+                Text({ dimColor: true, wrap: 'truncate-end', children: [[t.project, t.agent, t.model].filter(Boolean).join(' · ')] }),
+                ...(waits.length ? [Text({ dimColor: true, wrap: 'truncate-end', children: ['waits on ' + waits.join(', ')] })] : []),
               ],
-            }),
-          )
+            })
+          })
         : []
       return Box({ flexDirection: 'column', children: [head, ...rows] })
     }),
