@@ -1,52 +1,44 @@
 ---
-description: Generate architectural plan from spec (SDD step 3) — run in Plan Mode!
+description: Generate the architectural plan from the spec (SDD step 3) — run in Plan Mode
 argument-hint: "(optional path to spec.md)"
-allowed-tools: Read, Write, Edit, Glob, Grep, Task, ExitPlanMode
+allowed-tools: Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, ExitPlanMode
 ---
 
-The **Plan** phase of SDD. Generate an architecture document `plan.md`. **DO NOT write code.**
+The **Plan** phase of SDD. Produce `plan.md`: the architectural and technical **decisions** and the
+**scope** of the change. No code.
 
-> ⚠️ Recommended to run this command in **Plan Mode** (Shift+Tab in Claude Code). Plan Mode blocks
-> every write except the session's own plan file, so the plan is drafted there and the
-> **ExitPlanMode approval is the human review** — `specs/<slug>/plan.md` is written only after you
-> approve it (Step 4). Without Plan Mode the command writes `plan.md` directly and stops for review.
->
-> 💰 **Recommended session model: Opus** — architecture is judgement-heavy and this is the cheapest
-> moment to get it right (a bad plan multiplies cost downstream).
+Run it in **Plan Mode**: the plan is drafted in the session's plan file and the `ExitPlanMode`
+approval is the human review — `specs/<slug>/plan.md` is written only after you approve it. Without
+Plan Mode the command writes `plan.md` directly and stops for you to read and edit it.
 
 ## Steps
 
 ### 1. Load context
 
-- `specs/constitution.md` (project constitution — stack, commands, conventions, WHAT NOT TO DO)
-- `specs/capabilities.md` (projects + specialist agents + skills + routing rules)
-- `specs/<current>/spec.md` (from the current branch OR from `$ARGUMENTS`)
+- `specs/constitution.md` (stack, commands, conventions, WHAT NOT TO DO)
+- `specs/capabilities.md`, only the `## Projects` section (routing and agents are `/sdd:tasks` work)
+- `specs/<current>/spec.md` (current branch, or `$ARGUMENTS`)
 
-### 2. Survey the existing codebase
+### 2. Survey the codebase
 
-Use the **Task tool** (sub-agent of type `Explore`) to scan the current codebase for:
-- Architectural patterns (folder structure, naming conventions)
-- Existing utilities / services that can be reused
-- TypeScript/Python/etc. conventions
+Spawn a `Explore` subagent aimed at the paths of the affected projects. It returns a summary of at
+most ~30 lines: structure and naming patterns, and existing code to **reuse** (with paths). Nothing
+else enters the main context.
 
-The sub-agent returns **only a summary** — saving main-session tokens.
+If `spec.md` links reference sources (mockups, an OpenAPI/protocol spec, ADRs, schemas), extract
+them **once, in a subagent**, and return only what the plan needs; cache that in the plan's
+*Reference sources* section so later phases do not re-pull the raw material.
 
-### 2a. Design source — extract once, cache the style spec
+### 3. Decide
 
-If `spec.md` references a design source (a Figma link in its "Links" section, or another design
-tool exposed via an MCP server), extract it **once, inside a Task sub-agent** — pull only the
-metadata and targeted screenshots you need, parse them in the sub-agent, and have it return a
-**distilled style spec** (tokens, spacing, typography, component-to-code mapping). Write that
-distilled spec into `plan.md` (see the "Design reference" section below) so downstream phases
-(`/sdd:tasks`, `/sdd:implement`, `ui-critic`) read the cache instead of re-pulling the large MCP
-output into the main context. Never pull raw design-tool output into the main session.
+Where there is a real fork (two sound approaches, a contract shape, a build-vs-reuse choice), ask
+1-3 questions with `AskUserQuestion` — your recommendation first — before drafting. Do not park
+decisions in *Open questions* that the user can make now.
 
-If there is no design source, skip this step.
+### 4. Write the plan
 
-### 3. Generate `plan.md`
-
-The target is `specs/<current>/plan.md` (in Plan Mode it is drafted in the plan file first — see
-Step 4). Structure:
+The plan carries **decisions and scope, not description**: do not restate the spec or the
+constitution, no code, one line per file. Required sections:
 
 ```markdown
 # Plan: <feature_title>
@@ -55,94 +47,42 @@ Step 4). Structure:
 **Status:** draft
 
 ## High-level approach
-<1-2 paragraphs — what we are building, from a bird's-eye view>
+<1-2 paragraphs: what is built and the key architectural/technical decisions, each with its reason
+and the alternative rejected>
 
-## Data model
-
-```mermaid
-erDiagram
-    User ||--o{ Session : has
-    User { ... }
-```
-
-## Component diagram
-
-```mermaid
-flowchart LR
-    W[web app] --> API[api: /auth/reset]
-    M[mobile app] --> API
-    API --> S[Reset service]
-    S --> D[(DB)]
-```
-
-## API surface
-| Endpoint | Method | Input | Output | Auth |
-|----------|--------|-------|--------|------|
-| ... | ... | ... | ... | ... |
+## Contracts
+<only when projects or layers share one: schema, API, shared type, generated client, migration —
+shape and who provides/consumes it>
 
 ## File-by-file change list
-<!-- Grouped by project (names from specs/capabilities.md `## Projects`; one group, `root`, in a
-     single-app repo). Mark what one project provides and another consumes — a schema, a
-     generated client, shared types, a migration — so /sdd:tasks can order those first and run
-     the rest in parallel. -->
-### api (backend · apps/api)
-- `apps/api/app/auth/schemas.py` — reset request/confirm schemas (**contract**, consumed by web + mobile)
-- `apps/api/app/auth/reset.py` — reset endpoints
-- `apps/api/tests/test_reset.py` — new tests
-
-### web (web · apps/web)
-- `apps/web/src/features/reset/reset-form.tsx` — reset form (uses the generated API client)
-- `apps/web/src/features/reset/reset-form.test.tsx` — new tests
-
-### mobile (mobile · ../mobile-app)
-- `../mobile-app/lib/features/reset/reset_screen.dart` — reset screen
-- ...
-
-## Reused utilities
-- `packages/shared/errors` (from `packages/shared/src/errors.ts`)
-- `app.core.mailer` (from `apps/api/app/core/mailer.py`)
-
-## Design reference
-<!-- Only when a design source exists — the distilled style spec cached from Step 2a.
-     Omit this section entirely if there is no Figma/design source. -->
-- Tokens / spacing / typography: ...
-- Component-to-code mapping: <Figma component> → `<code component>`
-- Source: <Figma link> (extracted once; do not re-pull)
+### <project> (<kind> · <path>)
+- `<path>` — <why> (reuses `<existing code>`) [**contract** when others consume it]
+<!-- Group by project from `## Projects` (one group, `root`, in a single-app repo). One line per
+     file, tests included. /sdd:tasks turns this into tasks and orders contracts first. -->
 
 ## Risks & mitigations
-- **Risk**: rate limit on external API
-  **Mitigation**: exponential backoff in `packages/http/retry.ts`
+- **Risk** … **Mitigation** …
 
 ## Open questions for human review
-- ?
+- …
 ```
 
-### 4. Human review, save, advance status
+Optional, only when they clarify the change: **Data model** (ER diagram when the schema changes),
+**Component diagram** (flowchart when the change spans several components or projects), **API
+surface** (table), **Reference sources** (from step 2). Diagrams are Mermaid. Keep the heading
+`Open questions` as is — the board counts its bullets.
 
-**If Plan Mode is active** (the system tells you so and names a plan file):
-1. Write the complete `plan.md` content from Step 3 into **the plan file Plan Mode names** — it is
-   the only file you may write while planning.
-2. Call `ExitPlanMode`. Its approval dialog is the human review of the plan. If the user rejects
-   it with feedback, revise the plan file and call `ExitPlanMode` again.
-3. Once approved, Plan Mode is off: write the approved content **verbatim** to
-   `specs/<current>/plan.md`. Do not re-plan or start implementing — approval of this plan means
-   "save the plan", not "build it"; implementation goes through `/sdd:tasks` + `/sdd:implement`.
+### 5. Review, save, advance
 
-**Otherwise** (no Plan Mode): write `specs/<current>/plan.md` directly, then STOP and ask the user
-to READ the plan and edit it before continuing.
+**Plan Mode:** write the complete plan into the plan file Plan Mode names, call `ExitPlanMode`
+(rejected with feedback → revise and call again), and once approved write the content **verbatim** to
+`specs/<current>/plan.md`. Approval means "save the plan", not "build it" — stop there.
+**No Plan Mode:** write `specs/<current>/plan.md` and stop for the user to read and edit it.
 
-In both cases: set `specs/<current>/spec.md` header `**Status:**` → `planned` (unless already at a
-later state); `plan.md` carries `**Status:** draft`.
-
-Show the user:
-- ✅ Plan saved to: `specs/<slug>/plan.md` (approved in Plan Mode, or 👉 READ it and edit before continuing)
-- Next step: `/clear`, then `/sdd:tasks` (it re-reads `plan.md` + `capabilities.md` from disk, so
-  clearing the transcript first starts the next phase from a small context and loses nothing)
+Then set `**Status:**` in `spec.md` to `planned` (unless already later). Report the path and the
+next step: `/sdd:tasks` (best after `/clear`; it re-reads `plan.md` from disk).
 
 ## Constraints
 
-- ⛔ DO NOT create files other than `plan.md` (just this one — plus the Plan Mode plan file while drafting)
-- ⛔ DO NOT start implementing after `ExitPlanMode` is approved — save `plan.md` and stop
-- ⛔ DO NOT write actual implementation code
-- ⛔ DO NOT invoke specialist agents — that is done by `/sdd:implement`
-- ✅ ALWAYS produce at least 2 Mermaid diagrams (data + component)
+- Write only `plan.md` (plus the Plan Mode plan file while drafting).
+- Do not invoke specialist agents or start implementing — that is `/sdd:tasks` + `/sdd:implement`.

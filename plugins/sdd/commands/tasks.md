@@ -27,6 +27,10 @@ it belongs to, routed to a specialist agent, and linked to the tasks it depends 
 
 From `plan.md` (the "File-by-file change list" section) generate the task list:
 
+**Do not copy the plan.** `plan.md` holds the decisions and the purpose of each file; a task refers to
+it (project, files, `plan.md` section) and adds only what execution needs — type, agent, model,
+`depends_on`, `acceptance`, tests. Never restate approach, contracts or file descriptions.
+
 - Hierarchy: **Epic** → **Story** → **Task**.
 - **Exactly ONE Epic per feature** — a single `/sdd:spec` run produces one feature, which maps to one
   Epic. NEVER emit multiple Epics. If the work feels like several Epics, the feature is too large
