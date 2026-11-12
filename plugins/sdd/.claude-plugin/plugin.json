@@ -21,8 +21,7 @@
   ],
   "skills": "./skills/",
   "agents": [
-    "./agents/spec-guard.md",
-    "./agents/drift-detector.md",
+    "./agents/spec-verifier.md",
     "./agents/reviewer.md",
     "./agents/ui-critic.md"
   ]

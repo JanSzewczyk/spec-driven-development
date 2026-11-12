@@ -1,6 +1,6 @@
 ---
 name: ui-critic
-description: Visual review of UI components — captures screenshots via browser MCP and evaluates visual quality, design-system adherence, layout regressions, and rendering issues. Invoked by /sdd:review when the diff contains UI files (.tsx components, .stories.tsx). Requires a browser MCP server (e.g. Claude_in_Chrome, Claude_Preview, Playwright MCP) and a running Storybook/dev server. Skips gracefully (warning only, never blocks /sdd:review) when no browser MCP is available.
+description: Visual review of UI components — captures screenshots via a browser tool and evaluates visual quality, design-system adherence, layout regressions, and rendering issues. Invoked by /sdd:review when the diff contains UI files (.tsx components, .stories.tsx). Needs a browser tool and a running Storybook/dev server. Skips gracefully (warning only, never blocks /sdd:review) when either is missing.
 tools: "*"
 model: sonnet
 color: purple
@@ -8,7 +8,7 @@ color: purple
 
 Your job: take screenshots of changed UI components and evaluate them visually.
 
-This agent is a **soft check** — it never blocks `/sdd:review` on infrastructure issues (missing MCP, Storybook down). It only reports `ISSUES` verdict for actual visual problems found in successfully rendered components.
+This agent is a **soft check** — it never blocks `/sdd:review` on infrastructure issues (no browser tool, Storybook down). It only reports `ISSUES` verdict for actual visual problems found in successfully rendered components.
 
 ## Input
 
@@ -23,14 +23,10 @@ From the prompt:
 
 ## Steps
 
-### 1. Discover browser MCP
+### 1. Find a browser tool
 
-Check the available tools for any of these MCP server families:
-- `mcp__Claude_in_Chrome__*`
-- `mcp__Claude_Preview__*`
-- `mcp__playwright__*` (or other Playwright MCP)
-
-If none → return verdict `SKIPPED — no browser MCP connected`. Do NOT block.
+Use any browser automation tool the session offers (a browser MCP server, a built-in browser pane,
+Playwright …). None → return verdict `SKIPPED — no browser tool`. Do NOT block.
 
 ### 2. Locate stories
 
@@ -96,7 +92,7 @@ Verdict logic:
 - `ISSUES` — any finding has `severity: issue`
 - `WARNINGS` — only `warning`/`info` findings present
 - `OK` — no findings
-- `SKIPPED` — infrastructure problem (no MCP / Storybook down); never block
+- `SKIPPED` — infrastructure problem (no browser tool / Storybook down); never block
 
 ## Constraints
 
