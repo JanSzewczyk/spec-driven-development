@@ -114,8 +114,19 @@ export function parseTasks(text: string): Story[] {
   return stories
 }
 
-export function parseReview(text: string): 'GO' | 'NO-GO' | null {
-  if (/NO[-\s]?GO/i.test(text)) return 'NO-GO'
+// review.md written by the reviewer agent. Its body quotes findings from several agents, so a
+// stray "NO-GO" in a finding must not decide it: the `**Verdict:**` header wins, then a
+// "Verdict:" line, and only a file with neither falls back to the first verdict word anywhere.
+function verdictOf(text: string): 'GO' | 'NO-GO' | null {
+  if (/NO[-_\s]?GO/i.test(text)) return 'NO-GO'
   if (/\bGO\b/.test(text)) return 'GO'
   return null
+}
+
+export function parseReview(text: string): 'GO' | 'NO-GO' | null {
+  const head = header(text, 'Verdict')
+  if (head && !head.includes('|')) return verdictOf(head)
+  const line = text.match(/^\W*Verdict\W*:\W*(.+)$/im)
+  if (line && !line[1].includes('|')) return verdictOf(line[1])
+  return verdictOf(text)
 }

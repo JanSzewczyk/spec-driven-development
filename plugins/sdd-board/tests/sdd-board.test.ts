@@ -91,6 +91,9 @@ test('parseReview tells GO from NO-GO', () => {
   expect(parseReview('Verdict: NO-GO')).toBe('NO-GO')
   expect(parseReview('Verdict: GO')).toBe('GO')
   expect(parseReview('nothing')).toBeNull()
+  expect(parseReview('# Review\n\n**Verdict:** GO\n\n## Drift (drift-detector)\n- the last round was NO-GO, now fixed\n')).toBe('GO')
+  expect(parseReview('# Review\n\n**Verdict:** NO-GO\n')).toBe('NO-GO')
+  expect(parseReview('**Verdict:** NO_GO')).toBe('NO-GO')
 })
 
 test('derive walks the pipeline', () => {
