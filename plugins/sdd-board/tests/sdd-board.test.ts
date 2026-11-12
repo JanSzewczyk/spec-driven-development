@@ -82,6 +82,11 @@ test('parseTasks groups tasks into stories with their status', () => {
   expect(stories[1].tasks[0].model).toBe('haiku')
 })
 
+test('parseTasks ignores trailing YAML comments on a field', () => {
+  const stories = parseTasks('### Story S1: X\n\n```yaml\n- id: T1.1\n  title: A\n  status: done  # skeleton created early\n```\n')
+  expect(stories[0].tasks[0].status).toBe('done')
+})
+
 test('parseReview tells GO from NO-GO', () => {
   expect(parseReview('Verdict: NO-GO')).toBe('NO-GO')
   expect(parseReview('Verdict: GO')).toBe('GO')

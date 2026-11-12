@@ -109,7 +109,7 @@ export function parseTasks(text: string): Story[] {
     }
     if (!task) continue
     const f = raw.match(/^\s{2,}(title|type|agent|model|status):\s*(.*)$/)
-    if (f) (task as Record<string, string>)[f[1]] = f[2].trim().replace(/^["']|["']$/g, '')
+    if (f) (task as Record<string, string>)[f[1]] = f[2].replace(/\s+#.*$/, '').trim().replace(/^["']|["']$/g, '')
   }
   return stories
 }
