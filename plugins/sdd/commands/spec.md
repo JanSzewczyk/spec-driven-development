@@ -1,7 +1,7 @@
 ---
 description: Create a feature spec, branch, and skeleton files (SDD step 1)
 argument-hint: "<type> <short description>  # type: feat|fix|chore|refactor|docs"
-allowed-tools: Read, Write, Bash, Skill
+allowed-tools: Read, Write, Bash, Skill, Agent
 ---
 
 Invoke the **Specify** phase of Spec-Driven Development. Execute the steps in order. Write only the
@@ -16,9 +16,10 @@ business specification: no implementation code, no frameworks or libraries.
 
 ### 1. Branch
 
-Create a git branch for this feature. If the session has a skill for creating branches, use it
-(give it the type and the description); otherwise run `git checkout -b <type>/<slug>` (`slug`:
-kebab-case, `[a-z0-9-]`, max 50 chars). Then read the real name:
+Create a git branch for this feature with the `branch` action from `## Actions` in
+`specs/capabilities.md` (`skill:` / `agent:` / `command:`; give it the type and the description).
+Unset → use a branch-creating skill the session has, else run `git checkout -b <type>/<slug>`
+(`slug`: kebab-case, `[a-z0-9-]`, max 50 chars). Then read the real name:
 
 ```bash
 git branch --show-current
