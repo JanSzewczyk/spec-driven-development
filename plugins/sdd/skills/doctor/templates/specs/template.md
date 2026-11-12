@@ -65,4 +65,4 @@
 
 ## Notes
 
-<!-- Links to Figma, design docs, ADRs -->
+<!-- Links: designs, API specs, ADRs -->
