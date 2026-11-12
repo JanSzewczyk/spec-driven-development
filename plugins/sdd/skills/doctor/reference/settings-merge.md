@@ -52,9 +52,14 @@ Paths are **relative to the project root** — Claude Code runs hooks with the p
    (the user's own hooks, other matchers, etc.).
 6. **Append the fresh entry** built above — but only if at least one hookable tool was detected.
    If no hookable tools were detected, append nothing (you've still stripped stale entries).
-7. **Preserve all other top-level keys verbatim** — `permissions`, `model`, `env`, `mcpServers`,
-   `enabledPlugins`, and anything else. Only the `hooks.PostToolUse` array is edited.
-8. **Write** the result with 2-space indentation and a trailing newline.
+7. **Sibling repositories (polyrepo only).** When init found projects in sibling repositories,
+   ensure `permissions` (object) and `permissions.additionalDirectories` (array) exist and append
+   each sibling repo path (relative, e.g. `../mobile-app`) that is not already listed. Never remove
+   or reorder existing entries. No sibling repos → do not touch `permissions` at all.
+8. **Preserve all other top-level keys verbatim** — `permissions` (apart from step 7), `model`,
+   `env`, `mcpServers`, `enabledPlugins`, and anything else. Only the `hooks.PostToolUse` array (and,
+   for step 7, `permissions.additionalDirectories`) is edited.
+9. **Write** the result with 2-space indentation and a trailing newline.
 
 ## Edge cases
 

@@ -13,7 +13,10 @@
 #        • mypy  — a direct on-PATH checker invoked per-file
 #        • Java  — a compiler / build-tool task run via a repo-local wrapper (whole-module)
 #      New languages/tools appear all the time; reproduce whatever this project runs to type-check.
-#   4. End with the final `exit 0`.
+#   4. SEVERAL PROJECTS (a monorepo, or projects in sibling repositories): use the last shape,
+#      "route by path", INSTEAD of the per-extension blocks — one branch per project, each running
+#      that project's checker from that project's directory with that project's runner.
+#   5. End with the final `exit 0`.
 # The contract for every block: gate on the file extension(s) the tool covers; no-op (`exit 0`)
 # when the tool isn't runnable; on a real failure print to stderr and `exit 2` (which BLOCKS
 # Claude). Prefer a per-file invocation; fall back to whole-project only for tools with no
@@ -73,6 +76,35 @@ case "$ext" in
         echo "❌ mvn compile failed for $file_path" >&2
         exit 2
       fi
+    fi
+    ;;
+esac
+
+# ── SHAPE: several projects — route by PATH, then run that project's own checker ──
+# Example: an Nx monorepo with a Next.js app (apps/web) and a FastAPI app (apps/api, uv), plus a
+# Flutter app in a sibling repository (../mobile-app). A repo-wide `tsc` or a Python tool run from
+# the root would use the wrong tsconfig / miss apps/api's pyproject.toml and virtualenv.
+# `file_path` is absolute, hence the leading `*/` in every pattern.
+case "$file_path" in
+  */apps/api/*.py)
+    ( cd apps/api && uv run --quiet mypy --version ) >/dev/null 2>&1 || exit 0   # tool absent → no-op
+    if ! ( cd apps/api && uv run --quiet mypy "${file_path##*/apps/api/}" ) 2>&1; then
+      echo "❌ mypy (api) failed for $file_path" >&2
+      exit 2
+    fi
+    ;;
+  */apps/web/*.ts|*/apps/web/*.tsx)
+    npx --no-install --quiet nx --version >/dev/null 2>&1 || exit 0
+    if ! npx --no-install nx run web:typecheck 2>&1; then   # the project's own target, its tsconfig
+      echo "❌ typecheck (web) failed for $file_path" >&2
+      exit 2
+    fi
+    ;;
+  */mobile-app/*.dart)
+    command -v flutter >/dev/null 2>&1 || exit 0
+    if ! ( cd ../mobile-app && flutter analyze --no-pub "${file_path##*/mobile-app/}" ) 2>&1; then
+      echo "❌ flutter analyze (mobile) failed for $file_path" >&2
+      exit 2
     fi
     ;;
 esac

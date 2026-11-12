@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Projects: one framework for any layout and any app.** `capabilities.md` gets a `## Projects` section (replacing `Stack profile`): single app (`root`), monorepo (one project per app/package) or several repositories (projects in sibling checkouts, `specs/` only in the spec repo). Web, backend and mobile projects are peers. Constitution §2 has one command row per project, the routing table a `Stack` column, and `/sdd:doctor init` detects workspaces (Nx, Turborepo, pnpm/yarn/uv/Cargo/Go, Gradle) and asks which sibling repos belong to the product.
+- **Task dependencies and parallel waves.** Tasks carry `project`, `tdd` and `depends_on`. `/sdd:tasks` writes each Story's execution waves and a Mermaid flow diagram (one subgraph per wave, one colour per project); `/sdd:implement` runs the tasks of a wave in parallel as subagents (each on its own agent and `model` tier, editing only its own files) and starts the next wave once the previous one is green.
+- **Several repositories.** `/sdd:implement` creates the feature branch in each sibling repo it edits, `/sdd:review` diffs, tests and opens a linked PR per repo, and `init` adds sibling repos to `permissions.additionalDirectories`.
+- **Path-routed hooks for monorepos.** The hook templates gain a "route by path" shape: each project's typecheck/lint runs from its own directory with its own runner.
+- **sdd-board shows each task's project and what it waits on** (open `depends_on`).
+
 ### Fixed
 
 - **`/sdd:plan` works in Plan Mode.** Plan Mode blocks every write except the session's plan file, so the command now drafts the plan there and calls ExitPlanMode; the approval is the human review, and only then is `specs/<slug>/plan.md` written. Without Plan Mode it writes directly, as before.
@@ -21,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **One task per unit of behaviour.** The test → implementation (and contract → tests → implementation) chain now happens inside one task (`tdd: test-first | contract-first`) instead of being split into 2–3 tasks; a contract shared between projects stays its own task. A `tasks.md` in the old format still runs, sequentially.
+- **No frontend bias in examples.** Task, plan and routing examples show a web + backend + mobile feature; `drift-detector` and `analyze` look for tests by each project's convention; `reviewer` picks audits per project; `ui-critic` reviews web projects and skips mobile/desktop UI without a screenshot tool.
 - The constitution's §2 Run/build table gains `coverage` and `ui-preview` rows and is the single source for those commands; `/sdd:doctor init` fills it from the detected tooling when it seeds the constitution, and `check` warns when the `test` row is empty.
 
 ## [sdd-board 0.2.0] — 2026-11-12

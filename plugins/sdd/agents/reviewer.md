@@ -27,13 +27,16 @@ test results, run the `test` command from `specs/constitution.md` §2 yourself.
 
 ### 2. Check coverage
 
-Use the coverage numbers from the prompt. Thresholds come from the **Coverage targets** line of
-`specs/constitution.md` §6; if it has none, default to unit >70%, integration >50%. No coverage
+Use the coverage numbers from the prompt, per project. Thresholds come from the **Coverage
+targets** line of `specs/constitution.md` §6 (per project when it lists them); if it has none, default to unit >70%, integration >50%. No coverage
 numbers (the project has no `coverage` command in §2) → a warning, not a blocker.
 
 ### 3. Domain-specific audits
 
-From `specs/capabilities.md` "Skills" section — pick those relevant to the diff. The audits below
+**Per project.** For every project the diff touches (the prompt lists them, with kind and stack),
+pick from `specs/capabilities.md` "Skills" the audits relevant to *that* project's stack and to the
+files changed in it — a Python API, a Next.js app and a Flutter app each get their own audits, and
+a project with no relevant audit skill gets none. The audits below
 are **examples** for a React/Next.js project; another stack uses its own audit skills from
 capabilities, and when none is relevant you skip this step.
 
@@ -49,7 +52,7 @@ Use skill: accessibility-audit
 ```
 Require 0 critical violations.
 
-**Plus visual review** — `/sdd:review` already ran the `ui-critic` sub-agent and passed you its JSON verdict (`OK`/`WARNINGS`/`ISSUES`/`SKIPPED`); do not invoke it yourself. Apply it:
+**Plus visual review (web projects)** — `/sdd:review` already ran the `ui-critic` sub-agent and passed you its JSON verdict (`OK`/`WARNINGS`/`ISSUES`/`SKIPPED`); do not invoke it yourself. Apply it:
 - `ISSUES` → list findings in `review.md` "Visual review" section; block GO unless the user explicitly accepts.
 - `WARNINGS` → list in review.md, do NOT block.
 - `SKIPPED` → mention infrastructure issue (no MCP, Storybook down) but never block.
@@ -87,6 +90,7 @@ Every commit message should be Conventional Commits format: `<type>(<scope>): <d
 - ...
 
 ## Test results
+<!-- one block per project touched, e.g. ### api (backend · apps/api) -->
 - Unit: X/X passed
 - Integration: X/X passed
 - E2E: X/X passed

@@ -13,9 +13,15 @@
 
 <!-- auto-generated -->
 
-## Stack profile
+## Projects
 
 <!-- auto-generated -->
+<!-- One line per project: `- **<name>** — <kind> · <path> · <stack>`. kind ∈ web | backend |
+     mobile | desktop | library | e2e | infra (or another word that fits). A single-app repo has one
+     project, `root` (path `.`). A project in a sibling repository adds `(repo)` after its path,
+     e.g. `- **mobile** — mobile · ../mobile-app (repo) · Flutter 3, Dart`.
+     Tasks name their project; /sdd:implement takes the project's commands from
+     specs/constitution.md §2 and routes by its stack. -->
 
 ## Task type → routing rules
 
@@ -24,34 +30,39 @@
      `/sdd:implement` routes the task to the listed agent + skills, on the listed model tier.
      Add stack-specific types (and their agents/skills/model) below or in "Custom routing rules".
 
+     Stack = which projects a row applies to: `*` for any, or a stack/kind word from the Projects
+     list (`python`, `nextjs`, `flutter`, `mobile`, …). A row with a matching stack wins over `*`,
+     so one task type can route to a different specialist per project.
+
      Model = an ADVISORY cost tier for the executing session/subagent, NOT a hard switch (a slash
      command cannot change the session model itself). Reserve `opus` for judgement-heavy REASONING
      phases run at the session level (/sdd:spec, /sdd:clarify, /sdd:plan, /sdd:review); keep the
      mechanical implement-phase task tiers cheap. `haiku` for trivial/mechanical work, `sonnet` for
      normal test + implementation work. -->
-| Task type           | Specialist agent          | Skills to load                          | Model   |
-|---------------------|---------------------------|-----------------------------------------|---------|
-| contract            | (orchestrator)            | —                                       | sonnet  |
-| contract-test       | (orchestrator)            | —                                       | sonnet  |
-| unit-test           | (orchestrator)            | —                                       | sonnet  |
-| integration-test    | (orchestrator)            | —                                       | sonnet  |
-| e2e-test            | (orchestrator)            | —                                       | sonnet  |
-| implementation      | (orchestrator)            | —                                       | sonnet  |
-| refactor            | (orchestrator)            | —                                       | haiku   |
-| generic             | (orchestrator)            | —                                       | haiku   |
+| Task type           | Stack | Specialist agent          | Skills to load                          | Model   |
+|---------------------|-------|---------------------------|-----------------------------------------|---------|
+| contract            | *     | (orchestrator)            | —                                       | sonnet  |
+| implementation      | *     | (orchestrator)            | —                                       | sonnet  |
+| integration-test    | *     | (orchestrator)            | —                                       | sonnet  |
+| e2e-test            | *     | (orchestrator)            | —                                       | sonnet  |
+| migration           | *     | (orchestrator)            | —                                       | sonnet  |
+| refactor            | *     | (orchestrator)            | —                                       | haiku   |
+| generic             | *     | (orchestrator)            | —                                       | haiku   |
 
 ## Custom routing rules
 
 <!-- user-override -->
 <!-- Add your own task types and routing rules. /sdd:tasks uses these alongside the defaults above.
 
-     Example — how a React/Next.js project might specialize the generic phases (delete if N/A):
-     | Task type         | Specialist agent          | Skills to load                    | Model   |
-     |-------------------|---------------------------|-----------------------------------|---------|
-     | ui-contract       | (orchestrator)            | design-system                     | sonnet  |
-     | ui-component-test | storybook-tester          | storybook-testing, design-system  | sonnet  |
-     | ui-component      | (orchestrator)            | design-system                     | sonnet  |
-     | server-action     | nextjs-backend-engineer   | server-actions, error-handling    | sonnet  |
+     Example — a Next.js web app, a FastAPI backend and a Flutter mobile app specializing the
+     defaults per stack (delete what does not apply):
+     | Task type         | Stack   | Specialist agent          | Skills to load                    | Model   |
+     |-------------------|---------|---------------------------|-----------------------------------|---------|
+     | implementation    | nextjs  | nextjs-backend-engineer   | server-actions, error-handling    | sonnet  |
+     | ui-component      | nextjs  | frontend-expert           | design-system                     | sonnet  |
+     | implementation    | python  | python-developer          | fastapi-rules, pytest-rules       | sonnet  |
+     | contract          | python  | python-api-architect      | api-architecture-rules            | sonnet  |
+     | implementation    | flutter | (orchestrator)            | —                                 | sonnet  |
 -->
 
 ## Generated / out-of-band paths
@@ -70,4 +81,9 @@
 - `**/pnpm-lock.yaml`
 - `**/package-lock.json`
 - `**/yarn.lock`
+- `**/uv.lock`
+- `**/poetry.lock`
+- `**/pubspec.lock`
+- `**/Podfile.lock`
+- `**/openapi-client/**`
 

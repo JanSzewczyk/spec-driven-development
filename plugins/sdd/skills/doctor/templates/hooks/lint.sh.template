@@ -15,7 +15,10 @@
 #      For one ecosystem there's usually exactly ONE linter (e.g. JS/TS: whichever of Biome /
 #      ESLint / oxlint the project depends on). If the project configures NO linter, emit no lint
 #      hook at all — don't invent one. New tools appear all the time; reproduce what this project uses.
-#   4. End with the final `exit 0`.
+#   4. SEVERAL PROJECTS (a monorepo, or projects in sibling repositories): use the last shape,
+#      "route by path", INSTEAD of the per-extension blocks — one branch per project, each running
+#      that project's linter from that project's directory with that project's runner.
+#   5. End with the final `exit 0`.
 # The contract for every block: gate on the file extension(s); no-op (`exit 0`) when the tool
 # isn't runnable; on a real failure print to stderr and `exit 2` (BLOCKS Claude). Prefer running
 # the linter on `$file_path` — this hook fires after every edit, so avoid whole-repo lint commands.
@@ -70,6 +73,27 @@ case "$ext" in
         echo "❌ mvn checkstyle:check failed for $file_path" >&2
         exit 2
       fi
+    fi
+    ;;
+esac
+
+# ── SHAPE: several projects — route by PATH, then run that project's own linter ──
+# Example: an Nx monorepo with a Next.js app (apps/web) and a FastAPI app (apps/api, uv). Each
+# linter runs from its project's directory so it picks up that project's config and environment.
+# `file_path` is absolute, hence the leading `*/` in every pattern.
+case "$file_path" in
+  */apps/api/*.py)
+    ( cd apps/api && uv run --quiet ruff --version ) >/dev/null 2>&1 || exit 0   # tool absent → no-op
+    if ! ( cd apps/api && uv run --quiet ruff check "${file_path##*/apps/api/}" ) 2>&1; then
+      echo "❌ Ruff (api) failed for $file_path" >&2
+      exit 2
+    fi
+    ;;
+  */apps/web/*.ts|*/apps/web/*.tsx|*/apps/web/*.js|*/apps/web/*.jsx)
+    npx --no-install --quiet eslint --version >/dev/null 2>&1 || exit 0
+    if ! npx --no-install eslint "$file_path" 2>&1; then
+      echo "❌ ESLint (web) failed for $file_path" >&2
+      exit 2
     fi
     ;;
 esac
