@@ -35,8 +35,11 @@ From `plan.md` (the "File-by-file change list" section) generate the task list:
 - **A Story is a user story** — something a user can do when it ships (the spec's User stories).
   It is NOT one per app: a story like "user resets their password" spans the API, the web app and
   the mobile app. Its tasks carry the `project` they belong to.
-- **One task = one unit of behaviour together with its tests**, in one project — an endpoint, a
-  screen, a form, a service method, a migration. Size: a few hours of work. Do not split a unit
+- **One task = one unit of behaviour together with its tests**, in one project — something a user
+  or another project can observe: an endpoint *with* the service and storage behind it, a screen
+  *with* its state and data loading, a migration, a CLI command. The internal layers of one unit
+  (router, service, repository, hook, styles) belong to the same task — do not give each layer its
+  own task. Size: a few hours of work. Do not split a unit
   into a "tests" task and an "implementation" task: the red→green cycle happens *inside* the task
   (see `tdd` below). Do not merge units from different projects into one task.
 - **`tdd` — the TDD shape of the task** (technology-neutral; test-first is the default):
@@ -78,11 +81,16 @@ From `plan.md` (the "File-by-file change list" section) generate the task list:
 1. Choose a `type`. **The available types come from the project's `capabilities.md` routing
    table** — match the task to the closest type by the nature of the work (contract, a test-heavy
    unit, an implementation, a migration, …); anything with no dedicated row → `generic`.
-2. Find the row matching `type` **and the task's project stack** (the `Stack` column; `*` matches
-   any stack; a more specific stack row wins over `*`). Pull `agent` + `skills` + `model` from it.
+2. Find the row matching `type` **and the task's project** (the `Stack` column holds `*`, a project
+   name, a kind or a stack word; the most specific match wins: project name, then kind/stack word,
+   then `*`). Pull `agent` + `skills` + `model` from it.
    The same `type` can route to different agents per stack — e.g. `implementation` → a Python
    specialist for the API and a Next.js specialist for the web app.
-3. No matching row → `agent: orchestrator`, `skills: []`, `model: sonnet`. A legacy routing table
+3. Use only agents that can edit files (their `tools` include Write/Edit, or `*`). A row pointing
+   at a read-only agent (an architect, a reviewer, an auditor) is a misconfiguration: use
+   `orchestrator` for that task and tell the user to fix the row. (An agent that edits but has no
+   Bash is fine — `/sdd:implement` runs its tests for it.)
+4. No matching row → `agent: orchestrator`, `skills: []`, `model: sonnet`. A legacy routing table
    with no `Stack` column → every row counts as `*`; no `Model` column → `model: sonnet`.
 
 **Dependencies (`depends_on`) — what blocks what:**

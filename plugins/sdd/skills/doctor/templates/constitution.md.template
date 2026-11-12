@@ -39,8 +39,10 @@
      source for them (the root CLAUDE.md is never read). One row per project, as listed in the
      `Projects` section of specs/capabilities.md; a single-app repo has one row, `root`.
      Each command runs from the repository root of the spec repo: put the `cd`/`--project` part in
-     the command itself. `test` must accept test file paths appended to it (`/sdd:implement` runs a
-     subset that way). Leave a cell empty when the project has no such command. -->
+     the command itself. `test` as written runs that project's full suite; `/sdd:implement` runs a
+     subset by giving it the task's test files instead of any directory the command names, with the
+     paths made relative to the directory the command runs in (`cd apps/api && uv run pytest
+     tests/test_todos.py`). Leave a cell empty when the project has no such command. -->
 
 | Project | Path | test | coverage | typecheck | lint | dev / ui-preview |
 |---------|------|------|----------|-----------|------|------------------|
@@ -48,7 +50,7 @@
 
 <!-- Example — a monorepo plus a mobile app in a sibling repository (delete when not needed):
 | web    | `apps/web`      | `pnpm nx run web:test --`          | `pnpm nx run web:test -- --coverage` | `pnpm nx run web:typecheck` | `pnpm nx run web:lint` | `pnpm nx run web:storybook` → http://localhost:6006 |
-| api    | `apps/api`      | `uv run --project apps/api pytest` | `uv run --project apps/api pytest --cov` | `uv run --project apps/api mypy app` | `uv run --project apps/api ruff check` | `uv run --project apps/api fastapi dev` |
+| api    | `apps/api`      | `cd apps/api && uv run pytest` | `cd apps/api && uv run pytest --cov` | `cd apps/api && uv run mypy app` | `cd apps/api && uv run ruff check` | `cd apps/api && uv run fastapi dev app/main.py` |
 | mobile | `../mobile-app` | `cd ../mobile-app && flutter test` | `cd ../mobile-app && flutter test --coverage` | `cd ../mobile-app && flutter analyze` | | `cd ../mobile-app && flutter run` |
 | e2e    | `apps/web-e2e`  | `pnpm nx run web-e2e:e2e --`       | | | | |
 -->

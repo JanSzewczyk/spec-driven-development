@@ -206,7 +206,7 @@ compiled language, the build tool's compile task. If a category has no configure
   → `specs/constitution.md`, then fill the **§2 Run/build commands** table with **one row per
   project** from step 1 (`Project`, `Path`, `test`, `coverage`, `typecheck`, `lint`, and
   `dev / ui-preview` when the project declares one), each command written so it runs from this
-  repository's root (`uv run --project apps/api pytest`, `cd ../mobile-app && flutter test`); remove
+  repository's root (`cd apps/api && uv run pytest`, `cd ../mobile-app && flutter test`); remove
   the commented example rows; leave a cell empty when nothing was found. Every SDD command and
   agent reads these commands from §2, so this is the one place they live. If the file is present,
   **leave it untouched** (it's the source of truth, edited via `/sdd:constitution`).
@@ -235,8 +235,11 @@ sections (**keep these exact headings — other commands read them**):
   (cost tier per task type). Seed the defaults from the template: `sonnet` for
   contract/test/implementation types, `haiku` for `refactor`/`generic`. `opus` is reserved for
   session-level reasoning phases, not task rows. When the file is new and an installed specialist
-  agent clearly fits one stack (a Python developer agent for a Python project, a mobile agent for a
-  Flutter project), add a stack-specific `implementation` row for it in `Custom routing rules`.
+  agent clearly fits one project's stack (a Python developer agent for a Python project, a mobile
+  agent for a Flutter project), add a stack-specific `implementation` row for it in `Custom routing
+  rules` — but only for an agent whose `tools` frontmatter allows editing files (Write/Edit, or
+  `*`). Read-only agents (architects, reviewers, auditors) never
+  get a routing row: they cannot carry out a task.
 - `## Generated / out-of-band paths` + `<!-- user-override -->` — glob list of generated /
   non-hand-authored files that the diff-consuming agents exclude from context and never flag.
 
