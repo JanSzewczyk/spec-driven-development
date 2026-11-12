@@ -32,13 +32,19 @@
 
 ## 2. Run/build commands
 
+<!-- The SDD commands and agents read the commands below from this table — it is the single
+     source for them (the root CLAUDE.md is never read). Put the real command in each row; leave a
+     row empty when the project has no such command. -->
+
 | Command | Purpose |
 |---------|---------|
 | `dev` | local development server |
 | `build` | production build |
-| `test` | full test suite |
+| `test` | full test suite (`/sdd:implement` appends test paths to run a subset) |
+| `coverage` | test suite with coverage report (optional) |
 | `typecheck` | type-checker only |
 | `lint` | lint + format check |
+| `ui-preview` | command + URL that serve UI components for visual review, e.g. Storybook (optional) |
 
 Add notes for non-obvious flags or env vars required.
 

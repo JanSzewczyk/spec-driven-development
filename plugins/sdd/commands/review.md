@@ -1,25 +1,46 @@
 ---
-description: Final audit before PR — runs spec-guard + drift-detector + reviewer (SDD step 6)
+description: Final audit before PR — runs spec-guard + drift-detector + ui-critic + reviewer (SDD step 6)
 argument-hint: "(none)"
 allowed-tools: "*"
 ---
 
-The **Review** phase of SDD. Final audit before commit + PR. Invokes the SDD verification agents
-in sequence (spec-guard, drift-detector, reviewer — plus ui-critic when UI files
-are in the diff) and any domain-specific skills.
+The **Review** phase of SDD. Final audit before commit + PR. This command runs the full test suite
+once, invokes the SDD verification agents (spec-guard, drift-detector, plus ui-critic when UI files
+are in the diff), then hands all their results to the `reviewer` agent, which runs the domain audits,
+writes `review.md` and returns the GO/NO-GO verdict.
 
 > 💰 **Recommended session model: Opus.** This is the judgement-heavy final gate. (The verification
 > sub-agents carry their own `model:` frontmatter — spec-guard/drift-detector/ui-critic on Sonnet,
 > reviewer on Opus — so they run at their own tier regardless of the session model.)
 
+## The feature diff
+
+`/sdd:implement` never commits, so the feature's work is mostly **uncommitted**, and new files are
+**untracked**. `git diff main..HEAD` would miss all of it. Every step below — and every agent you
+invoke — uses this definition of the feature diff instead:
+
+```bash
+base=$(git merge-base HEAD main)   # use the repo's default branch if it is not `main`
+git diff "$base" -- . ':(exclude)<glob>' …   # committed + uncommitted changes to tracked files
+git ls-files --others --exclude-standard     # new, untracked files — part of the feature too
+```
+
+The `<glob>` list is the `Generated / out-of-band paths` section of `specs/capabilities.md`; apply
+the same exclusions to the untracked list. Pass this definition (base commit + "include untracked
+files") in every agent prompt below.
+
 ## Steps
 
-### 1. Pre-flight
+### 1. Pre-flight (runs the test suite — the only full run in this command)
 
 Verify:
 - All tasks in `specs/<current>/tasks.md` have status `review` or `done`.
 - Branch ≠ `main`/`master`.
-- The test suite passes: run the full suite.
+- The full test suite passes: run the `test` command from `specs/constitution.md` §2. If §2 also
+  has a `coverage` command, run that instead (it runs the suite and reports coverage in one go).
+
+Keep the result (passed/failed counts per layer, coverage numbers, the failing test names) — the
+`reviewer` agent receives it in Step 5 and does **not** re-run the suite.
 
 If anything fails → STOP, list the blockers.
 
@@ -27,8 +48,8 @@ If anything fails → STOP, list the blockers.
 
 ```
 Task tool: subagent_type=spec-guard
-prompt: "Verify the full diff (git diff main..HEAD) against specs/<current>/spec.md.
-         Are ALL Acceptance criteria satisfied? Any out-of-scope changes?
+prompt: "Verify the feature diff (base <base>, include untracked files) against
+         specs/<current>/spec.md. Are ALL Acceptance criteria satisfied? Any out-of-scope changes?
          Exclude the globs in specs/capabilities.md 'Generated / out-of-band paths' from the diff."
 ```
 
@@ -38,68 +59,58 @@ Expected return: JSON `{satisfied: bool, missing: [...], out_of_scope: [...]}`.
 
 ```
 Task tool: subagent_type=drift-detector
-prompt: "Detect drift between the documentation (specs/<current>/) and the current code.
+prompt: "Detect drift between the documentation (specs/<current>/) and the current code
+         (feature diff: base <base>, include untracked files).
          Return a list of mismatches with file paths and line numbers.
          Exclude the globs in specs/capabilities.md 'Generated / out-of-band paths' from the diff."
 ```
 
-### 4. Domain-specific audits (if relevant)
+### 4. Visual review — `ui-critic` (only when UI files are in the diff)
 
-From `specs/capabilities.md` check which skills are available. Invoke:
-- `react-doctor` — if the diff contains `.tsx`/`.jsx` files
-- `accessibility-audit` — if the diff contains UI files (components)
-- `ui-critic` sub-agent — if the diff contains UI files; captures Storybook screenshots and evaluates visual quality. Soft check — never blocks on infrastructure (no MCP / Storybook down → `SKIPPED` verdict, warning only).
-- Other skills defined in capabilities.md section "Review hooks"
+This command is the only place that invokes `ui-critic` (a sub-agent cannot start another
+sub-agent, so `reviewer` cannot). Invoke it when the feature diff contains UI component files:
 
-### 5. Generate `review.md`
-
-`specs/<current>/review.md`:
-
-```markdown
-# Review: <feature_title>
-
-**Branch:** <type>/<slug>
-**Date:** <today>
-**Verdict:** GO | NO-GO
-
-## Spec compliance (spec-guard)
-- Satisfied AC: X/Y
-- Missing: ...
-- Out of scope: ...
-
-## Drift (drift-detector)
-- ...
-
-## React doctor
-- Score: 87/100
-- Issues: ...
-
-## A11y
-- Critical: 0
-- Warnings: ...
-
-## Visual review (ui-critic)
-- Verdict: OK | WARNINGS | ISSUES | SKIPPED
-- Components reviewed: ...
-- Screenshots: ./.sdd-screenshots/
-- Findings: ...
-
-## Test coverage
-- Unit: 85%
-- Integration: 70%
-- E2E: ...
-
-## Verdict
-- ✅ GO — all checks green
-- ❌ NO-GO — needs: <list of actions>
 ```
+Task tool: subagent_type=ui-critic
+prompt: "Review these changed UI files: <list>. Storybook URL and start command: the `ui-preview`
+         row of specs/constitution.md §2."
+```
+
+Soft check — never blocks on infrastructure (no browser MCP / Storybook down → `SKIPPED`, warning
+only). If no UI files changed, skip this step and record `SKIPPED — no UI changes`.
+
+### 5. Reviewer — audits, `review.md`, verdict
+
+```
+Task tool: subagent_type=reviewer
+prompt: "Feature folder: specs/<current>/. Write specs/<current>/review.md.
+         Feature diff: base <base>, include untracked files.
+         Test results from pre-flight (do NOT re-run the suite): <counts, coverage, failures>.
+         spec-guard result: <JSON>. drift-detector result: <list>. ui-critic result: <JSON or SKIPPED>."
+```
+
+The reviewer picks the domain audit skills relevant to the diff from the `Skills` section of
+`specs/capabilities.md`, checks conventions, writes `review.md` (one file — its template includes
+the spec-guard, drift and visual-review sections), and returns
+`{verdict: GO | NO_GO, blockers: [...], warnings: [...]}`.
 
 ### 6. If verdict = GO
 
-Run:
+**a. Advance the lifecycle first**, so the commit carries it: all tasks in `tasks.md`
+`review` → `done`; `spec.md` and `plan.md` header `**Status:**` → `done`.
+
+**b. Ask before committing.** Committing and opening a PR publish the work, so confirm first. Show
+the commit title, the PR title and the exact list of files you will stage — the feature diff's files
+(tracked + untracked, minus the generated globs only if the project does not commit them) plus
+`specs/<slug>/`. Use the `AskUserQuestion` tool when it is available (options: "Commit and open PR"
+(Recommended), "Commit only", "Stop here"); otherwise ask in the conversation and wait for a yes.
+Never stage files that are not on that list — in particular never `git add -A` (it sweeps in
+screenshots, `.env*` files and other local leftovers).
+
+**c. Commit and open the PR** (or only commit, per the answer):
 
 ```bash
-git add -A
+git add -- <each file from the confirmed list>
 git commit -m "<type>(<slug>): <description from spec.md Summary>
 
 <bullet list of 2-3 highlights>
@@ -116,17 +127,13 @@ gh pr create \
 <list from plan.md File-by-file>
 
 ## Testing
-<from review.md Test coverage>
+<from review.md Test results>
 
 ## Spec
 \`specs/<slug>/spec.md\`
 EOF
   )"
 ```
-
-All tasks in `tasks.md`: status `review` → `done`.
-
-Advance the document lifecycle: set `spec.md` and `plan.md` headers `**Status:**` → `done`.
 
 ### 7. If verdict = NO-GO
 
@@ -138,8 +145,10 @@ DO NOT commit. List the actions to fix. Suggest:
 ## Constraints
 
 - ⛔ DO NOT commit if verdict = NO-GO
-- ⛔ DO NOT skip the core SDD agents (spec-guard, drift-detector, reviewer). `ui-critic` is invoked by reviewer when UI files are in the diff and is allowed to SKIP on infrastructure issues.
-- ⛔ Run spec-guard / drift-detector / reviewer ONCE feature-wide — do not loop them.
+- ⛔ DO NOT commit or open a PR without the user's confirmation (Step 6b)
+- ⛔ DO NOT use `git add -A` / `git add .` — stage the confirmed file list only
+- ⛔ DO NOT skip the core SDD agents (spec-guard, drift-detector, reviewer). `ui-critic` runs only when UI files are in the diff and is allowed to SKIP on infrastructure issues.
+- ⛔ Run the test suite, spec-guard, drift-detector, ui-critic and reviewer ONCE each — do not loop them.
 - ✅ The verification agents exclude the `Generated / out-of-band paths` globs from `specs/capabilities.md` — generated files are never flagged out-of-scope or as drift.
 - ✅ Commit message format: Conventional Commits (`<type>(<scope>): <description>`)
 - ✅ PR body contains a link to spec.md

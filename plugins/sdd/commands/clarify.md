@@ -1,7 +1,7 @@
 ---
 description: AI asks gap questions about the current spec (SDD step 2)
 argument-hint: "(optional path to spec.md)"
-allowed-tools: Read, Edit
+allowed-tools: Read, Edit, Glob, Bash(git branch:*)
 ---
 
 The **Clarify** phase of SDD. Your job is to actively probe gaps in the specification.
@@ -14,14 +14,14 @@ The **Clarify** phase of SDD. Your job is to actively probe gaps in the specific
 
 ### 1. Find the spec
 
-Default to the most recently modified `specs/*/spec.md` OR the path from `$ARGUMENTS`.
-
-Also check which branch is active:
+Use the path from `$ARGUMENTS` if given. Otherwise take the active branch:
 ```bash
 git branch --show-current
 ```
 
-If the branch name is `<type>/<slug>`, locate `specs/<slug>/spec.md`.
+If the branch name is `<type>/<slug>`, use `specs/<slug>/spec.md`. If neither resolves to an
+existing spec, list `specs/*/spec.md` and ask which one — never guess by "most recently modified"
+(with several features in flight that picks the wrong one).
 
 ### 2. Ask 5-10 questions
 

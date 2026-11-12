@@ -25,7 +25,9 @@ Use it when:
 - `specs/capabilities.md` — read the `Generated / out-of-band paths` globs
 - The diff, **excluding** those generated globs so they never enter context:
   ```bash
-  git diff main..HEAD -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…other globs>
+  base=$(git merge-base HEAD main)   # or the repo's default branch
+  git diff "$base" -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…other globs>
+  git ls-files --others --exclude-standard   # new, untracked files (SDD commits only at the end)
   ```
 - `git log main..HEAD --oneline`
 
@@ -45,7 +47,7 @@ Generate the conflict matrix:
 
 #### Tasks ↔ Code
 
-- Do tasks with status `done`/`review` actually have commits modifying their declared `files`?
+- Do tasks with status `done`/`review` actually have changes (committed or not) in their declared `files`?
 - Are there changes in the diff in files NOT covered by any task? (out-of-scope drift)
 
 #### Spec ↔ Code
