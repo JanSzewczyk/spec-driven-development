@@ -7,7 +7,7 @@ allowed-tools: "*"
 The **Review** phase of SDD. Final audit before commit + PR. This command runs the full test suite
 once, invokes the SDD verification agents (spec-guard, drift-detector, plus ui-critic when UI files
 are in the diff), then hands all their results to the `reviewer` agent, which runs the domain audits,
-writes `review.md` and returns the GO/NO-GO verdict.
+writes `review.md` and returns the READY/NOT READY verdict.
 
 > 💰 **Recommended session model: Opus.** This is the judgement-heavy final gate. (The verification
 > sub-agents carry their own `model:` frontmatter — spec-guard/drift-detector/ui-critic on Sonnet,
@@ -106,7 +106,7 @@ prompt: "Feature folder: specs/<current>/. Write specs/<current>/review.md.
 The reviewer picks the domain audit skills relevant to the diff from the `Skills` section of
 `specs/capabilities.md`, checks conventions, writes `review.md` (one file — its template includes
 the spec-guard, drift and visual-review sections), and returns
-`{verdict: GO | NO_GO, blockers: [...], warnings: [...]}`.
+`{verdict: READY | NOT_READY, blockers: [...], warnings: [...]}`.
 
 Soft check — never blocks on infrastructure (no browser MCP / Storybook down → `SKIPPED`, warning
 only). If no UI files changed, skip this step and record `SKIPPED — no UI changes`.
@@ -155,7 +155,7 @@ EOF
   )"
 ```
 
-### 7. If verdict = NO-GO
+### 7. If verdict = NOT READY
 
 DO NOT commit. List the actions to fix. Suggest:
 - `/sdd:implement <task-id>` — if implementation is missing
@@ -164,7 +164,7 @@ DO NOT commit. List the actions to fix. Suggest:
 
 ## Constraints
 
-- ⛔ DO NOT commit if verdict = NO-GO
+- ⛔ DO NOT commit if verdict = NOT READY
 - ⛔ DO NOT commit or open a PR without the user's confirmation (Step 6b)
 - ⛔ DO NOT use `git add -A` / `git add .` — stage the confirmed file list only
 - ⛔ DO NOT skip the core SDD agents (spec-guard, drift-detector, reviewer). `ui-critic` runs only when UI files are in the diff and is allowed to SKIP on infrastructure issues.

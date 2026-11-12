@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] — 2026-11-12
+
+`sdd` goes to 0.10.0 (the reviewer's verdict values change) and `sdd-board` to 0.3.1.
+
+### Changed
+
+- **Review verdicts are READY / NOT READY** instead of GO / NO-GO, in `/sdd:review`, the `reviewer` agent (`{verdict: "READY" | "NOT_READY"}`), `review.md` and the sdd-board panel ("Review: not ready"). The panel still reads GO / NO-GO in reviews written before.
+
 ## [0.9.0] — 2026-11-12
 
 `sdd` goes to 0.9.0 and `sdd-board` to 0.3.0.
