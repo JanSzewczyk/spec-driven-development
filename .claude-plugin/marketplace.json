@@ -15,7 +15,7 @@
       "name": "sdd",
       "source": "./plugins/sdd",
       "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), TDD enforcement with contract-first UI, blocking hooks, and orchestration of your existing specialist sub-agents.",
-      "version": "0.7.4",
+      "version": "0.9.0",
       "author": {
         "name": "Szum Tech Team",
         "email": "szum.tech@gmail.com",
@@ -28,7 +28,7 @@
       "name": "sdd-board",
       "source": "./plugins/sdd-board",
       "description": "Side panel for Claude Code Desktop that shows where each SDD feature stands: current spec with its pipeline phase, next command and tasks, plus an overview of all specs.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "Szum Tech Team",
         "email": "szum.tech@gmail.com",

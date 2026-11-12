@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] — 2026-11-12
+
+`sdd` goes to 0.9.0 and `sdd-board` to 0.3.0.
 
 ### Added
 
@@ -15,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Path-routed hooks for monorepos.** The hook templates gain a "route by path" shape: each project's typecheck/lint runs from its own directory with its own runner.
 - **sdd-board shows each task's project and what it waits on** (open `depends_on`).
 - **Agents without a shell or without write access.** `/sdd:implement` runs the tests for a specialist that has no Bash (tests call → red check → implementation call → green check) and runs a task routed to a read-only agent on `general-purpose`; `/sdd:tasks` and `doctor init` no longer route tasks to read-only agents. Found in a trial run on an Nx (Next.js) + FastAPI monorepo.
+
+### Changed
+
+- **One task per unit of behaviour.** The test → implementation (and contract → tests → implementation) chain now happens inside one task (`tdd: test-first | contract-first`) instead of being split into 2–3 tasks; a contract shared between projects stays its own task. A `tasks.md` in the old format still runs, sequentially.
+- **No frontend bias in examples.** Task, plan and routing examples show a web + backend + mobile feature; `drift-detector` and `analyze` look for tests by each project's convention; `reviewer` picks audits per project; `ui-critic` reviews web projects and skips mobile/desktop UI without a screenshot tool.
+
+## [0.8.0] — 2026-11-12
+
+`sdd` goes to 0.8.0 and `sdd-board` to 0.2.1 (the verdict fix below).
 
 ### Fixed
 
@@ -26,14 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/sdd:clarify` picks the spec from the branch or argument** and asks when neither resolves, instead of taking the most recently modified spec; its `allowed-tools` now let it read the branch.
 - **`/sdd:implement` runs a Story's tasks in their listed order** instead of matching React-specific `type` names; the `spec-guard` description says once per Story.
 
-- **sdd-board reads the review verdict from the `**Verdict:**` header.** The richer `review.md` quotes findings from several agents, and a stray verdict word in one of them used to decide the verdict.
+- **sdd-board reads the review verdict from the `**Verdict:**` header.** The richer `review.md` quotes findings from several agents, and a stray "NO-GO" in one of them used to mark a GO review as NO-GO.
 
 ### Changed
 
-- **Review verdicts are READY / NOT READY** instead of GO / NO-GO, in `/sdd:review`, the `reviewer` agent (`{verdict: "READY" | "NOT_READY"}`), `review.md` and the sdd-board panel ("Review: not ready"). The panel still reads GO / NO-GO in reviews written before.
-
-- **One task per unit of behaviour.** The test → implementation (and contract → tests → implementation) chain now happens inside one task (`tdd: test-first | contract-first`) instead of being split into 2–3 tasks; a contract shared between projects stays its own task. A `tasks.md` in the old format still runs, sequentially.
-- **No frontend bias in examples.** Task, plan and routing examples show a web + backend + mobile feature; `drift-detector` and `analyze` look for tests by each project's convention; `reviewer` picks audits per project; `ui-critic` reviews web projects and skips mobile/desktop UI without a screenshot tool.
 - The constitution's §2 Run/build table gains `coverage` and `ui-preview` rows and is the single source for those commands; `/sdd:doctor init` fills it from the detected tooling when it seeds the constitution, and `check` warns when the `test` row is empty.
 
 ## [sdd-board 0.2.0] — 2026-11-12

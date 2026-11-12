@@ -3,7 +3,7 @@
   "name": "sdd",
   "displayName": "Spec-Driven Development",
   "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), TDD enforcement with contract-first UI, blocking hooks, and orchestration of your existing specialist sub-agents from the plugin marketplace.",
-  "version": "0.7.4",
+  "version": "0.9.0",
   "author": {
     "name": "Szum Tech Team",
     "email": "szum.tech@gmail.com",

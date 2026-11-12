@@ -1,5 +1,5 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
-import type { PlanInfo, SpecInfo, Story, Task, Verdict } from './parse.ts'
+import type { PlanInfo, SpecInfo, Story, Task } from './parse.ts'
 
 export type Feature = {
   slug: string

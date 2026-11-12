@@ -143,19 +143,16 @@ function unquote(v: string): string {
   return v.replace(/^["']|["']$/g, '')
 }
 
-export type Verdict = 'READY' | 'NOT READY'
-
 // review.md written by the reviewer agent. Its body quotes findings from several agents, so a
-// stray "NOT READY" in a finding must not decide it: the `**Verdict:**` header wins, then a
+// stray "NO-GO" in a finding must not decide it: the `**Verdict:**` header wins, then a
 // "Verdict:" line, and only a file with neither falls back to the first verdict word anywhere.
-// Reviews written before the rename say GO / NO-GO; they are read as READY / NOT READY.
-function verdictOf(text: string): Verdict | null {
-  if (/NOT[-_\s]?READY|NO[-_\s]?GO/i.test(text)) return 'NOT READY'
-  if (/\bREADY\b|\bGO\b/.test(text)) return 'READY'
+function verdictOf(text: string): 'GO' | 'NO-GO' | null {
+  if (/NO[-_\s]?GO/i.test(text)) return 'NO-GO'
+  if (/\bGO\b/.test(text)) return 'GO'
   return null
 }
 
-export function parseReview(text: string): Verdict | null {
+export function parseReview(text: string): 'GO' | 'NO-GO' | null {
   const head = header(text, 'Verdict')
   if (head && !head.includes('|')) return verdictOf(head)
   const line = text.match(/^\W*Verdict\W*:\W*(.+)$/im)

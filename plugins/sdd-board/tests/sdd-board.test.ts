@@ -154,17 +154,13 @@ test('blockedBy lists dependencies that are not implemented yet', () => {
   expect(blockedBy({ ...t2, dependsOn: ['T9.9'] }, stories)).toEqual(['T9.9'])
 })
 
-test('parseReview tells READY from NOT READY', () => {
-  expect(parseReview('Verdict: NOT READY')).toBe('NOT READY')
-  expect(parseReview('Verdict: READY')).toBe('READY')
-  expect(parseReview('**Verdict:** NOT_READY')).toBe('NOT READY')
-  expect(parseReview('# Review\n\n**Verdict:** READY\n\n## Drift (drift-detector)\n- the last round was NOT READY, now fixed\n')).toBe('READY')
-  // reviews written before the rename
-  expect(parseReview('Verdict: NO-GO')).toBe('NOT READY')
-  expect(parseReview('Verdict: GO')).toBe('READY')
+test('parseReview tells GO from NO-GO', () => {
+  expect(parseReview('Verdict: NO-GO')).toBe('NO-GO')
+  expect(parseReview('Verdict: GO')).toBe('GO')
   expect(parseReview('nothing')).toBeNull()
-  expect(parseReview('# Review\n\n**Verdict:** GO\n\n## Drift (drift-detector)\n- the last round was NO-GO, now fixed\n')).toBe('READY')
-  expect(parseReview('**Verdict:** NO_GO')).toBe('NOT READY')
+  expect(parseReview('# Review\n\n**Verdict:** GO\n\n## Drift (drift-detector)\n- the last round was NO-GO, now fixed\n')).toBe('GO')
+  expect(parseReview('# Review\n\n**Verdict:** NO-GO\n')).toBe('NO-GO')
+  expect(parseReview('**Verdict:** NO_GO')).toBe('NO-GO')
 })
 
 test('derive walks the pipeline', () => {
