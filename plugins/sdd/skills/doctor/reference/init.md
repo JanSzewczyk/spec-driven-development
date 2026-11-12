@@ -53,9 +53,9 @@ byte-for-byte). **Keep these exact headings — other commands match them.**
 
 - `## Projects` — auto-generated: `- **<name>** — <kind> · <path> · <stack>`, `(repo)` after a
   sibling repo's path.
-- `## Implementation`, `## Generated / out-of-band paths` — user-override. New file → `cp` the
-  template, then Edit `## Projects`. Existing file → keep both; add `## Implementation` from the
-  template when missing.
+- `## Implementation`, `## Actions`, `## Review`, `## Generated / out-of-band paths` —
+  user-override. New file → `cp` the template, then Edit `## Projects`. Existing file → keep them;
+  add any of the first three from the template when missing.
 - Legacy files: drop the old auto-generated `Specialist agents` and `Skills` sections and rename
   `Stack profile` → `Projects`. Leave `Task type → routing rules` and `Custom routing rules` as they
   are (user content, no longer read) and tell the user they can delete them.

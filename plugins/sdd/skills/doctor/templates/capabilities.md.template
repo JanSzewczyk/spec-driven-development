@@ -17,10 +17,32 @@
      `in-session` (the session itself). Example: `api: agent:python-developer`. -->
 default: in-session
 
+## Actions
+
+<!-- user-override -->
+<!-- Who performs a git action. `skill:<name>` | `agent:<name>` | `command:<shell>`. Unset → the
+     session creates the branch / commit / PR itself with git and gh (or with a matching skill it has). -->
+branch:
+commit:
+pr:
+
+## Review
+
+<!-- user-override -->
+<!-- How `/sdd:review` verifies. `tests`: run | skip. `ui`: auto | off. `publish`: ask | off (commit
+     + PR after READY). Audit flow: `default` and per-project lines, `auto` (skills the session has,
+     by stack) | `skill:<name>` | `agent:<name>`. `checks`: extra agents/skills run on every review,
+     e.g. a QA agent that starts the app and tests the functionality — `agent:qa`. -->
+tests: run
+ui: auto
+publish: ask
+default: auto
+checks:
+
 ## Generated / out-of-band paths
 
 <!-- user-override -->
-<!-- Globs of generated / non-hand-authored files. spec-guard, drift-detector, reviewer and
+<!-- Globs of generated / non-hand-authored files. spec-verifier, reviewer and
      /sdd:analyze exclude them from every diff and never flag them. -->
 - `**/*.msw.ts`
 - `**/*.schemas.ts`
