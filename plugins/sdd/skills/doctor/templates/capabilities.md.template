@@ -30,14 +30,18 @@
      `/sdd:implement` routes the task to the listed agent + skills, on the listed model tier.
      Add stack-specific types (and their agents/skills/model) below or in "Custom routing rules".
 
-     Stack = which projects a row applies to: `*` for any, or a stack/kind word from the Projects
-     list (`python`, `nextjs`, `flutter`, `mobile`, …). A row with a matching stack wins over `*`,
-     so one task type can route to a different specialist per project.
+     Stack = which projects a row applies to: `*` for any, a project name (`api`), its kind
+     (`mobile`) or a stack word from the Projects list (`python`, `nextjs`, `flutter`). The most
+     specific match wins (project name, then kind/stack word, then `*`), so one task type can route
+     to a different specialist per project. Route only to agents that can edit files (their tools
+     include Write/Edit) — a read-only agent (an architect, a reviewer) cannot implement a task.
+     One without Bash is fine: /sdd:implement runs its tests for it.
 
-     Model = an ADVISORY cost tier for the executing session/subagent, NOT a hard switch (a slash
-     command cannot change the session model itself). Reserve `opus` for judgement-heavy REASONING
-     phases run at the session level (/sdd:spec, /sdd:clarify, /sdd:plan, /sdd:review); keep the
-     mechanical implement-phase task tiers cheap. `haiku` for trivial/mechanical work, `sonnet` for
+     Model = the cost tier of the subagent that runs the task: /sdd:implement passes it as the
+     subagent's `model` (for a task done inline it only advises the session model, which a command
+     cannot switch). Reserve `opus` for judgement-heavy REASONING phases run at the session level
+     (/sdd:spec, /sdd:clarify, /sdd:plan, /sdd:review); keep the mechanical implement-phase task
+     tiers cheap. `haiku` for trivial/mechanical work, `sonnet` for
      normal test + implementation work. -->
 | Task type           | Stack | Specialist agent          | Skills to load                          | Model   |
 |---------------------|-------|---------------------------|-----------------------------------------|---------|
@@ -61,7 +65,7 @@
      | implementation    | nextjs  | nextjs-backend-engineer   | server-actions, error-handling    | sonnet  |
      | ui-component      | nextjs  | frontend-expert           | design-system                     | sonnet  |
      | implementation    | python  | python-developer          | fastapi-rules, pytest-rules       | sonnet  |
-     | contract          | python  | python-api-architect      | api-architecture-rules            | sonnet  |
+     | contract          | python  | python-developer          | fastapi-rules                     | sonnet  |
      | implementation    | flutter | (orchestrator)            | —                                 | sonnet  |
 -->
 

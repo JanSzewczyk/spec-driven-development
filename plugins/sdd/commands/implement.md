@@ -71,8 +71,9 @@ default branch (`git -C <repo> checkout -b <type>/<slug>`).
 
 - **A wave with one task:** route it as below — inline when `agent: orchestrator`, otherwise one
   Task-tool call to the specialist.
-- **A wave with several tasks — run them in parallel:** send **one message with one Task-tool call
-  per task**, so they run at the same time.
+- **A wave with several tasks — run them in parallel:** start **every** task of the wave before
+  you wait for any of them — one message with one Task-tool call per task, or back-to-back calls
+  when subagents run in the background — then wait until all of them have reported.
   - `subagent_type`: the task's `agent`; for `agent: orchestrator` use `general-purpose`.
   - `model`: the task's `model` tier (`haiku` / `sonnet` / `opus`).
   - Prompt (see the template below): the task itself, the spec sections it serves, the plan
@@ -96,6 +97,13 @@ typecheck/lint hook error in a file you do not own belongs to another task — d
 mention it in your report.
 Return: the files you changed, the red you observed, the final test result.
 ```
+
+**A specialist that cannot run shell commands** (its `tools` frontmatter has no `Bash`, e.g. a
+UI agent limited to file edits): it cannot observe its own red or green, so split its task into two
+calls and run its tests yourself — call 1 writes only the failing tests in `<tests>` (alongside the
+rest of the wave); you run them with the project's `test` command and confirm a meaningful red;
+call 2 implements `<files>` to green; you run the tests again. A read-only agent (no Write/Edit)
+cannot do a task at all — run that task with `general-purpose` instead and say so in the output.
 
 **Inline (orchestrator, one-task wave):** do the same yourself — tests first, observe a meaningful
 red (a failing assertion, not an unresolved reference), then implement to green. After every
