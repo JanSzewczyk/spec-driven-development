@@ -53,10 +53,11 @@
 - **TDD strategy** (technology-neutral; test-first is the default):
   - **Test-first (default)** → write the failing test first, then the implementation. If a missing symbol stops the test compiling, add a trivial stub so it fails on a real assertion. Use for anything whose deliverable is behavior.
   - **Contract-first (exception, 3 phases)** → use only when the unit's deliverable *is itself a public interface/contract* other code references by shape (a UI component's props, a typed service interface, an API/RPC schema): define the contract first, then the failing tests, then the implementation. When in doubt, choose test-first.
+<!-- Several projects (web / backend / mobile …)? Repeat these lines per project, e.g. "**api** — Unit: pytest …". -->
 - Unit:
 - Integration:
 - E2E:
-- A11y (if UI):
+- A11y (if UI — web or mobile):
 
 ## Dependencies & prerequisites
 

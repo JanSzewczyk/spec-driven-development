@@ -1,7 +1,7 @@
 ---
 name: doctor
-description: Preflight audit and setup of project readiness for the SDD framework. Runs 10 checks (specs/constitution.md, specs/template.md, plugin installed + enabled across user/project/local settings, capabilities.md, hooks, git, gh, tooling, specialist agents, project type). The `init` mode creates the per-project artifacts (constitution, specs/template.md, capabilities.md, stack-specific hook scripts, settings.json hook entries) directly with file tools — no helper scripts. The root `CLAUDE.md` is user-owned and never read or modified by this skill. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task
+description: Preflight audit and setup of project readiness for the SDD framework. Runs 10 checks (specs/constitution.md, specs/template.md, plugin installed + enabled across user/project/local settings, capabilities.md, hooks, git, gh, tooling, specialist agents, projects — single app, monorepo or several repositories). The `init` mode creates the per-project artifacts (constitution, specs/template.md, capabilities.md, stack-specific hook scripts, settings.json hook entries) directly with file tools — no helper scripts. The root `CLAUDE.md` is user-owned and never read or modified by this skill. Use this skill when the user asks "is my project SDD-ready", "set up SDD", "configure SDD", "why doesn't /sdd:spec work", "init SDD framework", or otherwise indicates they want to start using Spec-Driven Development.
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
 ---
 
 # SDD Doctor
@@ -44,8 +44,10 @@ Read/Glob/Grep/Bash to inspect, then assign `pass` ✅ / `warn` ⚠️ / `fail` 
 
 1. **`specs/constitution.md`** — exists and contains the canonical sections (Tech stack,
    Run/build, Conventions, WHAT NOT TO DO). Missing file → fail; present but missing sections → warn.
-   The §2 Run/build table has no command in its `test` row → warn (the SDD commands read the test
-   command from there; tell the user to fill it via `/sdd:constitution`).
+   A project in the §2 Run/build table has no `test` command → warn, naming the project (the SDD
+   commands read each project's test command from there; tell the user to fill it via
+   `/sdd:constitution`). A legacy §2 table with one `Command | Purpose` list counts as project
+   `root`.
 2. **`specs/template.md`** — exists with all required fields: Summary, User stories,
    Acceptance criteria, Edge cases, Open questions, Testing guidelines. Missing → fail; partial → warn.
 3. **Plugin installed** — `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (fallback `$HOME/.claude/plugins/cache/sdd/.claude-plugin/plugin.json`)
@@ -55,10 +57,11 @@ Read/Glob/Grep/Bash to inspect, then assign `pass` ✅ / `warn` ⚠️ / `fail` 
    `<project>/.claude/settings.local.json` (local). Name which layer(s). Strip any `@version`
    suffix when matching. Not listed anywhere → warn (may still auto-load).
 5. **`specs/capabilities.md`** — exists and contains the sections: `Specialist agents`,
-   `Skills`, `Stack profile`, `Task type` (routing). Missing → fail; partial → warn. A `Model`
-   column in the routing table and a `Generated / out-of-band paths` section are expected on
-   freshly-initialized files but are optional on legacy files (their absence → warn, not fail;
-   suggest re-running `init`).
+   `Skills`, `Projects` (legacy name `Stack profile`), `Task type` (routing). Missing → fail;
+   partial → warn. A `Model` and a `Stack` column in the routing table and a `Generated /
+   out-of-band paths` section are expected on freshly-initialized files but are optional on
+   legacy files (their absence → warn, not fail; suggest re-running `init`). A project listed in
+   `Projects` but missing from the constitution's §2 table (or the other way round) → warn.
 6. **`.claude/settings.json` hooks** — exists, valid JSON, and `hooks.PostToolUse` contains an
    entry whose command references `.claude/hooks/typecheck.sh` or `.claude/hooks/lint.sh`.
    Missing file → fail; present but no SDD hook entry → warn.
@@ -68,11 +71,44 @@ Read/Glob/Grep/Bash to inspect, then assign `pass` ✅ / `warn` ⚠️ / `fail` 
    `node_modules` present; Python: `mypy`/`ruff`/`pytest` reachable). Missing → warn.
 9. **Specialist agents** — scan `~/.claude/plugins/cache/*/` (excluding the `sdd` plugin) for
    `agents/*.md`. List a few. None → warn.
-10. **Project type** — report the detected language/framework and package manager (whatever they
-    are — not limited to a fixed list) and which specialist agents/skills will be routed to.
-    Genuinely undeterminable → warn.
+10. **Projects** — report the detected layout (single app / monorepo / several repositories) and,
+    per project, its kind, path, language/framework and package manager (whatever they are — not
+    limited to a fixed list) and which specialist agents/skills will be routed to. Genuinely
+    undeterminable → warn.
+
+### Discover the projects (used by check #10 and all of init)
+
+SDD works on **projects**: a unit with its own stack and its own commands. Work out the layout
+before anything else — by reading the repository, not by matching a fixed list:
+
+- **Single app** — one manifest at the root and no workspace config → one project, `root` (`.`).
+- **Monorepo** — a workspace definition lists several projects. Signals (examples, not a closed
+  list): `nx.json` + `project.json` files (`nx show projects`), `turbo.json`, `pnpm-workspace.yaml`
+  / `workspaces` in `package.json`, `[tool.uv.workspace]`, a Cargo or Go workspace,
+  `settings.gradle(.kts)` `include(...)`, `melos.yaml`. Also count manifests in sub-directories
+  that no workspace lists (an `apps/api/pyproject.toml` beside a JS workspace is a project too).
+  One project per app or package that has code SDD will change (skip pure config packages).
+- **Several repositories (polyrepo)** — the feature's code also lives in sibling checkouts. You
+  cannot see that from the repo itself: in `init`, list sibling directories that are git
+  repositories (`ls -d ../*/.git`) and ask the user with the `AskUserQuestion` tool (multi-select)
+  which of them belong to this product; skip the question when there are none. Each chosen repo
+  becomes a project (or several, if it is itself a monorepo) whose path is relative to this repo
+  (`../mobile-app`). This repo stays the **spec repo** — `specs/` lives only here. Tell the user
+  the assumption this makes: everyone on the team checks the sibling repos out next to this one,
+  under the same directory names (the paths are committed in `capabilities.md`, §2 and the hooks).
+
+For each project record: a short **name** (the Nx/workspace project name, else the directory
+name), **kind** (web, backend, mobile, desktop, library, e2e, infra — whatever fits; ask with
+`AskUserQuestion` only when the stack leaves it unclear), **path**, **stack** (language,
+framework, package manager — e.g. `Python 3.13, FastAPI; uv`, `Flutter 3, Dart`) and, for a
+sibling repository, that it is one.
 
 ### Discover the project's quality tooling (used by check #8/#10 and all of init)
+
+Run the discovery below **once per project**, inside that project's directory: a monorepo's web
+app and its Python API have different tools, configs and runners, and a sibling repository has its
+own. Where a workspace tool runs per-project targets (`nx run <project>:lint`, `turbo run lint
+--filter=<project>`), prefer that target.
 
 **There is no fixed list of supported stacks.** New languages and code-quality tools appear
 constantly — your job is to figure out how *this specific project* checks its code and reproduce
@@ -97,9 +133,9 @@ where possible; see init step 4 for the latency rule). Look, in roughly this pri
    `pnpm-lock.yaml`→pnpm, `yarn.lock`→yarn, `bun.lockb`→bun; `pom.xml`→Maven, `gradlew`→Gradle
    wrapper). Detect monorepos (`pnpm-workspace.yaml`, `workspaces`, `turbo.json`, `nx.json`).
 
-For each category — **typecheck** (or compile, for statically-typed languages where the compiler
-*is* the type checker) and **lint** (style/quality/static-analysis) — pick the one canonical
-command the project uses. If the project configures no linter, emit no lint hook (don't invent one).
+For each project and each category — **test**, **coverage**, **typecheck** (or compile, for
+statically-typed languages where the compiler *is* the type checker) and **lint**
+(style/quality/static-analysis) — pick the one canonical command that project uses. If the project configures no linter, emit no lint hook (don't invent one).
 Confirm the tool is actually runnable (on `$PATH`, via the package manager, or a repo-local wrapper
 like `./gradlew`) — never wire a command the environment can't execute.
 
@@ -154,9 +190,10 @@ Run `pwd` to lock the project root. Verify the templates directory is readable a
 root. If the templates are missing, stop and tell the user the plugin looks broken.
 
 ### 1. Discover the project's quality tooling
-Apply **Discover the project's quality tooling** (above). Record: language, framework, package
-manager, monorepo?, and — for **typecheck** (or compile) and **lint** — the one canonical command
-the project uses, confirmed runnable. This drives steps 4–5. Whatever the stack is, this is the
+Apply **Discover the projects** and then **Discover the project's quality tooling** (above), per
+project. Record per project: name, kind, path, stack, sibling repo or not, and — for **test**,
+**coverage**, **typecheck** (or compile) and **lint** — the one canonical command that project
+uses, confirmed runnable. This drives steps 4–5. Whatever the stack is, this is the
 same job: find how the project checks code and capture the exact invocation.
 
 When a category offers several candidates, pick the one the project actually configures/uses — e.g.
@@ -166,9 +203,11 @@ compiled language, the build tool's compile task. If a category has no configure
 ### 2. Seed `specs/constitution.md` and `specs/template.md`
 - `mkdir -p specs`.
 - **constitution:** if `specs/constitution.md` is absent, copy `templates/constitution.md.template`
-  → `specs/constitution.md`, then fill the **§2 Run/build commands** table with the commands found
-  in step 1 (`test`, `coverage`, `typecheck`, `lint`, and `dev`/`build`/`ui-preview` when the
-  project declares them); leave a row's command empty when nothing was found. Every SDD command and
+  → `specs/constitution.md`, then fill the **§2 Run/build commands** table with **one row per
+  project** from step 1 (`Project`, `Path`, `test`, `coverage`, `typecheck`, `lint`, and
+  `dev / ui-preview` when the project declares one), each command written so it runs from this
+  repository's root (`uv run --project apps/api pytest`, `cd ../mobile-app && flutter test`); remove
+  the commented example rows; leave a cell empty when nothing was found. Every SDD command and
   agent reads these commands from §2, so this is the one place they live. If the file is present,
   **leave it untouched** (it's the source of truth, edited via `/sdd:constitution`).
 - **template:** if `specs/template.md` is absent, copy `templates/specs/template.md` →
@@ -187,11 +226,17 @@ sections (**keep these exact headings — other commands read them**):
 - `## Specialist agents (delegate implementation work)` + `<!-- auto-generated -->` — bullet list
   of discovered agents (`- **name** (plugin) — description`), or a placeholder if none.
 - `## Skills (load into context on demand)` + `<!-- auto-generated -->` — bullet list of skills.
-- `## Stack profile` + `<!-- auto-generated -->` — the detected stack as `- **key**: value`.
+- `## Projects` + `<!-- auto-generated -->` — one line per project from step 1:
+  `- **<name>** — <kind> · <path> · <stack>`, with `(repo)` after the path of a sibling repository.
+  A legacy file's `## Stack profile` section is replaced by `## Projects` (the one heading rename
+  init performs).
 - `## Task type → routing rules` and `## Custom routing rules` — these carry `<!-- user-override -->`.
-  The routing table includes a **`Model`** column (advisory cost tier per task type). Seed the
-  defaults from the template: `sonnet` for contract/test/implementation types, `haiku` for
-  `refactor`/`generic`. `opus` is reserved for session-level reasoning phases, not task rows.
+  The routing table includes a **`Stack`** column (`*` = any project) and a **`Model`** column
+  (cost tier per task type). Seed the defaults from the template: `sonnet` for
+  contract/test/implementation types, `haiku` for `refactor`/`generic`. `opus` is reserved for
+  session-level reasoning phases, not task rows. When the file is new and an installed specialist
+  agent clearly fits one stack (a Python developer agent for a Python project, a mobile agent for a
+  Flutter project), add a stack-specific `implementation` row for it in `Custom routing rules`.
 - `## Generated / out-of-band paths` + `<!-- user-override -->` — glob list of generated /
   non-hand-authored files that the diff-consuming agents exclude from context and never flag.
 
@@ -211,7 +256,7 @@ a **byte-stable** file, not a growing one. Follow these rules:
    re-run.)
 4. Preserve exactly one blank line between sections — don't collapse or add separators on re-write.
 5. Sanity check before writing: the set of `## ` headings after regeneration must equal the set
-   before (no new duplicates, none lost). If `init` is run twice with no other change, the second
+   before (no new duplicates, none lost) — except the one rename `Stack profile` → `Projects`. If `init` is run twice with no other change, the second
    write must be identical to the first.
 
 If the file doesn't exist, take the user-override sections (`Task type → routing rules`,
@@ -266,12 +311,24 @@ discovered in step 1 — **for whatever tools the project uses, not a fixed menu
   already exists, skip writing it — the user owns it. Still wire settings.json to point at it.
 - If a category has **no** configured/runnable tool, write no script for it (and step 5 adds no
   entry for it). Writing nothing is correct — better than a hook that blocks on a tool that isn't there.
+- **Several projects (monorepo or sibling repositories): route by path first, then by extension.**
+  One script per category still, but its top-level `case` is on the edited file's path — one
+  branch per project prefix (`apps/api/*`, `apps/web/*`, `*/mobile-app/*`) — and each branch runs
+  *that project's* tool **from that project's directory with that project's runner**
+  (`cd apps/api && uv run ruff check …`, `pnpm nx run web:typecheck`). Never run a repo-wide `tsc`
+  or a Python tool from the repository root in a monorepo: the root has the wrong `tsconfig`, and
+  `mypy`/`ruff` there miss the project's `pyproject.toml` and virtualenv — the hook then either
+  blocks falsely or silently checks nothing. A file outside every project prefix → `exit 0`. The
+  "monorepo" example in the templates shows the shape. `file_path` is absolute, so match prefixes
+  as `*/apps/api/*` (or strip `$PWD/` first).
 
 ### 5. Safe-merge `.claude/settings.json`
 Follow `reference/settings-merge.md` **exactly** — it is a mechanical procedure. The essentials:
 read → parse → **STOP and report if malformed (never clobber)** → strip only SDD-marked
 PostToolUse entries → append the fresh `Edit|Write|MultiEdit` entry (only for detected tools) →
-preserve every other key verbatim → write with 2-space indent + trailing newline.
+preserve every other key verbatim → write with 2-space indent + trailing newline. With projects in
+**sibling repositories**, also add each sibling repo path to `permissions.additionalDirectories`
+(append only the missing ones; never remove an entry) — without it Claude cannot edit files there.
 
 ### 6. Re-check and report
 Run the `check` procedure and present the readiness table so the user sees the new state.

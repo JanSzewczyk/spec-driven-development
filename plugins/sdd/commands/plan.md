@@ -19,7 +19,7 @@ The **Plan** phase of SDD. Generate an architecture document `plan.md`. **DO NOT
 ### 1. Load context
 
 - `specs/constitution.md` (project constitution — stack, commands, conventions, WHAT NOT TO DO)
-- `specs/capabilities.md` (specialist agents + skills + routing rules)
+- `specs/capabilities.md` (projects + specialist agents + skills + routing rules)
 - `specs/<current>/spec.md` (from the current branch OR from `$ARGUMENTS`)
 
 ### 2. Survey the existing codebase
@@ -69,9 +69,10 @@ erDiagram
 
 ```mermaid
 flowchart LR
-    A[Client] --> B[Server Action]
-    B --> C[Service]
-    C --> D[(DB)]
+    W[web app] --> API[api: /auth/reset]
+    M[mobile app] --> API
+    API --> S[Reset service]
+    S --> D[(DB)]
 ```
 
 ## API surface
@@ -80,14 +81,26 @@ flowchart LR
 | ... | ... | ... | ... | ... |
 
 ## File-by-file change list
-- `apps/web/src/components/LoginForm.tsx` — new component
-- `apps/api/src/auth/signIn.ts` — new server action
-- `apps/api/src/auth/__tests__/signIn.test.ts` — new test
+<!-- Grouped by project (names from specs/capabilities.md `## Projects`; one group, `root`, in a
+     single-app repo). Mark what one project provides and another consumes — a schema, a
+     generated client, shared types, a migration — so /sdd:tasks can order those first and run
+     the rest in parallel. -->
+### api (backend · apps/api)
+- `apps/api/app/auth/schemas.py` — reset request/confirm schemas (**contract**, consumed by web + mobile)
+- `apps/api/app/auth/reset.py` — reset endpoints
+- `apps/api/tests/test_reset.py` — new tests
+
+### web (web · apps/web)
+- `apps/web/src/features/reset/reset-form.tsx` — reset form (uses the generated API client)
+- `apps/web/src/features/reset/reset-form.test.tsx` — new tests
+
+### mobile (mobile · ../mobile-app)
+- `../mobile-app/lib/features/reset/reset_screen.dart` — reset screen
 - ...
 
 ## Reused utilities
-- `packages/errors/AuthError` (from `packages/errors/src/auth.ts`)
-- `packages/db/prismaClient` (from `packages/db/src/client.ts`)
+- `packages/shared/errors` (from `packages/shared/src/errors.ts`)
+- `app.core.mailer` (from `apps/api/app/core/mailer.py`)
 
 ## Design reference
 <!-- Only when a design source exists — the distilled style spec cached from Step 2a.

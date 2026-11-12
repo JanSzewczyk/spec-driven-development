@@ -28,7 +28,11 @@ From the prompt you receive the path to the feature folder (`specs/<slug>/`).
 - plan.md should not introduce anything **beyond** spec.md scope
 
 #### Plan → Tasks
-- Every file from plan.md "File-by-file" → should appear in some `task.files`
+- Every file from plan.md "File-by-file" → should appear in some task's `files` or `tests`
+- Every task names a `project` that exists in `specs/capabilities.md` `## Projects`, and its files
+  lie under that project's path (legacy tasks without `project` → skip this check)
+- `depends_on` points only to existing tasks, never forms a cycle, and tasks that run in the same
+  wave do not share files
 - Every task should be justified by something in plan.md
 
 #### Tasks → Code
@@ -43,7 +47,7 @@ From the prompt you receive the path to the feature folder (`specs/<slug>/`).
   ```
 
 #### Spec → Code
-- AC in spec.md → covered by tests (check the matching files in `__tests__/` or `.test.*`)
+- AC in spec.md → covered by tests (the tasks' `tests` files, else the test files by each project's own convention — e.g. `tests/test_*.py`, `*.test.ts`, `__tests__/`, `*_test.go`, `test/*_test.dart`, `src/test/…`)
 - `TODO`/`FIXME`/`HACK` in code → should appear in spec.md Open Questions
 
 ### 3. Output

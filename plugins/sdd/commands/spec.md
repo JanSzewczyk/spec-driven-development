@@ -42,6 +42,10 @@ Extract:
 git checkout -b <type>/<feature_slug>
 ```
 
+Only this repository (the **spec repo**, where `specs/` lives) gets the branch now. When
+`specs/capabilities.md` lists projects in sibling repositories, `/sdd:implement` creates the same
+branch name there when it first edits that repo.
+
 Examples:
 - `feat/user-can-reset-password`
 - `fix/stripe-webhook-timeout`
