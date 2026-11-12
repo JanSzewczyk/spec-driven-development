@@ -140,6 +140,11 @@ test('parseSpec skips template placeholders', () => {
   expect(s.openQuestions).toBe(2)
 })
 
+test('"all resolved" and "none" notes are not open questions', () => {
+  const s = parseSpec('# Feature: X\n\n## Open questions\n\n- _All resolved._ Decisions captured above.\n')
+  expect(s.openQuestions).toBe(0)
+})
+
 test('parsePlan reports missing sections and ignores "none" notes', () => {
   const p = parsePlan('# Plan\n\n**Status:** draft\n\n## High-level approach\n\nDo it.\n\n## File-by-file change list\n\n## Open questions for human review\n\n- _None blocking._ Minor choices later.\n')
   expect(p.status).toBe('draft')

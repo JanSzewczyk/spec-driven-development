@@ -45,7 +45,7 @@ function bullets(lines: string[]): string[] {
     .map((l) => l.trim())
     .filter((l) => /^[-*]\s/.test(l))
     .map((l) => l.replace(/^[-*]\s+/, '').trim())
-    .filter((t) => t !== '' && !/^(\?|\.\.\.|…)$/.test(t) && !/<[^>]+>/.test(t) && !/^_?none\b/i.test(t))
+    .filter((t) => t !== '' && !/^(\?|\.\.\.|…)$/.test(t) && !/<[^>]+>/.test(t) && !/^_?(none|all resolved|n\/a|no open)\b/i.test(t))
 }
 
 export function parseSpec(text: string): SpecInfo {
