@@ -31,11 +31,15 @@ export type Ctx = {
 const GLYPH: Record<string, string> = { draft: '○', 'in-progress': '◐', review: '◑', done: '●' }
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
 
-// Svg sizes are CSS pixels, the pane reports columns. Estimate the content width from the columns,
-// deliberately a little short (too wide would scroll sideways). Tune PX_PER_COLUMN if the drawings
-// come out visibly narrower or wider than the cards.
-const PX_PER_COLUMN = 7
-const fullWidth = (ctx: { cols: number }) => Math.max(240, Math.min(900, Math.round((ctx.cols - 6) * PX_PER_COLUMN)))
+// Svg sizes are CSS pixels, the pane reports columns. Estimate the content width from the columns and
+// aim slightly past it: the drawings sit in a clipping box and keep a 26 px margin at both ends, so a
+// small overshoot is invisible while a shortfall leaves a gap. Tune PX_PER_COLUMN if they come out
+// visibly short of (or cut off at) the cards' edges.
+const PX_PER_COLUMN = 8
+const fullWidth = (ctx: { cols: number }) => Math.max(240, Math.min(900, Math.round((ctx.cols - 2) * PX_PER_COLUMN)))
+function wide(el: any, child: any) {
+  return el.Box({ overflow: 'hidden', flexDirection: 'column', children: [child] })
+}
 
 function bar(done: number, total: number, width: number): string {
   const w = Math.max(8, Math.min(width, 24))
@@ -83,7 +87,7 @@ function stepper(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Svg } = el
   const d = derive(f)
   if (rich(ctx.surface)) {
-    return Svg({ alt: 'Pipeline: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), width: fullWidth(ctx), height: 62, source: stepperSvg(d.steps, fullWidth(ctx)) })
+    return wide(el, Svg({ alt: 'Pipeline: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), width: fullWidth(ctx), height: 62, source: stepperSvg(d.steps, fullWidth(ctx)) }))
   }
   const line = d.steps.map((s) => (s.state === 'done' ? '●' : s.state === 'current' ? '◉' : '○') + ' ' + s.label).join(' ─ ')
   return Box({ flexDirection: 'column', children: [Text({ wrap: 'wrap', children: [line] })] })
@@ -124,7 +128,7 @@ function nextCard(el: any, ctx: Ctx, f: Feature) {
   const cmd = d.next.command
   const blocked = open > 0
   return Box({
-    borderStyle: 'round', borderColor: blocked ? 'yellow' : 'green', padding: 'md', flexDirection: 'column', rowGap: 1,
+    marginTop: rich(ctx.surface) ? 1 : 0, borderStyle: 'round', borderColor: blocked ? 'yellow' : 'green', padding: 'md', flexDirection: 'column', rowGap: 1,
     children: [
       Text({ dimColor: true, children: [(blocked ? 'NEXT STEP · waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'NEXT STEP · ready') + ' · model: ' + d.next.model] }),
       Text({ mono: true, weight: 'semibold', color: blocked ? 'yellow' : 'green', children: [cmd] }),
@@ -143,7 +147,7 @@ function progress(el: any, ctx: Ctx, f: Feature) {
     rows.push(Text({ weight: 'semibold', children: ['Tasks ' + done + '/' + c.total + (c.done ? ' · ' + c.done + ' done' : '')] }))
     rows.push(
       rich(ctx.surface)
-        ? Svg({ alt: done + ' of ' + c.total + ' tasks implemented', width: fullWidth(ctx), height: 8, source: progressSvg(c, fullWidth(ctx)) })
+        ? wide(el, Svg({ alt: done + ' of ' + c.total + ' tasks implemented', width: fullWidth(ctx), height: 8, source: progressSvg(c, fullWidth(ctx)) }))
         : Text({ color: 'green', children: [bar(done, c.total, ctx.cols - 12)] }),
     )
   }
