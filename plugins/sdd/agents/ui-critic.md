@@ -14,7 +14,7 @@ This agent is a **soft check** — it never blocks `/sdd:review` on infrastructu
 
 From the prompt:
 - List of changed UI files (`.tsx`, `.stories.tsx`)
-- Storybook URL (default: `http://localhost:6006`)
+- Storybook URL (from the `ui-preview` row of `specs/constitution.md` §2; default: `http://localhost:6006`)
 - (optional) Path to design-system reference docs
 
 ## Steps
@@ -39,7 +39,7 @@ If a story is missing, add a `warning` finding (`missing-story`) and skip visual
 ### 3. Verify Storybook reachable
 
 Attempt to reach the Storybook URL (HTTP 200 on iframe page). If unreachable:
-- Try to start it in the background via the project's `dev` command from `CLAUDE.md` (e.g. `pnpm storybook`).
+- Try to start it in the background via the `ui-preview` command from `specs/constitution.md` §2 (e.g. `pnpm storybook`).
 - Wait up to 20 seconds, poll the URL.
 - If still unreachable → return verdict `SKIPPED — Storybook unreachable`. Do NOT block.
 

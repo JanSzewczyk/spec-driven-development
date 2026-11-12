@@ -44,6 +44,8 @@ Read/Glob/Grep/Bash to inspect, then assign `pass` ✅ / `warn` ⚠️ / `fail` 
 
 1. **`specs/constitution.md`** — exists and contains the canonical sections (Tech stack,
    Run/build, Conventions, WHAT NOT TO DO). Missing file → fail; present but missing sections → warn.
+   The §2 Run/build table has no command in its `test` row → warn (the SDD commands read the test
+   command from there; tell the user to fill it via `/sdd:constitution`).
 2. **`specs/template.md`** — exists with all required fields: Summary, User stories,
    Acceptance criteria, Edge cases, Open questions, Testing guidelines. Missing → fail; partial → warn.
 3. **Plugin installed** — `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (fallback `$HOME/.claude/plugins/cache/sdd/.claude-plugin/plugin.json`)
@@ -164,8 +166,11 @@ compiled language, the build tool's compile task. If a category has no configure
 ### 2. Seed `specs/constitution.md` and `specs/template.md`
 - `mkdir -p specs`.
 - **constitution:** if `specs/constitution.md` is absent, copy `templates/constitution.md.template`
-  → `specs/constitution.md`. If present, **leave it untouched** (it's the source of truth, edited
-  via `/sdd:constitution`).
+  → `specs/constitution.md`, then fill the **§2 Run/build commands** table with the commands found
+  in step 1 (`test`, `coverage`, `typecheck`, `lint`, and `dev`/`build`/`ui-preview` when the
+  project declares them); leave a row's command empty when nothing was found. Every SDD command and
+  agent reads these commands from §2, so this is the one place they live. If the file is present,
+  **leave it untouched** (it's the source of truth, edited via `/sdd:constitution`).
 - **template:** if `specs/template.md` is absent, copy `templates/specs/template.md` →
   `specs/template.md` verbatim (the `{{placeholders}}` are filled later by `/sdd:spec`). If
   present, skip.

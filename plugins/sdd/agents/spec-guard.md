@@ -1,6 +1,6 @@
 ---
 name: spec-guard
-description: Verifies whether a code diff satisfies ALL Acceptance criteria from spec.md and does NOT introduce out-of-scope changes. Invoked by /sdd:implement (per task) and /sdd:review (full feature). Returns JSON {satisfied, missing, out_of_scope}.
+description: Verifies whether a code diff satisfies ALL Acceptance criteria from spec.md and does NOT introduce out-of-scope changes. Invoked by /sdd:implement (once per Story, or per task in single-task mode) and /sdd:review (full feature). Returns JSON {satisfied, missing, out_of_scope}.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: cyan
@@ -14,9 +14,14 @@ DO NOT propose fixes (only report gaps), DO NOT comment on code quality.
 From the prompt you receive:
 - Path to `spec.md` (e.g. `specs/<slug>/spec.md`)
 - (optional) Path to tasks.md and the ID of a specific task
-- The diff scope to evaluate:
-  - Per-task: `git diff` (uncommitted changes)
-  - Per-feature: `git diff main..HEAD`
+- The diff scope to evaluate. SDD does not commit until the end of `/sdd:review`, so the work is
+  mostly **uncommitted** and new files are **untracked** — always read both:
+  - Per-Story / per-task: `git diff HEAD` (staged + unstaged) plus the untracked files, limited to
+    the files `/sdd:implement` lists for this scope (earlier Stories' uncommitted work is also in
+    the working tree — it is not this Story's scope, so do not flag it as out-of-scope)
+  - Per-feature: `git diff <base>` where `<base>` is `git merge-base HEAD main` (or the default
+    branch), plus the untracked files
+  - Untracked files: `git ls-files --others --exclude-standard` — read each one; they are new code
 
 ## Steps
 
@@ -31,6 +36,7 @@ them so generated artifacts never enter your context:
 
 ```bash
 git diff <range> -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…globs from capabilities.md>
+git ls-files --others --exclude-standard   # then drop the same globs from this list
 ```
 
 Identify every modified file and the essence of the change.

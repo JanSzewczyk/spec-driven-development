@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`/sdd:plan` works in Plan Mode.** Plan Mode blocks every write except the session's plan file, so the command now drafts the plan there and calls ExitPlanMode; the approval is the human review, and only then is `specs/<slug>/plan.md` written. Without Plan Mode it writes directly, as before.
+- **`/sdd:review` and its agents see the real feature diff.** SDD commits only at the end of review, so `git diff main..HEAD` was empty. `/sdd:review`, `/sdd:analyze`, `spec-guard` and `drift-detector` now diff against the merge base and include uncommitted and untracked files; per-Story spec-guard runs are limited to the Story's files.
+- **`/sdd:review` invokes `reviewer`.** It was named in the description and constraints but never called. It now runs the suite once, then spec-guard, drift-detector and ui-critic, and hands their results to `reviewer`, which writes `review.md` and does not re-run the tests or start `ui-critic` itself.
+- **`/sdd:review` asks before committing and stages only the confirmed files** instead of `git add -A`; the `done` statuses are set before the commit, so they are part of it.
+- **No reads of the project `CLAUDE.md`.** `/sdd:plan`, `/sdd:implement`, `reviewer` and `ui-critic` take the constitution, test/coverage commands, coverage targets and Storybook command from `specs/constitution.md`.
+- **`/sdd:clarify` picks the spec from the branch or argument** and asks when neither resolves, instead of taking the most recently modified spec; its `allowed-tools` now let it read the branch.
+- **`/sdd:implement` runs a Story's tasks in their listed order** instead of matching React-specific `type` names; the `spec-guard` description says once per Story.
+
+### Changed
+
+- The constitution's §2 Run/build table gains `coverage` and `ui-preview` rows and is the single source for those commands; `/sdd:doctor init` fills it from the detected tooling when it seeds the constitution, and `check` warns when the `test` row is empty.
+
 ## [sdd-board 0.2.0] — 2026-11-12
 
 ### Added

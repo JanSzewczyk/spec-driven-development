@@ -26,10 +26,10 @@ Locate `specs/<current>/tasks.md`. From `$ARGUMENTS`:
 
 For every task in scope, extract from YAML: `title`, `type`, `agent`, `skills`, `model`, `acceptance`, `files`.
 
-When the scope is a Story, group the tasks into their natural TDD sub-chains so the red→green
-ordering is preserved in a single session:
-- Logic: the `*-test` task(s) first (red), then their implementation siblings (green).
-- UI components: each `ui-contract` → `ui-component-test` → `ui-component` triplet runs in that order.
+When the scope is a Story, run its tasks **in the order `tasks.md` lists them**. `/sdd:tasks`
+already wrote each unit's chain in TDD order — test → implementation for test-first units,
+contract → tests → implementation for contract-first units — so the listed order is the red→green
+order. Do not reorder by parsing `type` names; they differ per project (`capabilities.md`).
 
 ### 2. Status → in-progress
 
@@ -102,7 +102,7 @@ the full suite is `/sdd:review`'s job):
 
 ```bash
 # Run the tests for the files touched by this Story
-<test-command from CLAUDE.md> <story test paths>
+<the `test` command from specs/constitution.md §2> <story test paths>
 ```
 
 ALL of the Story's tests MUST pass.
@@ -110,7 +110,10 @@ ALL of the Story's tests MUST pass.
 ### 6. Spec-guard (once, at the Story boundary)
 
 Invoke the `spec-guard` sub-agent **once** (Task tool, `subagent_type: spec-guard`) over the
-Story's combined diff — NOT once per task. If it returns `satisfied: false` or
+Story's combined diff — NOT once per task. Nothing is committed yet, so pass it the scope as
+`git diff HEAD` plus untracked files, **limited to the union of the Story's `files`** (plus any file
+you had to touch beyond them, named explicitly) — earlier Stories' uncommitted work is not this
+Story's scope. If it returns `satisfied: false` or
 `out_of_scope: [...]`, DO NOT mark the Story done — address the findings.
 
 (`/sdd:review` runs spec-guard again feature-wide as the final gate. Within `implement` it runs

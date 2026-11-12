@@ -405,7 +405,7 @@ Phase 2 — Clarify. AI reads the current spec.md and asks 5-10 targeted questio
 
 ### 🗺️ `/sdd:plan`
 
-Phase 3 — Plan. **Run in Plan Mode** (Shift+Tab) so Claude has edits disabled and can only read/analyze.
+Phase 3 — Plan. **Run in Plan Mode** (Shift+Tab): Claude reads and analyzes, drafts the plan in the session's plan file, and calls ExitPlanMode — approving that dialog is your review of the plan, and only then is it saved to `specs/<slug>/plan.md`. Without Plan Mode the plan is written directly and the command stops for you to read it.
 
 Generates `plan.md` with:
 
@@ -464,12 +464,12 @@ Phase 5 — Implement a **whole Story** in one session (recommended), or a singl
 
 Phase 6 — Final audit before PR. Runs in sequence:
 
-1. Full test suite
-2. `spec-guard` over the entire feature diff
+1. Full test suite — once (the `test` / `coverage` command from `specs/constitution.md` §2)
+2. `spec-guard` over the entire feature diff (committed + uncommitted + untracked files, against the merge base with `main`)
 3. `drift-detector` over spec ↔ plan ↔ tasks ↔ code
-4. `reviewer` agent invokes domain skills (`react-doctor`, `accessibility-audit`, etc.) based on the diff
-5. Generates `specs/<slug>/review.md` with verdict GO / NO-GO
-6. On GO: `git commit` (Conventional Commits format) + `gh pr create` with body linking to `spec.md`
+4. `ui-critic` when UI files changed (soft check)
+5. `reviewer` agent receives all of the above, invokes the domain skills from `capabilities.md` relevant to the diff and writes `specs/<slug>/review.md` with verdict GO / NO-GO
+6. On GO: shows the commit title, PR title and file list and asks before committing; then stages exactly those files, `git commit` (Conventional Commits format) + `gh pr create` with body linking to `spec.md`
 7. On NO-GO: list concrete blockers
 
 ### 📊 `/sdd:analyze`
@@ -533,20 +533,19 @@ Cross-checks performed:
 
 **Purpose:** Final quality audit before PR. Orchestrates domain-specific audits and decides GO/NO-GO.
 
-**Called by:** `/sdd:review`.
+**Called by:** `/sdd:review`, which passes it the test results and the spec-guard, drift-detector and ui-critic results — it does not re-run the suite or start sub-agents itself.
 
 Pipeline:
 
-1. Run full test suite (command from CLAUDE.md)
-2. Check coverage thresholds
-3. Invoke relevant skills + agents based on the diff:
+1. Read the test results from the prompt (any failure → NO-GO)
+2. Check coverage against the targets in `specs/constitution.md` §6
+3. Invoke the audit skills from `capabilities.md` relevant to the diff, e.g. for a React project:
    - `react-doctor` skill if `.tsx`/`.jsx` files changed
    - `accessibility-audit` skill if UI components touched
-   - `ui-critic` sub-agent if UI files in diff (visual review via browser MCP — see below)
    - `@szum-tech/server-actions` skill if server actions added
-4. Verify commit messages follow Conventional Commits
-5. Generate `specs/<slug>/review.md` with verdict
-6. Block GO if any test fails or any critical a11y/security violation exists
+4. Verify commit messages follow Conventional Commits (when the branch has commits)
+5. Generate `specs/<slug>/review.md` with verdict, including the spec-guard, drift and visual-review sections
+6. Block GO if any test fails, spec-guard is not satisfied, or any critical a11y/security violation exists
 
 **Output:** JSON `{verdict: "GO" | "NO_GO", blockers: [...], warnings: [...]}`
 
@@ -554,7 +553,7 @@ Pipeline:
 
 **Purpose:** Visual review of changed UI components — captures Storybook screenshots via a browser MCP and evaluates them for design-system adherence, layout regressions, and rendering issues.
 
-**Called by:** `reviewer` (transitively from `/sdd:review`) when the diff contains `.tsx`/`.stories.tsx` files.
+**Called by:** `/sdd:review` when the diff contains UI component files (e.g. `.tsx`/`.stories.tsx`). Storybook URL and start command come from the `ui-preview` row of `specs/constitution.md` §2.
 
 **Requirements:** A browser MCP server connected (e.g. `Claude_in_Chrome`, `Claude_Preview`, or Playwright MCP) plus a running Storybook (default `http://localhost:6006`). If either is missing, the agent returns verdict `SKIPPED` and the review continues without blocking.
 
@@ -751,14 +750,14 @@ Pipeline executes:
 1. Tests: 23/23 passed
 2. `spec-guard`: all 4 AC satisfied
 3. `drift-detector`: no drift
-4. `reviewer`: orchestrates skills + visual review
+4. `ui-critic` sub-agent: verdict `OK` — screenshots saved to `.sdd-screenshots/` (or `SKIPPED` if no browser MCP / Storybook available)
+5. `reviewer`: orchestrates skills
    - `react-doctor` skill: 89/100
    - `accessibility-audit` skill: 0 critical
-   - `ui-critic` sub-agent: verdict `OK` — screenshots saved to `.sdd-screenshots/` (or `SKIPPED` if no browser MCP / Storybook available)
    - Conventions: OK
-5. Verdict: **GO**
-6. Commit: `feat(reset-password): add email-based reset flow`
-7. PR opened with body referencing `specs/user-can-reset-password-via-email/spec.md`
+6. Verdict: **GO** — you confirm the commit and PR
+7. Commit: `feat(reset-password): add email-based reset flow`
+8. PR opened with body referencing `specs/user-can-reset-password-via-email/spec.md`
 
 ### Typical timeline
 

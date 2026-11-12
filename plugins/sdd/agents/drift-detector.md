@@ -32,12 +32,14 @@ From the prompt you receive the path to the feature folder (`specs/<slug>/`).
 - Every task should be justified by something in plan.md
 
 #### Tasks → Code
-- Tasks with `status: done`/`review` → actually committed their declared `files`
+- Tasks with `status: done`/`review` → their declared `files` actually changed (the work is usually still uncommitted)
 - In the diff there should be no files NOT covered by any task. Read the `Generated / out-of-band
   paths` globs from `specs/capabilities.md` and **exclude** them from the diff — they are
   regenerated artifacts, never drift:
   ```bash
-  git diff main..HEAD --name-only -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…globs>
+  base=$(git merge-base HEAD main)   # or the repo's default branch
+  git diff "$base" --name-only -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…globs>
+  git ls-files --others --exclude-standard   # new untracked files are part of the diff too
   ```
 
 #### Spec → Code
