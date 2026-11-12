@@ -1,15 +1,7 @@
 # Project Capabilities
 
-> `<!-- auto-generated -->` sections are rewritten by `/sdd:doctor init`; `<!-- user-override -->`
+> The `<!-- auto-generated -->` section is rewritten by `/sdd:doctor init`; `<!-- user-override -->`
 > sections are never overwritten.
-
-## Specialist agents (delegate implementation work)
-
-<!-- auto-generated -->
-
-## Skills (load into context on demand)
-
-<!-- auto-generated -->
 
 ## Projects
 
@@ -17,30 +9,13 @@
 <!-- `- **<name>** — <kind> · <path> · <stack>`; `(repo)` after the path of a sibling repository.
      Single-app repo: one project, `root` (`.`). -->
 
-## Task type → routing rules
+## Implementation
 
 <!-- user-override -->
-<!-- `/sdd:tasks` picks a task `type`; `/sdd:implement` routes it to the agent + skills on the Model tier.
-     Stack: `*` = any, else a project name, its kind or a stack word — most specific match wins.
-     Agent must be able to edit files (tools include Write/Edit); a read-only agent cannot implement.
-     Model: subagent tier. `haiku` mechanical, `sonnet` test + implementation; `opus` only for the
-     session-level reasoning phases (spec, clarify, plan, review). -->
-| Task type        | Stack | Specialist agent | Skills to load | Model  |
-|------------------|-------|------------------|----------------|--------|
-| contract         | *     | (orchestrator)   | —              | sonnet |
-| implementation   | *     | (orchestrator)   | —              | sonnet |
-| integration-test | *     | (orchestrator)   | —              | sonnet |
-| e2e-test         | *     | (orchestrator)   | —              | sonnet |
-| migration        | *     | (orchestrator)   | —              | sonnet |
-| refactor         | *     | (orchestrator)   | —              | haiku  |
-| generic          | *     | (orchestrator)   | —              | haiku  |
-
-## Custom routing rules
-
-<!-- user-override -->
-<!-- Own task types and stack-specific rows, same columns as above. Example:
-     | implementation | python | python-developer | fastapi-rules, pytest-rules | sonnet |
-     | ui-component   | nextjs | frontend-expert  | design-system               | sonnet | -->
+<!-- Who implements a task when `/sdd:implement` hands it over. One line per project, `default` for
+     the rest. Values: `skill:<name>` | `agent:<name>` | `command:<shell>` (brief on stdin) |
+     `in-session` (the session itself). Example: `api: agent:python-developer`. -->
+default: in-session
 
 ## Generated / out-of-band paths
 

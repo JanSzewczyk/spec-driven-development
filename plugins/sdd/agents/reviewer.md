@@ -34,11 +34,11 @@ numbers (the project has no `coverage` command in §2) → a warning, not a bloc
 ### 3. Domain-specific audits
 
 **Per project.** For every project the diff touches (the prompt lists them, with kind and stack),
-pick from `specs/capabilities.md` "Skills" the audits relevant to *that* project's stack and to the
+pick from the skills available in the session the audits relevant to *that* project's stack and to the
 files changed in it — a Python API, a Next.js app and a Flutter app each get their own audits, and
 a project with no relevant audit skill gets none. The audits below
-are **examples** for a React/Next.js project; another stack uses its own audit skills from
-capabilities, and when none is relevant you skip this step.
+are **examples** for a React/Next.js project; another stack uses its own audit skills,
+and when none is relevant you skip this step.
 
 #### If the diff contains `.tsx` / `.jsx` / React:
 ```

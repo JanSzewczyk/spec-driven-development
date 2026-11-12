@@ -28,7 +28,7 @@ mobile, desktop, library, e2e, infra …; ask only when unclear), **path**, **st
 framework, package manager), sibling repo or not.
 
 Per project, inside its directory, find the **one canonical command** for **test**, **coverage**,
-**typecheck** (or compile) and **lint**. These commands go into constitution §2 (`/sdd:implement` and the review run them). Source, in priority order: declared scripts/tasks
+**typecheck** (or compile) and **lint**. These commands go into constitution §2 (the implementer and `/sdd:review` run them). Source, in priority order: declared scripts/tasks
 (`package.json` scripts, `Makefile`/`justfile`, Gradle/Cargo/Go/dotnet tasks — prefer
 `nx run <project>:lint` / `turbo run … --filter` in workspaces); CI and pre-commit config (what
 merges are gated on); tool config files (`tsconfig.json`, `pyproject.toml` `[tool.*]`,
@@ -51,22 +51,18 @@ linter). Confirm it is runnable (on `$PATH`, via the package manager, or a repo-
 Sections are `<!-- auto-generated -->` (regenerate every run) or `<!-- user-override -->` (keep
 byte-for-byte). **Keep these exact headings — other commands match them.**
 
-- `## Specialist agents (delegate implementation work)` — the agents available in **this
-  session** (the agent list you already have), excluding `sdd:*`: `- **<name>** — <one line>`.
-  No cache scan: it picks up disabled plugins and stale versions.
-- `## Skills (load into context on demand)` — the skills available in this session, excluding
-  `sdd:*`: `- **<name>**` (names only; the session list carries the descriptions).
-- `## Projects` — `- **<name>** — <kind> · <path> · <stack>`, `(repo)` after a sibling repo's
-  path. A legacy `## Stack profile` becomes `## Projects` (the only rename init performs).
-- `## Task type → routing rules`, `## Custom routing rules`, `## Generated / out-of-band paths` —
-  user-override. New file → copy these three from `templates/capabilities.md.template`
-  (`cp` the template, then Edit the auto sections). New file and an installed agent clearly fits a
-  project's stack → add a stack-specific `implementation` row in `Custom routing rules`, only for
-  an agent whose tools include Write/Edit (read-only agents get no row).
+- `## Projects` — auto-generated: `- **<name>** — <kind> · <path> · <stack>`, `(repo)` after a
+  sibling repo's path.
+- `## Implementation`, `## Generated / out-of-band paths` — user-override. New file → `cp` the
+  template, then Edit `## Projects`. Existing file → keep both; add `## Implementation` from the
+  template when missing.
+- Legacy files: drop the old auto-generated `Specialist agents` and `Skills` sections and rename
+  `Stack profile` → `Projects`. Leave `Task type → routing rules` and `Custom routing rules` as they
+  are (user content, no longer read) and tell the user they can delete them.
 
 Idempotency: a second run with no other change writes an identical file. Match each `## ` heading
 as a single line; a section ends exactly where the next `## ` begins; one blank line between
-sections; the set of headings after regeneration equals the set before.
+sections.
 
 ## 4. Sibling repositories only
 When projects live in sibling repositories, add each path (`../mobile-app`) to
