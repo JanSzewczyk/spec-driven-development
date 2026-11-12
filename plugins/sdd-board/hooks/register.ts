@@ -1,4 +1,4 @@
-import { parsePlanStatus, parseReview, parseSpec, parseTasks } from './parse.ts'
+import { parsePlan, parseReview, parseSpec, parseTasks } from './parse.ts'
 import { currentSlug, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderDoc, renderPane } from './view.ts'
@@ -76,7 +76,8 @@ async function scan($: any): Promise<boolean> {
         found.push({
           slug: entry.name,
           spec: parseSpec(spec),
-          planStatus: plan === null ? null : parsePlanStatus(plan) || 'draft',
+          planStatus: plan === null ? null : parsePlan(plan).status || 'draft',
+          plan: plan === null ? null : parsePlan(plan),
           stories: tasks === null ? null : parseTasks(tasks),
           review: review === null ? null : parseReview(review),
           modified,

@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { parseReview, parseSpec, parseTasks } from '../hooks/parse.ts'
-import { currentSlug, derive } from '../hooks/model.ts'
+import { parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/parse.ts'
+import { currentSlug, derive, gate } from '../hooks/model.ts'
 import type { Feature } from '../hooks/model.ts'
 
 const SPEC = `# Feature: User Login
@@ -62,7 +62,7 @@ const files: Record<string, string> = {
 }
 
 function feature(over: Partial<Feature>): Feature {
-  return { slug: 'x', spec: parseSpec(SPEC), planStatus: null, stories: null, review: null, modified: 0, ...over }
+  return { slug: 'x', spec: parseSpec(SPEC), planStatus: null, plan: null, stories: null, review: null, modified: 0, ...over }
 }
 
 test('parseSpec reads header, criteria and open questions', () => {
@@ -99,6 +99,65 @@ test('derive walks the pipeline', () => {
   stories[1].tasks.forEach((t) => (t.status = 'review'))
   expect(derive(feature({ planStatus: 'tasks-ready', stories })).next?.command).toBe('/sdd:review')
   expect(derive(feature({ planStatus: 'tasks-ready', stories, review: 'GO' })).next).toBeNull()
+})
+
+const DRAFT = `# Feature: Flagship
+
+**Status:** clarified
+
+## Summary (business)
+
+<!-- What problem -->
+
+Show one flagship project.
+
+## User stories
+
+- As a **visitor**, I want to see it, so that I know the best work.
+
+## Acceptance criteria
+
+- [ ] AC1: given a flagship → block is shown
+- [ ] AC2: ...
+
+## Edge cases
+
+- ?
+
+## Open questions
+
+- Q1: share how?
+- Q2: one or many?
+`
+
+test('parseSpec skips template placeholders', () => {
+  const s = parseSpec(DRAFT)
+  expect(s.hasSummary).toBe(true)
+  expect(s.storyCount).toBe(1)
+  expect(s.acTotal).toBe(2)
+  expect(s.acReal).toBe(1)
+  expect(s.edgeCases).toBe(0)
+  expect(s.openQuestions).toBe(2)
+})
+
+test('parsePlan reports missing sections and ignores "none" notes', () => {
+  const p = parsePlan('# Plan\n\n**Status:** draft\n\n## High-level approach\n\nDo it.\n\n## File-by-file change list\n\n## Open questions for human review\n\n- _None blocking._ Minor choices later.\n')
+  expect(p.status).toBe('draft')
+  expect(p.missing).toEqual(['change list', 'risks'])
+  expect(p.openItems).toBe(0)
+})
+
+test('the gate lists what blocks the next command', () => {
+  const g = gate(feature({ spec: { ...parseSpec(DRAFT), status: 'draft' } }))!
+  expect(g.command).toBe('/sdd:clarify')
+  expect(g.checks.filter((c) => !c.ok).map((c) => c.key)).toEqual(['edge'])
+  const plan = gate(feature({ spec: parseSpec(DRAFT) }))!
+  expect(plan.command).toBe('/sdd:plan')
+  expect(plan.checks.filter((c) => !c.ok).map((c) => c.key)).toEqual(['edge', 'questions'])
+  const tasks = gate(feature({ planStatus: 'draft', plan: { status: 'draft', missing: [], openItems: 0 }, spec: { ...parseSpec(DRAFT), openQuestions: 0 } }))!
+  expect(tasks.command).toBe('/sdd:tasks')
+  expect(tasks.open).toBe(0)
+  expect(gate(feature({ review: 'GO' }))).toBeNull()
 })
 
 test('currentSlug prefers pin, then branch, then newest', () => {
@@ -259,4 +318,18 @@ test('a new spec can be started from the tab bar, also while a feature is in pro
     await ui.unmount()
   }
   expect(filled).toEqual(['/sdd:spec feat ', '/sdd:spec feat '])
+})
+
+test('the next step card waits on the open checks', async ($, on) => {
+  const filled = stubProject($, on, true, {
+    files: { 'specs/user-login/spec.md': DRAFT, 'specs/user-login/tasks.md': '' },
+  })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ key: 'check-questions' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /waiting on \d+ check/ })).toBeDefined()
+    await ui.unmount()
+  }
+  void filled
 })
