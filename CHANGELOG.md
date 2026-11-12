@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Several repositories.** `/sdd:implement` creates the feature branch in each sibling repo it edits, `/sdd:review` diffs, tests and opens a linked PR per repo, and `init` adds sibling repos to `permissions.additionalDirectories`.
 - **Path-routed hooks for monorepos.** The hook templates gain a "route by path" shape: each project's typecheck/lint runs from its own directory with its own runner.
 - **sdd-board shows each task's project and what it waits on** (open `depends_on`).
+- **Agents without a shell or without write access.** `/sdd:implement` runs the tests for a specialist that has no Bash (tests call → red check → implementation call → green check) and runs a task routed to a read-only agent on `general-purpose`; `/sdd:tasks` and `doctor init` no longer route tasks to read-only agents. Found in a trial run on an Nx (Next.js) + FastAPI monorepo.
 
 ### Fixed
 
