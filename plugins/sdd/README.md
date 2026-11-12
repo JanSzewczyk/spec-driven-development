@@ -1,6 +1,6 @@
 # sdd — Spec-Driven Development
 
-Claude Code plugin that carries a feature through a fixed pipeline: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` → `/sdd:review`, with test-first TDD and per-task routing to your specialist agents.
+Claude Code plugin that carries a feature through a fixed pipeline: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` → `/sdd:review`, with self-contained tasks handed to your own implementation flow and a final audit against the spec.
 
 | Part | What |
 | --- | --- |
@@ -17,4 +17,4 @@ Claude Code plugin that carries a feature through a fixed pipeline: `/sdd:spec` 
 
 Then run `/sdd:doctor check` and `/sdd:doctor init` in your project.
 
-The full guide (flow, commands, agents, routing) is in the [repository README](../../README.md). The optional Claude Code Desktop panel for it is [sdd-board](../sdd-board/README.md).
+The full guide (flow, commands, agents, implementation hand-off) is in the [repository README](../../README.md). The optional Claude Code Desktop panel for it is [sdd-board](../sdd-board/README.md).

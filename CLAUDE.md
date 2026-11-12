@@ -14,7 +14,7 @@ The plugin is installed into a *target* project (`/plugin install sdd@spec-drive
 
 | Plugin  | Description                                                     | Commands                                                                         | Agents                                          | Skills |
 | ------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------- | ------ |
-| **sdd** | Spec-Driven Development flow with TDD and per-task agent routing | constitution, spec, clarify, plan, tasks, implement, review, analyze, doctor | spec-guard, drift-detector, reviewer, ui-critic | doctor |
+| **sdd** | Spec-Driven Development flow: self-contained tasks handed to the user's implementation flow, verified against the spec | constitution, spec, clarify, plan, tasks, implement, review, analyze | spec-guard, drift-detector, reviewer, ui-critic | doctor |
 | **sdd-board** | Claude Code Desktop side panel: current spec with phase, next command and tasks, plus all specs (a mod: hooks module, no commands/agents/skills) | | | |
 
 ## Commands
@@ -46,10 +46,10 @@ The SDD flow is a fixed pipeline of slash commands, each writing artifacts under
 
 Three kinds of plugin asset, each in its own top-level dir, wired together by `.claude-plugin/plugin.json`:
 
-- **`commands/*.md`** — the 8 user-facing slash commands (`/sdd:<name>`; `/sdd:doctor` is the `doctor` skill). Each is a markdown prompt with YAML frontmatter (`description`, `argument-hint`, `allowed-tools`). The *body is the instruction set Claude executes* — editing behavior means editing prose, not code. `spec.md` creates the branch + skeleton; `implement.md` is the heart (TDD loop + per-task routing); `review.md` orchestrates the verification agents.
+- **`commands/*.md`** — the 8 user-facing slash commands (`/sdd:<name>`; `/sdd:doctor` is the `doctor` skill). Each is a markdown prompt with YAML frontmatter (`description`, `argument-hint`, `allowed-tools`). The *body is the instruction set Claude executes* — editing behavior means editing prose, not code. `spec.md` creates the branch + skeleton; `tasks.md` writes self-contained tasks; `implement.md` is a dispatcher that hands a task to the flow configured in `capabilities.md`; `review.md` orchestrates the verification agents.
 
 - **`agents/*.md`** — 4 verification sub-agents invoked via the Task tool, never directly by the user:
-  - `spec-guard` — checks a diff satisfies all Acceptance Criteria and adds nothing out-of-scope; returns `{satisfied, missing, out_of_scope}`. Called once per Story by `/sdd:implement` and per-feature by `/sdd:review`.
+  - `spec-guard` — checks a diff satisfies all Acceptance Criteria and adds nothing out-of-scope; returns `{satisfied, missing, out_of_scope}`. Called by `/sdd:review`.
   - `drift-detector` — finds mismatches between spec/plan/tasks docs and actual code.
   - `reviewer` — final READY/NOT READY audit; gets the test results and the other agents' results from `/sdd:review` (sub-agents cannot start sub-agents, so `/sdd:review` runs the suite and `ui-critic` itself), runs the domain audits and writes `review.md`.
   - `ui-critic` — screenshots changed UI via a browser MCP; skips gracefully if none is available (never blocks).
@@ -59,9 +59,8 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 ### Key concepts when editing
 
 - **Projects**: the framework works on *projects* — a unit with its own stack and commands, listed in the target's `specs/capabilities.md` `## Projects` (a single-app repo has one, `root`; a monorepo one per app/package; a feature spread over several repositories adds projects in sibling checkouts, with `specs/` only in the spec repo). Constitution §2 holds one command row per project, and nothing assumes a frontend — web, backend and mobile projects are peers.
-- **Per-task routing**: every task in a target's `tasks.md` carries `project`, `type`, `agent`, `skills`, `model` and `depends_on`. Routing matches `type` plus the project's stack (`Stack` column, `*` = any). The framework *orchestrates existing agents* rather than duplicating them — when `agent: orchestrator`, work is done inline (or by a general-purpose subagent when it runs in parallel).
-- **Dependencies and waves**: `depends_on` (a task needs another's result, or they share files) decides the order; `/sdd:tasks` writes each Story's waves and a Mermaid flow diagram, and `/sdd:implement` runs the tasks of a wave in parallel as subagents in one working tree, each editing only its own files.
-- **Two technology-neutral TDD shapes, inside one task**: one task = one unit of behaviour with its tests. `tdd: test-first` is the default (failing test first, then implementation; trivially stub a missing symbol so the test fails on a real assertion); `tdd: contract-first` (contract → tests → implementation) is the narrow exception, used only when the unit's deliverable is itself a public interface/contract other code references by shape. A contract *shared between projects* is its own task the consumers depend on. The framework names no frontend tools and imposes no file-layout rule for interfaces.
+- **Self-contained tasks**: `/sdd:tasks` writes one Epic with Jira-like tasks (`project`, `status`, `depends_on`, `acceptance` ids, `plan` refs, `scope`, `files`). Tasks refer to the spec and plan instead of copying them; `/sdd:implement` inlines the references into a brief. No agents, models or TDD tags in tasks.
+- **The framework does not implement**: `/sdd:implement` reads `## Implementation` in `capabilities.md` (`skill:` / `agent:` / `command:` / `in-session`, per project or `default`), hands the brief to that flow and tracks status; with nothing configured the session implements the task itself. The implementer runs the project's checks; `/sdd:review` verifies against the acceptance criteria.
 - **Constitution is the only file the framework writes outside of `specs/`**: `specs/constitution.md` is the long-form source of truth, edited via `/sdd:constitution`. The target's root `CLAUDE.md` (if any) is user-owned and never read or written by this framework.
 - **No fixed list of supported stacks**: `/sdd:doctor init` discovers how each project checks its code (declared scripts/tasks, CI + pre-commit config, tool config files) and records the commands in constitution §2, for *any* language/tool. Supporting a new tool usually requires **editing nothing**.
 

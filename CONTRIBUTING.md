@@ -58,7 +58,7 @@ plugin and exercise the real skill against a target project, then verify the art
 ## Style guidelines
 
 - **All framework files are English-only.** The audit grep used during review catches Polish diacritics.
-- **No new generic agents without strong justification.** The framework intentionally only adds 4 (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`). Anything else should be a plugin specialist invoked through `capabilities.md` routing.
+- **No new generic agents without strong justification.** The framework intentionally only adds 4 (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`). Implementation is the user's own flow, configured under `## Implementation` in `capabilities.md`.
 - **Slash commands** should declare `allowed-tools` explicitly. Avoid `"*"` unless the command genuinely needs every tool.
 - **Skills (`SKILL.md`)** must have a clear `description` frontmatter — that is what Claude uses to decide whether to auto-trigger. Include `version`, `lastUpdated`, `tags`, `author` for marketplace consistency.
 - Conventional Commits for commit messages (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
@@ -67,7 +67,7 @@ plugin and exercise the real skill against a target project, then verify the art
 
 | Change type | Location |
 |------|------|
-| New routing rule (task type → agent) | Edit `skills/doctor/templates/capabilities.md.template` |
+| Default implementation flow for new projects | Edit `## Implementation` in `skills/doctor/templates/capabilities.md.template` |
 | New SDD-doctor check | Add a numbered check to the `check` procedure in `skills/doctor/SKILL.md` |
 | New slash command | New file in `commands/<name>.md`. Document in README. |
 | New verification agent | New file in `agents/<name>.md` + integrate via `/sdd:review` (`commands/review.md` and `agents/reviewer.md`) |

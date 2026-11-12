@@ -14,7 +14,7 @@
     {
       "name": "sdd",
       "source": "./plugins/sdd",
-      "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), TDD enforcement with contract-first UI, and orchestration of your existing specialist sub-agents.",
+      "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), self-contained Jira-like tasks handed to your own implementation flow, and verification against the spec.",
       "version": "0.10.0",
       "author": {
         "name": "Szum Tech Team",
