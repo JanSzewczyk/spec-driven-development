@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/parse.ts'
-import { currentSlug, derive, gate } from '../hooks/model.ts'
+import { blockedBy, currentSlug, derive, gate } from '../hooks/model.ts'
 import type { Feature } from '../hooks/model.ts'
 
 const SPEC = `# Feature: User Login
@@ -85,6 +85,73 @@ test('parseTasks groups tasks into stories with their status', () => {
 test('parseTasks ignores trailing YAML comments on a field', () => {
   const stories = parseTasks('### Story S1: X\n\n```yaml\n- id: T1.1\n  title: A\n  status: done  # skeleton created early\n```\n')
   expect(stories[0].tasks[0].status).toBe('done')
+})
+
+const WAVES = `# Tasks: Reset
+
+## Epic: Reset
+
+### Story S1: User resets their password
+
+\`\`\`yaml
+- id: T1.1
+  title: Reset API contract
+  project: api
+  type: contract
+  agent: orchestrator
+  depends_on: []
+  status: review
+
+- id: T1.2
+  title: Reset endpoints
+  project: api
+  type: implementation
+  agent: python-developer
+  depends_on: [T1.1]
+  status: draft
+
+- id: T1.3
+  title: Reset form
+  project: "web"
+  type: implementation
+  agent: orchestrator
+  depends_on:
+    - T1.1
+    - T1.2  # needs the endpoint for its integration test
+  status: draft
+\`\`\`
+
+**Waves:** 1: T1.1 · 2: T1.2 · 3: T1.3
+
+\`\`\`mermaid
+flowchart LR
+  subgraph W1["Wave 1"]
+    T1_1["T1.1 · api · contract"]
+  end
+  T1_1 --> T1_2 --> T1_3
+  classDef api fill:#dbeafe
+  class T1_1,T1_2 api
+\`\`\`
+`
+
+test('parseTasks reads project and depends_on, inline and as a block list', () => {
+  const [s] = parseTasks(WAVES)
+  expect(s.tasks.map((t) => t.project)).toEqual(['api', 'api', 'web'])
+  expect(s.tasks.map((t) => t.dependsOn)).toEqual([[], ['T1.1'], ['T1.1', 'T1.2']])
+  expect(s.tasks.length).toBe(3)
+  // tasks.md written before tasks had these fields
+  const legacy = parseTasks(TASKS)
+  expect(legacy[0].tasks[0].project).toBe('')
+  expect(legacy[0].tasks[0].dependsOn).toEqual([])
+})
+
+test('blockedBy lists dependencies that are not implemented yet', () => {
+  const stories = parseTasks(WAVES)
+  const [t1, t2, t3] = stories[0].tasks
+  expect(blockedBy(t1, stories)).toEqual([])
+  expect(blockedBy(t2, stories)).toEqual([])
+  expect(blockedBy(t3, stories)).toEqual(['T1.2'])
+  expect(blockedBy({ ...t2, dependsOn: ['T9.9'] }, stories)).toEqual(['T9.9'])
 })
 
 test('parseReview tells GO from NO-GO', () => {
@@ -345,4 +412,24 @@ test('the next step card waits on the open checks', async ($, on) => {
     await ui.unmount()
   }
   void filled
+})
+
+test('a task whose dependencies are open shows what it waits on', async ($, on) => {
+  stubProject($, on, true, { files: { 'specs/user-login/tasks.md': WAVES } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: 'waits on T1.2' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'api · python-developer' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('mid-run, a later wave still shows what it waits on', async ($, on) => {
+  // wave 1 done (review), wave 2 running (in-progress), wave 3 not started (draft)
+  const midRun = WAVES.replace('depends_on: [T1.1]\n  status: draft', 'depends_on: [T1.1]\n  status: in-progress')
+  expect(parseTasks(midRun)[0].tasks.map((t) => t.status)).toEqual(['review', 'in-progress', 'draft'])
+  stubProject($, on, true, { files: { 'specs/user-login/tasks.md': midRun } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: 'waits on T1.2' })).toBeDefined()
+  await ui.unmount()
 })
