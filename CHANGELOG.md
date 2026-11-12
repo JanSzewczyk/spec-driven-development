@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/sdd:clarify` picks the spec from the branch or argument** and asks when neither resolves, instead of taking the most recently modified spec; its `allowed-tools` now let it read the branch.
 - **`/sdd:implement` runs a Story's tasks in their listed order** instead of matching React-specific `type` names; the `spec-guard` description says once per Story.
 
+- **sdd-board reads the review verdict from the `**Verdict:**` header.** The richer `review.md` quotes findings from several agents, and a stray "NO-GO" in one of them used to mark a GO review as NO-GO.
+
 ### Changed
 
 - The constitution's §2 Run/build table gains `coverage` and `ui-preview` rows and is the single source for those commands; `/sdd:doctor init` fills it from the detected tooling when it seeds the constitution, and `check` warns when the `test` row is empty.
