@@ -1,5 +1,5 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
-import type { PlanInfo, SpecInfo, Story } from './parse.ts'
+import type { PlanInfo, SpecInfo, Story, Task } from './parse.ts'
 
 export type Feature = {
   slug: string
@@ -58,6 +58,18 @@ export function taskCounts(stories: Story[] | null) {
     }
   }
   return c
+}
+
+// Dependencies of a task that are not implemented yet (status review or done). Unknown ids count
+// as open, so a typo in depends_on shows up instead of silently unblocking the task.
+export function blockedBy(task: Task, stories: Story[] | null): string[] {
+  if (task.status !== 'draft' || task.dependsOn.length === 0) return []
+  const status = new Map<string, string>()
+  for (const s of stories ?? []) for (const t of s.tasks) status.set(t.id, t.status)
+  return task.dependsOn.filter((id) => {
+    const st = status.get(id)
+    return st !== 'review' && st !== 'done'
+  })
 }
 
 export function storyDone(s: Story): boolean {

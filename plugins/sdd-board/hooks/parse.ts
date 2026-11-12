@@ -1,7 +1,16 @@
 // Pure parsers for the artifacts the sdd plugin writes under specs/<slug>/.
 // No mods API in here: everything takes already-read text.
 
-export type Task = { id: string; title: string; type: string; agent: string; model: string; status: string }
+export type Task = {
+  id: string
+  title: string
+  type: string
+  agent: string
+  model: string
+  status: string
+  project: string // '' in tasks.md written before tasks named their project
+  dependsOn: string[] // task ids that must be review|done first; [] when none or not stated
+}
 export type Story = { id: string; name: string; tasks: Task[] }
 export type SpecInfo = {
   title: string
@@ -92,6 +101,7 @@ export function parseTasks(text: string): Story[] {
   const stories: Story[] = []
   let story: Story | null = null
   let task: Task | null = null
+  let inDeps = false
   for (const raw of text.split('\n')) {
     const s = raw.match(/^###\s+Story\s+(S\d+)\s*[:\-–]?\s*(.*)$/i)
     if (s) {
@@ -103,15 +113,34 @@ export function parseTasks(text: string): Story[] {
     if (!story) continue
     const id = raw.match(/^-\s+id:\s*(\S+)/)
     if (id) {
-      task = { id: id[1], title: '', type: '', agent: '', model: '', status: 'draft' }
+      task = { id: id[1], title: '', type: '', agent: '', model: '', status: 'draft', project: '', dependsOn: [] }
       story.tasks.push(task)
+      inDeps = false
       continue
     }
     if (!task) continue
-    const f = raw.match(/^\s{2,}(title|type|agent|model|status):\s*(.*)$/)
-    if (f) (task as Record<string, string>)[f[1]] = f[2].replace(/\s+#.*$/, '').trim().replace(/^["']|["']$/g, '')
+    // depends_on written as a block list: "  depends_on:" followed by "    - T1.1" lines
+    const item = inDeps ? raw.match(/^\s{2,}-\s+([^\s#]+)/) : null
+    if (item) {
+      task.dependsOn.push(unquote(item[1]))
+      continue
+    }
+    inDeps = false
+    const dep = raw.match(/^\s{2,}depends_on:\s*(.*)$/)
+    if (dep) {
+      const value = dep[1].replace(/\s+#.*$/, '').trim()
+      if (value === '') inDeps = true
+      else task.dependsOn = value.replace(/^\[|\]$/g, '').split(',').map((v) => unquote(v.trim())).filter(Boolean)
+      continue
+    }
+    const f = raw.match(/^\s{2,}(title|type|agent|model|status|project):\s*(.*)$/)
+    if (f) (task as Record<string, unknown>)[f[1]] = unquote(f[2].replace(/\s+#.*$/, '').trim())
   }
   return stories
+}
+
+function unquote(v: string): string {
+  return v.replace(/^["']|["']$/g, '')
 }
 
 // review.md written by the reviewer agent. Its body quotes findings from several agents, so a
