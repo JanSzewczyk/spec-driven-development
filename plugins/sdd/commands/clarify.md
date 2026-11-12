@@ -1,65 +1,44 @@
 ---
-description: AI asks gap questions about the current spec (SDD step 2)
+description: AI finds gaps in the current spec, asks the questions and writes the answers (SDD step 2)
 argument-hint: "(optional path to spec.md)"
-allowed-tools: Read, Edit, Glob, Bash(git branch:*)
+allowed-tools: Read, Edit, Glob, AskUserQuestion, Bash(git branch:*)
 ---
 
-The **Clarify** phase of SDD. Your job is to actively probe gaps in the specification.
-**Do not** generate code or a plan.
-
-> 💰 **Recommended session model: Opus** — surfacing the right gap questions is judgement-heavy and
-> saves far more downstream than it costs.
+The **Clarify** phase of SDD: find the gaps in the specification and close them with the user in
+this one run. No code, no plan, no technology choices (frameworks, test layers belong to
+`/sdd:plan` and the constitution).
 
 ## Steps
 
 ### 1. Find the spec
 
-Use the path from `$ARGUMENTS` if given. Otherwise take the active branch:
-```bash
-git branch --show-current
-```
+Use the path from `$ARGUMENTS`, else the spec of the active branch (`git branch --show-current`;
+`<type>/<slug>` → `specs/<slug>/spec.md`). If none resolves, list `specs/*/spec.md` and ask which
+one — never guess by "most recently modified".
 
-If the branch name is `<type>/<slug>`, use `specs/<slug>/spec.md`. If neither resolves to an
-existing spec, list `specs/*/spec.md` and ask which one — never guess by "most recently modified"
-(with several features in flight that picks the wrong one).
+### 2. Find the gaps
 
-### 2. Ask 5-10 questions
+Read the whole spec. A section is a gap when it is empty (a fresh `/sdd:spec` skeleton has only the
+Summary), ambiguous, not testable (an AC without a concrete input → output), or contradicts another.
+Rank gaps by how much they would block `/sdd:plan`. On a skeleton that means: who uses it (user
+stories), acceptance criteria, non-goals, then edge cases.
 
-Read the entire spec. For each section, ask 1-2 of the most important questions:
+No real gaps → say so in one line, set `Status: clarified`, point to `/sdd:plan`, stop.
 
-**Summary** — are the problem and target audience unambiguous?
-**User stories** — are they complete? Any missing edge roles?
-**Functional requirements** — is each requirement atomic and testable?
-**Acceptance criteria** — does each AC have a clear input/output? Are they measurable?
-**Edge cases** — what about: no network, race conditions, invalid input, concurrent users, rate limiting, third-party API errors?
-**Non-goals** — what does this feature explicitly NOT do? (guards against scope creep)
-**Open questions** — list everything ambiguous.
-**Testing guidelines** — which test layers? What framework? Test data?
-**Dependencies** — are there other features/services that must be ready first?
+### 3. Ask, up to 5 questions
 
-### 3. Output format
+Ask the most important gaps only (more only if the gaps are real). Use `AskUserQuestion`, up to 4
+per call: each question gets your proposed answer as the first option ("Assumption: …") plus
+alternatives; the user's free text is always possible. Questions without sensible options go in a
+numbered list in the chat. Nothing is written to the spec before the user confirms it.
 
-```markdown
-## Clarify questions for `specs/<slug>/spec.md`
+### 4. Write to the spec
 
-1. **<section>**: <question>?
-2. **<section>**: <question>?
-...
+- Put each answer into its section (append; never delete existing content).
+- Questions the user could not answer now → bullets in **Open questions**, so they survive
+  `/clear` and show in the board. Remove a bullet once answered.
+- Set `**Status:**` to `clarified` when it is `draft` (never move it backwards).
 
-⏸️  Answer in this thread, then run `/sdd:clarify` again so I can update the spec.
-OR use `/sdd:plan` if everything is clear.
-```
+### 5. Output
 
-### 4. After receiving answers (when the user continues the conversation)
-
-Edit `spec.md`, filling in the gaps based on the answers. **Do not** delete existing content,
-only append. Update the "Open questions" section — remove questions that were answered.
-
-Then advance the document lifecycle: set the `**Status:**` header to `clarified` (only if it is
-currently `draft`; never move it backwards from a later state).
-
-## Constraints
-
-- ⛔ DO NOT generate architecture / plan / code
-- ⛔ DO NOT assume answers for the user — ask
-- ✅ Concrete questions, NOT vague ones ("what do you think about this")
+Answered / still open counts and the next step: `/sdd:clarify` again if gaps remain, else `/sdd:plan`.
