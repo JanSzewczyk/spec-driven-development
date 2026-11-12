@@ -33,10 +33,9 @@ check: `pass` ✅ / `warn` ⚠️ / `fail` ❌.
    counts as project `root`.
 2. **`specs/template.md`** — exists with Summary, User stories, Acceptance criteria, Edge cases,
    Open questions, Testing guidelines. Missing → fail; partial → warn.
-3. **`specs/capabilities.md`** — exists with `Specialist agents`, `Skills`, `Projects` (legacy
-   `Stack profile`), `Task type` routing. Missing → fail; partial → warn. Missing `Model` / `Stack`
-   routing columns or the `Generated / out-of-band paths` section (legacy files) → warn, suggest
-   `init`. A project in `Projects` but not in constitution §2 (or reverse) → warn.
+3. **`specs/capabilities.md`** — exists with `Projects` (legacy `Stack profile`), `Implementation`
+   and `Generated / out-of-band paths`. Missing → fail; a section missing → warn, suggest `init`.
+   A project in `Projects` but not in constitution §2 (or reverse) → warn.
 4. **Git + gh** — `.git` exists; `git status --porcelain` clean; `gh` on PATH and
    `gh auth status` ok. Dirty tree or no gh → warn.
 5. **Tooling** — per project in `Projects`: its path exists and the executables of its §2
