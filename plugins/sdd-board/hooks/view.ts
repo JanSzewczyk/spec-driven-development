@@ -88,7 +88,6 @@ function checklist(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Svg } = el
   const g = gate(f)
   if (!g || g.checks.length === 0) return null
-  const ready = g.open === 0
   const rows = g.checks.map((c) =>
     Box({
       key: 'check-' + c.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
@@ -96,13 +95,13 @@ function checklist(el: any, ctx: Ctx, f: Feature) {
         rich(ctx.surface)
           ? Svg({ alt: c.ok ? 'done' : 'open', width: 16, height: 16, source: checkSvg(c.ok) })
           : Text({ color: c.ok ? 'green' : 'yellow', children: [c.ok ? '✓' : '○'] }),
-        Text({ wrap: 'truncate-end', dimColor: c.ok, children: [c.label] }),
+        Text({ wrap: 'truncate-end', color: c.ok ? undefined : 'yellow', dimColor: c.ok, children: [c.label] }),
         c.hint ? Text({ dimColor: true, wrap: 'truncate-end', children: ['· ' + c.hint] }) : null,
       ].filter(Boolean),
     }),
   )
   return Box({
-    borderStyle: 'round', borderColor: ready ? 'green' : 'yellow', padding: 'md', flexDirection: 'column', rowGap: 1,
+    marginTop: 1, flexDirection: 'column', rowGap: 1,
     children: [
       Text({ dimColor: true, children: ['BEFORE ' + g.command.split(' ')[0].toUpperCase() + ' · ' + (g.checks.length - g.open) + '/' + g.checks.length]}),
       ...rows,
@@ -256,18 +255,19 @@ export function renderCurrent(el: any, ctx: Ctx) {
   if (ctx.running) kids.push(Text({ color: 'yellow', children: ['⟳ ' + ctx.running + ' running…'] }))
   if (done) kids.push(doneCard(el, ctx))
   kids.push(stepper(el, ctx, f))
+  const working = d.phase === 'implement' || d.phase === 'review'
   if (!done) {
     const cl = checklist(el, ctx, f)
     if (cl) kids.push(cl)
-    kids.push(nextCard(el, ctx, f))
   }
-  if (d.phase === 'implement' || d.phase === 'review') kids.push(progress(el, ctx, f))
-  if (!done && f.review) kids.push(Text({ color: f.review === 'GO' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review] }))
-  for (const w of warn) kids.push(Text({ color: 'red', wrap: 'wrap', children: ['⚠ ' + w] }))
-  if (d.phase === 'implement' || d.phase === 'review') {
+  if (working) {
+    kids.push(progress(el, ctx, f))
     const st = stories(el, ctx, f)
     if (st) kids.push(st)
   }
+  if (!done) kids.push(nextCard(el, ctx, f))
+  if (!done && f.review) kids.push(Text({ color: f.review === 'GO' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review] }))
+  for (const w of warn) kids.push(Text({ color: 'red', wrap: 'wrap', children: ['⚠ ' + w] }))
   kids.push(docSwitch(el, ctx, f))
   return Box({ flexDirection: 'column', rowGap: 1, children: kids })
 }
