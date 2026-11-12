@@ -123,7 +123,7 @@ Open the target project in Claude Code and run:
 
 ```text
 /sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md, .claude/settings.json
-/sdd:doctor check     # confirms 10/10 — plugin + per-project files present, constitution valid
+/sdd:doctor check     # confirms 6/6 — per-project files present, constitution valid
 /sdd:constitution     # edit specs/constitution.md (long-form, no token limit)
 ```
 
@@ -354,7 +354,7 @@ The plugin ships a handful of these as starter patterns in `templates/hooks/`; t
 
 `specs/capabilities.md` has two kinds of sections:
 
-- **`<!-- auto-generated -->`** — overwritten by `/sdd:doctor init` on every run (it scans `~/.claude/plugins/cache/`)
+- **`<!-- auto-generated -->`** — overwritten by `/sdd:doctor init` on every run (agents and skills come from the current session's lists)
 - **`<!-- user-override -->`** — preserved untouched, the safe place to keep customizations
 
 This lets you re-run `init` (e.g., after installing a new plugin) without losing your custom task-type routing rules.
@@ -396,10 +396,10 @@ Example schema:
 
 ### 🏥 `/sdd:doctor [check|init]`
 
-Preflight audit and auto-setup. **10 checks**: specs/constitution.md, specs/template.md, plugin installed, plugin enabled (looked up across user / project / local settings layers), specs/capabilities.md valid, .claude/settings.json hooks, git + gh, tooling, specialist agents discoverable, project type detected.
+Preflight audit and auto-setup. **6 checks**: specs/constitution.md, specs/template.md, specs/capabilities.md valid, .claude/settings.json hooks, git + gh, tooling per project.
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
-- `init` — bootstrap missing files (constitution, template, capabilities, settings.json hook entries) and auto-detect installed plugins + project stack. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md` and every non-SDD key in `settings.json`. Never touches the project-root `CLAUDE.md`.
+- `init` — bootstrap missing files (constitution, template, capabilities, settings.json hook entries) and auto-detect the session's agents/skills + project stack. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md` and every non-SDD key in `settings.json`. Never touches the project-root `CLAUDE.md`.
 
 ### 📜 `/sdd:constitution`
 
@@ -601,7 +601,7 @@ In Claude Code:
 
 ```text
 /sdd:doctor init       # auto-detects Next.js 15 + TS + Vitest + Storybook
-/sdd:doctor check      # ✅ READY (10/10)
+/sdd:doctor check      # ✅ READY (6/6)
 /sdd:constitution      # fill specs/constitution.md: Tech stack, Run/build, WHAT NOT TO DO with rationale
 ```
 
@@ -926,7 +926,6 @@ Why this framework looks the way it does:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `/sdd:doctor check` shows ❌ on check #9 (specialist agents) | No plugins installed | Install relevant plugins (e.g., `@szum-tech` marketplace) and re-run `/sdd:doctor init` |
 | Hooks not firing after Edit | `settings.json` not loaded, hook entries missing, or hook files not executable | Verify `.claude/settings.json` exists and its `hooks.PostToolUse` array contains entries pointing at `.claude/hooks/typecheck.sh` / `lint.sh`. Confirm the script files are executable (`chmod +x .claude/hooks/*.sh`). Re-run `/sdd:doctor init` to regenerate hook entries and any missing scripts from the detected stack. |
 | `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
 | `/sdd:implement` keeps producing the same code despite hook failures | typecheck error not propagating | Run `bash .claude/hooks/typecheck.sh < /dev/null` manually and check it exits 2 on a real failure. Verify the toolchain (`tsc`, `mypy`, etc.) is installed and reachable on `$PATH`. |
@@ -934,7 +933,7 @@ Why this framework looks the way it does:
 | `/sdd:tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
 | `spec-guard` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
 | Plan Mode disabled but `/sdd:plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |
-| New specialist agent installed but not appearing in `capabilities.md` | `init` not re-run | `/sdd:doctor init` to rescan plugins |
+| New specialist agent installed but not appearing in `capabilities.md` | `init` not re-run | `/sdd:doctor init` to refresh the agent and skill lists |
 
 ---
 

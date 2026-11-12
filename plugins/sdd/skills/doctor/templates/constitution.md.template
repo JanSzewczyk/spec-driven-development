@@ -1,12 +1,7 @@
 # Project Constitution
 
-> **The source of truth for this project's rules of engagement.**
-> The SDD framework reads this file for operational context and edits it via `/sdd:constitution`.
->
-> Edit this file with `/sdd:constitution`. No token limit — be detailed.
-> Every "WHAT NOT TO DO" entry should carry a *reason* (the incident, the trade-off, the
-> upstream constraint). Without rationale, rules become folklore that future contributors
-> mechanically break.
+> Source of truth for this project's rules; edit via `/sdd:constitution`. Every WHAT NOT TO DO
+> entry carries a reason (incident, trade-off, upstream constraint) — otherwise it becomes folklore.
 
 **Last reviewed:** <!-- YYYY-MM-DD -->
 **Owners:** <!-- team / individuals responsible for keeping this current -->
@@ -15,8 +10,7 @@
 
 ## 1. Tech stack
 
-<!-- Several apps (monorepo, or a feature spread over several repositories)? Repeat this list per
-     project — the project names are those in the `Projects` section of specs/capabilities.md. -->
+<!-- Several projects? Repeat the list per project (names from `Projects` in specs/capabilities.md). -->
 
 - **Runtime:**
 - **Framework:**
@@ -25,7 +19,7 @@
 - **Lint / format:**
 - **Other notable libs:**
 
-**Why this stack:** <!-- one paragraph: what trade-offs led here, what alternatives were rejected -->
+**Why this stack:** <!-- trade-offs, rejected alternatives -->
 
 **Links:**
 - Architecture decision records: <!-- e.g. docs/adr/ -->
@@ -35,25 +29,14 @@
 
 ## 2. Run/build commands
 
-<!-- The SDD commands and agents read the commands below from this table — it is the single
-     source for them (the root CLAUDE.md is never read). One row per project, as listed in the
-     `Projects` section of specs/capabilities.md; a single-app repo has one row, `root`.
-     Each command runs from the repository root of the spec repo: put the `cd`/`--project` part in
-     the command itself. `test` as written runs that project's full suite; `/sdd:implement` runs a
-     subset by giving it the task's test files instead of any directory the command names, with the
-     paths made relative to the directory the command runs in (`cd apps/api && uv run pytest
-     tests/test_todos.py`). Leave a cell empty when the project has no such command. -->
+<!-- Single source for SDD commands and agents. One row per project in specs/capabilities.md
+     (`root` for a single app). Each command runs from the spec repo's root, so include the `cd`
+     (`cd apps/api && uv run pytest`). `test` runs the full suite; /sdd:implement appends the
+     task's test files, relative to the directory the command runs in. Empty cell = no command. -->
 
 | Project | Path | test | coverage | typecheck | lint | dev / ui-preview |
 |---------|------|------|----------|-----------|------|------------------|
 | root | `.` | | | | | |
-
-<!-- Example — a monorepo plus a mobile app in a sibling repository (delete when not needed):
-| web    | `apps/web`      | `pnpm nx run web:test --`          | `pnpm nx run web:test -- --coverage` | `pnpm nx run web:typecheck` | `pnpm nx run web:lint` | `pnpm nx run web:storybook` → http://localhost:6006 |
-| api    | `apps/api`      | `cd apps/api && uv run pytest` | `cd apps/api && uv run pytest --cov` | `cd apps/api && uv run mypy app` | `cd apps/api && uv run ruff check` | `cd apps/api && uv run fastapi dev app/main.py` |
-| mobile | `../mobile-app` | `cd ../mobile-app && flutter test` | `cd ../mobile-app && flutter test --coverage` | `cd ../mobile-app && flutter analyze` | | `cd ../mobile-app && flutter run` |
-| e2e    | `apps/web-e2e`  | `pnpm nx run web-e2e:e2e --`       | | | | |
--->
 
 Add notes for non-obvious flags or env vars required.
 
@@ -61,8 +44,7 @@ Add notes for non-obvious flags or env vars required.
 
 ## 3. Architecture
 
-<!-- One paragraph + (optionally) a Mermaid diagram showing the top-level shape of the repo. -->
-<!-- Example: monorepo with `apps/web` (Next.js), `apps/api` (FastAPI), `packages/shared`. -->
+<!-- One paragraph + optional Mermaid diagram of the top-level shape. -->
 
 ```mermaid
 flowchart LR
@@ -83,22 +65,11 @@ flowchart LR
 - Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `docs`, `test`).
 - Errors: typed errors, no silent `catch`.
 
-**Examples** (good vs. bad — keep these honest with real code from the repo):
-
-```ts
-// ✅ Good
-async function loadUser(id: UserId): Promise<Result<User, NotFoundError>> { ... }
-
-// ❌ Bad
-async function loadUser(id: any) { try { ... } catch {} }
-```
-
 ---
 
 ## 5. WHAT NOT TO DO ⛔
 
-<!-- THE most important section. Every entry MUST have a "Why" line. -->
-<!-- After every meaningful Claude mistake, append the lesson here with its rationale. -->
+<!-- Every entry needs a "Why". Append each lesson from a Claude mistake here. -->
 
 ### Example template for new entries
 
@@ -108,18 +79,12 @@ async function loadUser(id: any) { try { ... } catch {} }
 >
 > **Incident:** 2026-03-14 — broken deploy traced to drifted lockfiles after a contributor ran `npm i`.
 
-> ### DO NOT mock the database in tests — use testcontainers
->
-> **Why:** mocks let migrations drift from runtime; we got bitten by a migration that passed mocked tests but failed in prod.
->
-> **Incident:** 2025-11-02 — production rollback after a NOT NULL constraint that mocks ignored.
-
 ---
 
 ## 6. Testing philosophy
 
-- **Test-first (default)** — write the failing test first, then the implementation; add a trivial stub if a missing symbol would otherwise stop the test compiling.
-- **Contract-first (exception)** — use only when the unit's deliverable is itself a public interface/contract other code references by shape (a UI component's props, a typed service interface, an API/RPC schema): declare the contract first, then the failing tests, then the implementation. Follow this project's own conventions for where interfaces live.
+- **Test-first (default):** failing test, then implementation (stub a missing symbol so it fails on an assertion).
+- **Contract-first (exception):** only when the unit's deliverable is itself a public interface other code references by shape (component props, typed service interface, API/RPC schema): contract → failing tests → implementation.
 - **Coverage targets:** unit > 70%, integration > 50%, E2E covers happy paths only. <!-- per project when they differ, e.g. `api`: unit > 85% -->
 - **What we DO NOT test:** generated code, trivial getters, third-party library internals.
 
@@ -138,14 +103,3 @@ async function loadUser(id: any) { try { ... } catch {} }
 
 - ...
 - ...
-
-This list protects future contributors from inheriting goals that were never agreed to.
-
----
-
-## 9. SDD flow reminder
-
-- Start any feature with `/sdd:doctor check`.
-- Per feature: `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:tasks` → `/sdd:implement <id>` → `/sdd:review`.
-- Specs live in `specs/<feature-slug>/`; the constitution lives at `specs/constitution.md`.
-- Routing rules + installed capabilities: `specs/capabilities.md`.
