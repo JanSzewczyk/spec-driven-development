@@ -50,7 +50,7 @@ plugin and exercise the real skill against a target project, then verify the art
 5. Sanity-check stale references after any rename:
 
    ```bash
-   grep -rnE '(?<!sdd-)\b(spec-guard|drift-detector|reviewer|ui-critic)\b' \
+   grep -rnE '(?<!sdd-)\b(spec-verifier|reviewer|ui-critic)\b' \
      --perl-regexp plugins/sdd/commands/ plugins/sdd/agents/ plugins/sdd/skills/ README.md
    # Expected: empty output.
    ```
@@ -58,7 +58,7 @@ plugin and exercise the real skill against a target project, then verify the art
 ## Style guidelines
 
 - **All framework files are English-only.** The audit grep used during review catches Polish diacritics.
-- **No new generic agents without strong justification.** The framework intentionally only adds 4 (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`). Implementation is the user's own flow, configured under `## Implementation` in `capabilities.md`.
+- **No new generic agents without strong justification.** The framework intentionally only adds 3 (`spec-verifier`, `reviewer`, `ui-critic`). Implementation is the user's own flow, configured under `## Implementation` in `capabilities.md`.
 - **Slash commands** should declare `allowed-tools` explicitly. Avoid `"*"` unless the command genuinely needs every tool.
 - **Skills (`SKILL.md`)** must have a clear `description` frontmatter — that is what Claude uses to decide whether to auto-trigger. Include `version`, `lastUpdated`, `tags`, `author` for marketplace consistency.
 - Conventional Commits for commit messages (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).

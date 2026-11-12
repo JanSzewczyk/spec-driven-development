@@ -5,7 +5,7 @@ Claude Code plugin that carries a feature through a fixed pipeline: `/sdd:spec` 
 | Part | What |
 | --- | --- |
 | Commands | `/sdd:constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `analyze` |
-| Agents | `spec-guard`, `drift-detector`, `reviewer`, `ui-critic` |
+| Agents | `spec-verifier`, `reviewer`, `ui-critic` |
 | Skill | `doctor` — `/sdd:doctor check` / `init` (project readiness audit and setup) |
 
 ## Install
