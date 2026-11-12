@@ -1,12 +1,12 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
-import type { PlanInfo, SpecInfo, Story, Task } from './parse.ts'
+import type { PlanInfo, SpecInfo, Task } from './parse.ts'
 
 export type Feature = {
   slug: string
   spec: SpecInfo
   planStatus: string | null
   plan: PlanInfo | null
-  stories: Story[] | null
+  tasks: Task[] | null
   review: Verdict | null
   modified: number
 }
@@ -48,37 +48,36 @@ export const TEXT_COLOR: Record<string, string> = {
   bad: 'red',
 }
 
-export function taskCounts(stories: Story[] | null) {
+export function taskCounts(tasks: Task[] | null) {
   const c = { total: 0, draft: 0, 'in-progress': 0, review: 0, done: 0 } as Record<string, number>
-  for (const s of stories ?? []) {
-    for (const t of s.tasks) {
-      c.total += 1
-      const k = t.status in c ? t.status : 'draft'
-      c[k] += 1
-    }
+  for (const t of tasks ?? []) {
+    c.total += 1
+    const k = t.status in c ? t.status : 'draft'
+    c[k] += 1
   }
   return c
 }
 
 // Dependencies of a task that are not implemented yet (status review or done). Unknown ids count
 // as open, so a typo in depends_on shows up instead of silently unblocking the task.
-export function blockedBy(task: Task, stories: Story[] | null): string[] {
+export function blockedBy(task: Task, tasks: Task[] | null): string[] {
   if (task.status !== 'draft' || task.dependsOn.length === 0) return []
   const status = new Map<string, string>()
-  for (const s of stories ?? []) for (const t of s.tasks) status.set(t.id, t.status)
+  for (const t of tasks ?? []) status.set(t.id, t.status)
   return task.dependsOn.filter((id) => {
     const st = status.get(id)
     return st !== 'review' && st !== 'done'
   })
 }
 
-export function storyDone(s: Story): boolean {
-  return s.tasks.length > 0 && s.tasks.every((t) => t.status === 'review' || t.status === 'done')
+export function taskDone(t: Task): boolean {
+  return t.status === 'review' || t.status === 'done'
 }
 
 export function derive(f: Feature): Derived {
-  const hasTasks = !!f.stories && f.stories.some((s) => s.tasks.length > 0)
-  const allDone = hasTasks && (f.stories ?? []).every(storyDone)
+  const tasks = f.tasks ?? []
+  const hasTasks = tasks.length > 0
+  const allDone = hasTasks && tasks.every(taskDone)
   let idx: number // index of current step; 6 = everything done
   let next: Next | null
   const status = f.spec.status
@@ -90,12 +89,13 @@ export function derive(f: Feature): Derived {
     next = { command: '/sdd:review', model: 'Opus', why: f.review === 'NOT READY' ? 'The last review was not ready: fix the findings, then review again.' : 'All tasks are implemented. Run the final audit before the PR.' }
   } else if (hasTasks) {
     idx = 4
-    const open = (f.stories ?? []).find((s) => !storyDone(s))
-    const sid = open ? open.id : 'S1'
-    next = { command: '/sdd:implement ' + sid, model: 'Sonnet', why: 'Implement the whole Story in one session (test first, then code).' }
+    // First task not yet implemented whose dependencies are done; else the first unfinished one.
+    const open = tasks.filter((t) => !taskDone(t))
+    const ready = open.find((t) => blockedBy(t, tasks).length === 0) ?? open[0]
+    next = { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' }
   } else if (status === 'planned' || f.planStatus !== null) {
     idx = 3
-    next = { command: '/sdd:tasks', model: 'Sonnet', why: 'Break the plan into tagged, routed tasks.' }
+    next = { command: '/sdd:tasks', model: 'Sonnet', why: 'Split the plan into self-contained tasks.' }
   } else if (status === 'clarified') {
     idx = 2
     next = { command: '/sdd:plan', model: 'Opus', why: 'Write the architecture plan. Run it in Plan Mode.' }
@@ -143,12 +143,11 @@ export function gate(f: Feature): Gate | null {
     checks.push({ key: 'plan', label: 'Plan written', ok: !!f.plan && f.plan.missing.length === 0, hint: !f.plan ? 'plan.md not found' : f.plan.missing.length ? 'missing: ' + f.plan.missing.join(', ') : undefined })
     checks.push({ key: 'plan-questions', label: 'Plan questions resolved', ok: !!f.plan && f.plan.openItems === 0, hint: f.plan && f.plan.openItems ? plural(f.plan.openItems, 'item', 'items') + ' left' : undefined })
   } else if (verb === '/sdd:implement') {
-    const stories = f.stories ?? []
-    const target = command.split(' ')[1]
-    const idx = stories.findIndex((x) => x.id === target)
-    const unrouted = (idx >= 0 ? stories[idx].tasks : []).filter((t) => !t.agent || !t.type).length
-    checks.push({ key: 'routed', label: 'Tasks routed to agents', ok: unrouted === 0, hint: unrouted ? plural(unrouted, 'task', 'tasks') + ' without agent or type' : undefined })
-    if (idx > 0) checks.push({ key: 'earlier', label: 'Earlier stories finished', ok: stories.slice(0, idx).every(storyDone) })
+    const tasks = f.tasks ?? []
+    const target = tasks.find((t) => t.id === command.split(' ')[1])
+    const waits = target ? blockedBy(target, tasks) : []
+    checks.push({ key: 'ac', label: 'Task has acceptance criteria', ok: !!target && target.acceptance.length > 0 })
+    checks.push({ key: 'deps', label: 'Dependencies implemented', ok: waits.length === 0, hint: waits.length ? 'waiting on ' + waits.join(', ') : undefined })
     questions()
   } else if (verb === '/sdd:review') {
     checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })

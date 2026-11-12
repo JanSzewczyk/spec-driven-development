@@ -1,5 +1,5 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
-import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, storyDone, taskCounts, warnings } from './model.ts'
+import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
 import { badgeSvg, checkSvg, dotsSvg, progressSvg, stepperSvg } from './svg.ts'
 
@@ -8,7 +8,6 @@ export type Actions = {
   fill: (text: string) => void
   run: (command: string, args: string) => void
   pin: (slug: string) => void
-  toggle: (storyId: string) => void
   doc: (kind: string) => void
   filter: (v: string) => void
 }
@@ -21,7 +20,6 @@ export type Ctx = {
   current: Feature | null
   branch: string
   running: string | null
-  expanded: Record<string, boolean>
   filter: string
   hasSpecs: boolean
   now: number
@@ -140,7 +138,7 @@ function nextCard(el: any, ctx: Ctx, f: Feature) {
 
 function progress(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Svg } = el
-  const c = taskCounts(f.stories)
+  const c = taskCounts(f.tasks)
   const rows: any[] = []
   if (c.total > 0) {
     const done = c.done + c.review
@@ -154,45 +152,31 @@ function progress(el: any, ctx: Ctx, f: Feature) {
   return Box({ flexDirection: 'column', rowGap: 1, children: rows })
 }
 
-function stories(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Button } = el
-  if (!f.stories || f.stories.length === 0) return null
-  const firstOpen = f.stories.find((s) => !storyDone(s))
+function taskList(el: any, ctx: Ctx, f: Feature) {
+  const { Box, Text } = el
+  if (!f.tasks || f.tasks.length === 0) return null
   return Box({
-    flexDirection: 'column', rowGap: 1,
-    children: f.stories.map((s) => {
-      const done = storyDone(s)
-      const open = ctx.expanded[s.id] ?? (firstOpen ? firstOpen.id === s.id : false)
-      const n = s.tasks.filter((t) => t.status === 'review' || t.status === 'done').length
-      const head = Button({
-        key: 'story-' + s.id,
-        plain: true,
-        onPress: () => ctx.actions.toggle(s.id),
-        children: [(open ? '▾ ' : '▸ ') + s.id + ' · ' + (s.name || 'Story') + '  ' + n + '/' + s.tasks.length + (done ? ' ✓' : '')],
+    flexDirection: 'column',
+    children: f.tasks.map((t) => {
+      const waits = blockedBy(t, f.tasks)
+      return Box({
+        key: 'task-' + t.id,
+        flexDirection: 'row', columnGap: 1,
+        children: [
+          Text({ color: TEXT_COLOR[t.status] ?? 'gray', children: [GLYPH[t.status] ?? '○'] }),
+          Text({ mono: true, dimColor: true, children: [t.id] }),
+          Text({ wrap: 'truncate-end', children: [t.title] }),
+          Text({ dimColor: true, wrap: 'truncate-end', children: [t.project] }),
+          ...(waits.length ? [Text({ dimColor: true, wrap: 'truncate-end', children: ['waits on ' + waits.join(', ')] })] : []),
+        ],
       })
-      const rows = open
-        ? s.tasks.map((t) => {
-            const waits = blockedBy(t, f.stories)
-            return Box({
-              flexDirection: 'row', columnGap: 1, paddingLeft: 2,
-              children: [
-                Text({ color: TEXT_COLOR[t.status] ?? 'gray', children: [GLYPH[t.status] ?? '○'] }),
-                Text({ mono: true, dimColor: true, children: [t.id] }),
-                Text({ wrap: 'truncate-end', children: [t.title || t.type] }),
-                Text({ dimColor: true, wrap: 'truncate-end', children: [[t.project, t.agent, t.model].filter(Boolean).join(' · ')] }),
-                ...(waits.length ? [Text({ dimColor: true, wrap: 'truncate-end', children: ['waits on ' + waits.join(', ')] })] : []),
-              ],
-            })
-          })
-        : []
-      return Box({ flexDirection: 'column', children: [head, ...rows] })
     }),
   })
 }
 
 function docSwitch(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Button } = el
-  const kinds = ['spec', 'plan', 'tasks', 'review'].filter((k) => k === 'spec' || (k === 'plan' && f.planStatus !== null) || (k === 'tasks' && f.stories) || (k === 'review' && f.review))
+  const kinds = ['spec', 'plan', 'tasks', 'review'].filter((k) => k === 'spec' || (k === 'plan' && f.planStatus !== null) || (k === 'tasks' && f.tasks) || (k === 'review' && f.review))
   return Box({
     flexDirection: 'row', columnGap: 2,
     children: [
@@ -244,8 +228,8 @@ function doneCard(el: any, ctx: Ctx) {
 
 // What each phase shows below the header (everything else stays hidden until it matters):
 //   clarify, plan, tasks -> next step, spec facts (acceptance criteria, open questions)
-//   implement            -> next step, task progress, stories (first open one expanded)
-//   review               -> next step, task progress, review verdict, stories
+//   implement            -> next step, task progress, task list
+//   review               -> next step, task progress, review verdict, task list
 //   done                 -> "Feature done" card above the stepper, nothing else
 export function renderCurrent(el: any, ctx: Ctx) {
   const { Box, Text } = el
@@ -274,8 +258,8 @@ export function renderCurrent(el: any, ctx: Ctx) {
   }
   if (working) {
     kids.push(progress(el, ctx, f))
-    const st = stories(el, ctx, f)
-    if (st) kids.push(st)
+    const tl = taskList(el, ctx, f)
+    if (tl) kids.push(tl)
   }
   if (!done) kids.push(nextCard(el, ctx, f))
   if (!done && f.review) kids.push(Text({ color: f.review === 'READY' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
@@ -305,7 +289,7 @@ export function renderAll(el: any, ctx: Ctx) {
   })
   const cards = filtered.map((f) => {
     const d = derive(f)
-    const c = taskCounts(f.stories)
+    const c = taskCounts(f.tasks)
     const isCurrent = ctx.current?.slug === f.slug
     return Box({
       borderStyle: 'round', borderColor: isCurrent ? 'blue' : undefined, paddingX: 1, flexDirection: 'column',

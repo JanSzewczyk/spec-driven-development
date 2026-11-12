@@ -4,14 +4,11 @@
 export type Task = {
   id: string
   title: string
-  type: string
-  agent: string
-  model: string
   status: string
-  project: string // '' in tasks.md written before tasks named their project
+  project: string
   dependsOn: string[] // task ids that must be review|done first; [] when none or not stated
+  acceptance: string[] // AC ids the task serves
 }
-export type Story = { id: string; name: string; tasks: Task[] }
 export type SpecInfo = {
   title: string
   branch: string
@@ -97,46 +94,30 @@ export function parsePlanStatus(text: string): string {
   return header(text, 'Status').split(/\s/)[0]
 }
 
-export function parseTasks(text: string): Story[] {
-  const stories: Story[] = []
-  let story: Story | null = null
+// tasks.md: each task is a `### T<n>: title` heading followed by `key: value` lines.
+export function parseTasks(text: string): Task[] {
+  const tasks: Task[] = []
   let task: Task | null = null
-  let inDeps = false
   for (const raw of text.split('\n')) {
-    const s = raw.match(/^###\s+Story\s+(S\d+)\s*[:\-–]?\s*(.*)$/i)
-    if (s) {
-      story = { id: s[1].toUpperCase(), name: s[2].trim(), tasks: [] }
-      stories.push(story)
-      task = null
-      continue
-    }
-    if (!story) continue
-    const id = raw.match(/^-\s+id:\s*(\S+)/)
-    if (id) {
-      task = { id: id[1], title: '', type: '', agent: '', model: '', status: 'draft', project: '', dependsOn: [] }
-      story.tasks.push(task)
-      inDeps = false
+    const h = raw.match(/^###\s+(T\d+)\s*[:\-–·]\s*(.*)$/i)
+    if (h) {
+      task = { id: h[1].toUpperCase(), title: h[2].trim(), status: 'draft', project: '', dependsOn: [], acceptance: [] }
+      tasks.push(task)
       continue
     }
     if (!task) continue
-    // depends_on written as a block list: "  depends_on:" followed by "    - T1.1" lines
-    const item = inDeps ? raw.match(/^\s{2,}-\s+([^\s#]+)/) : null
-    if (item) {
-      task.dependsOn.push(unquote(item[1]))
-      continue
+    const f = raw.match(/^(project|status|depends_on|acceptance):\s*(.*)$/)
+    if (!f) continue
+    const value = f[2].replace(/\s+#.*$/, '').trim()
+    if (f[1] === 'depends_on' || f[1] === 'acceptance') {
+      const list = value.replace(/^\[|\]$/g, '').split(',').map((v) => unquote(v.trim())).filter((v) => v && !/^(none|—|-)$/i.test(v))
+      if (f[1] === 'depends_on') task.dependsOn = list
+      else task.acceptance = list
+    } else {
+      task[f[1] as 'project' | 'status'] = unquote(value)
     }
-    inDeps = false
-    const dep = raw.match(/^\s{2,}depends_on:\s*(.*)$/)
-    if (dep) {
-      const value = dep[1].replace(/\s+#.*$/, '').trim()
-      if (value === '') inDeps = true
-      else task.dependsOn = value.replace(/^\[|\]$/g, '').split(',').map((v) => unquote(v.trim())).filter(Boolean)
-      continue
-    }
-    const f = raw.match(/^\s{2,}(title|type|agent|model|status|project):\s*(.*)$/)
-    if (f) (task as Record<string, unknown>)[f[1]] = unquote(f[2].replace(/\s+#.*$/, '').trim())
   }
-  return stories
+  return tasks
 }
 
 function unquote(v: string): string {
