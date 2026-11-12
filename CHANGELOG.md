@@ -26,9 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/sdd:clarify` picks the spec from the branch or argument** and asks when neither resolves, instead of taking the most recently modified spec; its `allowed-tools` now let it read the branch.
 - **`/sdd:implement` runs a Story's tasks in their listed order** instead of matching React-specific `type` names; the `spec-guard` description says once per Story.
 
-- **sdd-board reads the review verdict from the `**Verdict:**` header.** The richer `review.md` quotes findings from several agents, and a stray "NO-GO" in one of them used to mark a GO review as NO-GO.
+- **sdd-board reads the review verdict from the `**Verdict:**` header.** The richer `review.md` quotes findings from several agents, and a stray verdict word in one of them used to decide the verdict.
 
 ### Changed
+
+- **Review verdicts are READY / NOT READY** instead of GO / NO-GO, in `/sdd:review`, the `reviewer` agent (`{verdict: "READY" | "NOT_READY"}`), `review.md` and the sdd-board panel ("Review: not ready"). The panel still reads GO / NO-GO in reviews written before.
 
 - **One task per unit of behaviour.** The test → implementation (and contract → tests → implementation) chain now happens inside one task (`tdd: test-first | contract-first`) instead of being split into 2–3 tasks; a contract shared between projects stays its own task. A `tasks.md` in the old format still runs, sequentially.
 - **No frontend bias in examples.** Task, plan and routing examples show a web + backend + mobile feature; `drift-detector` and `analyze` look for tests by each project's convention; `reviewer` picks audits per project; `ui-critic` reviews web projects and skips mobile/desktop UI without a screenshot tool.

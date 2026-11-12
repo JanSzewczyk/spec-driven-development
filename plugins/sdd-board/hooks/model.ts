@@ -1,5 +1,5 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
-import type { PlanInfo, SpecInfo, Story, Task } from './parse.ts'
+import type { PlanInfo, SpecInfo, Story, Task, Verdict } from './parse.ts'
 
 export type Feature = {
   slug: string
@@ -7,7 +7,7 @@ export type Feature = {
   planStatus: string | null
   plan: PlanInfo | null
   stories: Story[] | null
-  review: 'GO' | 'NO-GO' | null
+  review: Verdict | null
   modified: number
 }
 
@@ -82,12 +82,12 @@ export function derive(f: Feature): Derived {
   let idx: number // index of current step; 6 = everything done
   let next: Next | null
   const status = f.spec.status
-  if (f.review === 'GO' || status === 'done') {
+  if (f.review === 'READY' || status === 'done') {
     idx = 6
     next = null
   } else if (allDone) {
     idx = 5
-    next = { command: '/sdd:review', model: 'Opus', why: f.review === 'NO-GO' ? 'The last review was NO-GO: fix the findings, then review again.' : 'All tasks are implemented. Run the final audit before the PR.' }
+    next = { command: '/sdd:review', model: 'Opus', why: f.review === 'NOT READY' ? 'The last review was not ready: fix the findings, then review again.' : 'All tasks are implemented. Run the final audit before the PR.' }
   } else if (hasTasks) {
     idx = 4
     const open = (f.stories ?? []).find((s) => !storyDone(s))
@@ -153,7 +153,7 @@ export function gate(f: Feature): Gate | null {
   } else if (verb === '/sdd:review') {
     checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })
     questions()
-    checks.push({ key: 'verdict', label: 'Last review not NO-GO', ok: f.review !== 'NO-GO', hint: f.review === 'NO-GO' ? 'fix the findings first' : undefined })
+    checks.push({ key: 'verdict', label: 'Last review findings fixed', ok: f.review !== 'NOT READY', hint: f.review === 'NOT READY' ? 'the last review was not ready' : undefined })
   }
   return { command, checks, open: checks.filter((c) => !c.ok).length }
 }
@@ -189,6 +189,6 @@ export function warnings(f: Feature, branch: string): string[] {
   const out: string[] = []
   const d = derive(f)
   if (d.phase !== 'done' && f.spec.branch && branch && f.spec.branch !== branch) out.push('You are on ' + branch + ', the spec belongs to ' + f.spec.branch)
-  if (f.review === 'NO-GO') out.push('Last review verdict: NO-GO')
+  if (f.review === 'NOT READY') out.push('Last review: not ready')
   return out
 }
