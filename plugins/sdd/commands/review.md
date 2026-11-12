@@ -103,8 +103,8 @@ prompt: "Feature folder: specs/<current>/. Write specs/<current>/review.md.
          spec-guard result: <JSON>. drift-detector result: <list>. ui-critic result: <JSON or SKIPPED>."
 ```
 
-The reviewer picks the domain audit skills relevant to the diff from the `Skills` section of
-`specs/capabilities.md`, checks conventions, writes `review.md` (one file — its template includes
+The reviewer picks the domain audit skills relevant to the diff from the skills available in
+the session, checks conventions, writes `review.md` (one file — its template includes
 the spec-guard, drift and visual-review sections), and returns
 `{verdict: READY | NOT_READY, blockers: [...], warnings: [...]}`.
 
