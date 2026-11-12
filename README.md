@@ -31,7 +31,7 @@ This framework is the synthesis of:
 - OpenSpec (lightweight CLI for legacy code)
 - Custom Claude Code workflows (slash commands, plan mode, custom agents)
 
-The unique contribution of this framework: **per-task routing to your existing specialist sub-agents** (storybook-tester, nextjs-backend-engineer, testing-strategist, etc.) so SDD orchestrates your stack instead of duplicating it.
+The unique contribution of this framework: it **manages the thinking and the verification** — research, spec, plan, self-contained tasks, a hand-off to *your* implementation flow, and a final audit against the acceptance criteria — and leaves the implementation itself to the flow or agents you already use.
 
 ---
 
@@ -39,12 +39,12 @@ The unique contribution of this framework: **per-task routing to your existing s
 
 - 📋 **Canonical SDD phases**: `constitution → spec → clarify → plan → tasks → implement → review`
 - 🏥 **`/sdd:doctor`** — preflight audit + one-command init
-- 🎭 **Orchestration of existing sub-agents** (does not duplicate — invokes specialist agents from the plugin marketplace via the Task tool)
-- 🏷️ **Tagged tasks** — every task in `tasks.md` has `project`, `type`, `agent`, `skills`, `depends_on` → auto-routing to the right specialist, and parallel waves for everything that does not block
-- 🧱 **Any layout, any app** — single app, monorepo (Nx, Turborepo, workspaces) or several repositories; web, backend and mobile projects side by side, each with its own commands and specialists
+- 🎭 **Bring your own implementer** — `/sdd:implement` hands each task to a skill, agent or command you configure in `capabilities.md`, or implements it in the session when none is set
+- 🏷️ **Jira-like tasks** — each task in `tasks.md` is a self-contained ticket (project, scope, acceptance criteria, dependencies) you can hand to an implementer as it is
+- 🧱 **Any layout, any app** — single app, monorepo (Nx, Turborepo, workspaces) or several repositories; web, backend and mobile projects side by side, each with its own commands
 - 🌿 **Conventional Commits branches** — `/sdd:spec feat user login` → branch `feat/user-login`
-- 📐 **TDD-first** — tests always before implementation
-- 🧠 **Context discipline** — sub-agents receive only their scope, skills load on demand
+- ✅ **Verified against the spec** — `/sdd:review` audits the result against the acceptance criteria with `spec-guard`, `drift-detector` and `reviewer`
+- 🧠 **Context discipline** — tasks and plans carry decisions and references, not copies; large reads go to sub-agents
 - 🔍 **Drift detection** — built-in `drift-detector` and `/sdd:analyze` keep spec, plan, tasks, and code consistent
 
 ---
@@ -58,7 +58,7 @@ The unique contribution of this framework: **per-task routing to your existing s
 - [🔄 The SDD Flow](#-the-sdd-flow)
 - [🏗️ Architecture](#-architecture)
   - [🧱 Three-tier agent hierarchy](#-three-tier-agent-hierarchy)
-  - [🏷️ Per-task routing](#-per-task-routing)
+  - [🏷️ Tasks and the implementation hand-off](#-tasks-and-the-implementation-hand-off)
   - [🧠 Context management](#-context-management)
   - [📇 Capabilities registry — hybrid mode](#-capabilities-registry--hybrid-mode)
 - [⌨️ Slash Commands Reference](#-slash-commands-reference)
@@ -129,7 +129,7 @@ What `init` does:
 
 - Bootstraps `specs/constitution.md` from the bundled template (skipped if already present — never overwrites).
 - Copies `specs/template.md` (the base for new feature specs) into the project.
-- Generates `specs/capabilities.md` from the specialist agents and skills available in your session.
+- Generates `specs/capabilities.md`: the detected projects and the `## Implementation` section where you choose who implements the tasks.
 - With projects in sibling repositories, adds their paths to `permissions.additionalDirectories` in `.claude/settings.json` (other keys preserved; malformed JSON is left untouched).
 
 > **`CLAUDE.md` is not touched.** The project-root `CLAUDE.md` (if you keep one as a Claude Code session loader) is fully owned by you — the SDD framework never reads or writes it. The source of truth is `specs/constitution.md`, edited via `/sdd:constitution`.
@@ -141,17 +141,17 @@ What `init` does:
 /sdd:clarify
 /sdd:plan                 # run in Plan Mode (Shift+Tab)
 /sdd:tasks
-/sdd:implement S1         # a whole Story per session (recommended); /sdd:implement S2 ...
+/sdd:implement T1         # one task, or `all`
 ...
 /sdd:review
 ```
 
 ### Forking the plugin for your own organization
 
-If you want a customized copy (e.g. with org-specific routing rules in `capabilities.md.template`):
+If you want a customized copy (e.g. with org-specific defaults in `capabilities.md.template`):
 
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugins/sdd/.claude-plugin/plugin.json`.
-2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.md.template` to pre-populate task-type routing for your stack.
+2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.md.template` to pre-set the implementation flow for your org.
 3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
 4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`, and tag a release.
 5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install with `/plugin install sdd@spec-driven-development`.
@@ -162,7 +162,7 @@ If you want a customized copy (e.g. with org-specific routing rules in `capabili
 
 | Plugin | Description | Commands | Agents | Skills |
 | --- | --- | --- | --- | --- |
-| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with TDD and per-task routing to your specialist agents | 9 | 4 | 1 |
+| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec | 8 | 4 | 1 |
 | [**sdd-board**](./plugins/sdd-board/.claude-plugin/plugin.json) | Claude Code Desktop side panel (a mod): current spec with phase, next command and tasks, plus an overview of all specs | | | |
 
 See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Reference](#-sub-agents-reference) for each one.
@@ -171,7 +171,7 @@ See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Refer
 
 An optional companion mod (needs Claude Code 2.1.287+). It docks a panel beside the transcript that reads your project's `specs/` folder, so you can see where each feature stands without opening the markdown files:
 
-- **Current** tab — the active spec (from the git branch, or the one you pinned): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, Stories with their tasks, and a viewer for `spec` / `plan` / `tasks` / `review`.
+- **Current** tab — the active spec (from the git branch, or the one you pinned): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, the task list, and a viewer for `spec` / `plan` / `tasks` / `review`.
 - **All** tab — every spec with its phase and task progress, filterable; **Show** pins one as current.
 - Refreshes by itself: after Claude writes a file under `specs/`, after each turn, and on a 4 s poll for edits made elsewhere. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
 
@@ -194,19 +194,13 @@ flowchart TD
     D --> E[/sdd:plan in Plan Mode/]
     E --> F[Human reviews plan.md]
     F --> G[/sdd:tasks/]
-    G --> H[/sdd:implement S1/]
-    H --> I{type ends with -test?}
-    I -->|yes| J[Write tests<br/>red phase]
-    I -->|no| K[Route to specialist<br/>per task.agent]
-    J --> L[Typecheck + lint]
-    K --> L
-    L -->|fail| K
-    L -->|pass| M[spec-guard]
-    M -->|missing AC| K
-    M -->|satisfied| N{more tasks?}
-    N -->|yes| H
-    N -->|no| O[/sdd:review/]
-    O --> P[spec-guard + drift-detector + reviewer + skills]
+    G --> H[/sdd:implement T1/]
+    H --> I{flow configured?}
+    I -->|yes| K[Hand the task to<br/>the configured flow]
+    I -->|no| J[Implement in the session]
+    J --> M[/sdd:review/]
+    K --> M
+    M --> P[spec-guard + drift-detector + reviewer]
     P -->|READY| Q[git commit + gh pr create]
     P -->|NOT READY| H
 ```
@@ -217,40 +211,31 @@ flowchart TD
 | **Specify** | `/sdd:spec <type> <description>` | Validate clean git, create branch `<type>/<slug>`, generate `specs/<slug>/spec.md` (business only — no code) |
 | **Clarify** | `/sdd:clarify` | AI finds the gaps in spec.md, asks up to 5 questions (with proposed answers) and writes the answers into the spec in one run |
 | **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
-| **Tasks** | `/sdd:tasks` | Decompose plan into YAML tasks with `project`, `type`, `agent`, `skills`, `depends_on`, auto-routed via `capabilities.md`; waves + Mermaid flow per Story |
-| **Implement** | `/sdd:implement <story-id>` | A whole Story wave by wave — unblocked tasks in parallel on their specialist agents, each with its own TDD loop; typecheck + lint per project after each task |
-| **Review** | `/sdd:review` | spec-guard + drift-detector + reviewer + domain skills → verdict READY/NOT READY → commit + PR |
+| **Tasks** | `/sdd:tasks` | Split the plan into self-contained, Jira-like tasks (project, scope, acceptance criteria, dependencies) under one Epic |
+| **Implement** | `/sdd:implement <task-id or all>` | Build a brief from the task and hand it to the flow configured in `capabilities.md` (or implement in the session). Does not verify on its own |
+| **Review** | `/sdd:review` | Run the suite once, spec-guard + drift-detector + reviewer → verdict READY/NOT READY → commit + PR |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
 ---
 
 ## 🏗️ Architecture
 
-### 🧱 Three-tier agent hierarchy
+### 🧱 How the pieces fit
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  ORCHESTRATOR (main Claude session)                         │
-│  • Reads specs/constitution.md, capabilities.md, spec/plan/tasks │
-│  • Routes work to specialist agents via Task tool           │
-│  • Runs verification agents at review time                  │
-└─────────────────────────────────────────────────────────────┘
-              ↓ Task tool                  ↓ Task tool
-┌───────────────────────────┐  ┌──────────────────────────────┐
-│  SPECIALIST AGENTS         │  │  VERIFICATION AGENTS         │
-│  (plugin-based, YOUR stack)│  │  (generic SDD, 4 agents)     │
-│  • storybook-tester         │  │  • spec-guard            │
-│  • nextjs-backend-engineer  │  │  • drift-detector        │
-│  • testing-strategist       │  │  • reviewer              │
-│  • (other from marketplace) │  │  • ui-critic             │
-└───────────────────────────┘  └──────────────────────────────┘
-              ↓ "Use skill: X"
-┌─────────────────────────────────────────────────────────────┐
-│  SKILLS (in-context references, loaded on demand)           │
-│  • @szum-tech/server-actions, design-system, ...            │
-│  • react-doctor, accessibility-audit                        │
-│  • find-skills (dynamic discovery)                          │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  THE FRAMEWORK (main Claude session)                         │
+│  constitution → spec → clarify → plan → tasks → hand-off     │
+│  → review                                                    │
+└──────────────────────────────────────────────────────────────┘
+        ↓ brief per task                    ↓ Task tool
+┌───────────────────────────────┐  ┌───────────────────────────┐
+│  IMPLEMENTATION FLOW          │  │  VERIFICATION AGENTS      │
+│  your skill / agent / command │  │  • spec-guard             │
+│  or the session itself        │  │  • drift-detector         │
+│  (writes code and tests,      │  │  • reviewer               │
+│   runs the project's checks)  │  │  • ui-critic              │
+└───────────────────────────────┘  └───────────────────────────┘
 ```
 
 This framework adds:
@@ -259,56 +244,59 @@ This framework adds:
 - 8 slash commands (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`)
 - 4 verification agents (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`)
 
-All **specialist agents and skills already exist** in the plugin marketplace — SDD orchestrates them, it does not duplicate them.
+Implementation is deliberately not part of it: you point `/sdd:implement` at the flow you already use.
 
-### 🏷️ Per-task routing
+### 🏷️ Tasks and the implementation hand-off
 
-Every task in `tasks.md` carries a YAML block — it names the **project** it belongs to, the agent
-that runs it, and the tasks it waits for:
+`/sdd:tasks` writes one Epic (the feature) with **self-contained tasks** — tickets you could give an implementer as they are. A task is a coherent slice of behaviour in one project (a whole screen, a set of endpoints with their logic and storage), not a layer or a micro-step:
 
-```yaml
-- id: T1.2
-  title: Password reset endpoints
-  project: api                    # from capabilities.md "Projects"; `root` in a single-app repo
-  type: implementation
-  tdd: test-first                 # the red→green cycle happens inside the task
-  agent: python-developer         # routed by type + the project's stack
-  skills: [fastapi-rules]
-  model: sonnet
-  depends_on: [T1.1]              # what blocks this task
-  acceptance: AC1, AC2
-  tests: [apps/api/tests/test_reset.py]
-  files: [apps/api/app/auth/reset.py]
+```markdown
+### T2: Reset password screen
+project: web
+status: draft
+depends_on: [T1]
+acceptance: AC1, AC4
+plan: Contracts › reset API; File-by-file › web
+scope:
+- request form and new-password form with inline validation
+- generated API client from T1
+- states: loading, network error, expired token
+files: apps/web/src/features/reset/*
 ```
 
-When the user runs `/sdd:implement S1`:
+The file keeps references (AC ids, plan sections) instead of copies. When you run `/sdd:implement T2`:
 
-1. **Orchestrator** parses the Story's tasks and builds **waves** from `depends_on`.
-2. **Each wave runs in parallel** — one `Task`-tool call per task in a single message:
-   `subagent_type` = the task's `agent` (`general-purpose` for `orchestrator`), `model` = its tier.
-   Each subagent gets only its task, the spec and plan slices it serves, its project's test command,
-   and the rule to edit only its own `files`/`tests`.
-3. **Inside each task**: failing tests first (meaningful red), then the implementation to green.
-4. **Typecheck + lint**: each task runs its project's `typecheck` and `lint` commands (constitution §2) after reaching green.
-5. **After each wave**: the wave's tests run per project; the next wave starts only when they pass.
-6. **Spec-guard** verifies the Story's combined diff once, at the end.
-7. **Status** in `tasks.md`: `draft` → `in-progress` → `review`.
+1. Dependencies must be `review|done`, otherwise it stops and names the blockers.
+2. It reads `## Implementation` in `specs/capabilities.md` — the line for the task's project wins over `default`:
+   ```markdown
+   ## Implementation
+   default: in-session
+   api: agent:python-developer
+   web: skill:my-web-flow
+   ```
+   Values: `skill:<name>`, `agent:<name>`, `command:<shell>` (brief on stdin) or `in-session`.
+3. It builds the **brief**: the task, the text of its acceptance criteria, the plan sections, the project's commands and the constitution rules that apply, and a definition of done.
+4. It hands the brief to the flow. The implementer writes tests and code and runs the project's checks. `in-session` means the session itself does that, loading the skills and docs it has for the stack.
+5. Status: `draft` → `in-progress` → `review`. Nothing is committed.
+
+Verification is a separate step: `/sdd:review` judges the outcome against the spec.
+
 
 ### 🧠 Context management
 
 Three techniques prevent context bloat:
 
-1. **Per-task delegation** — specialists receive only their scope (spec + plan sections, never the whole feature)
+1. **Per-task briefs** — the implementer receives only its task, the acceptance criteria and plan sections it names, never the whole feature
 2. **Skills on-demand** — `Use skill: X` only loads when needed
-3. **Fresh chat per Story** — open a new Claude session between stories; `tasks.md` status is the handover document
+3. **Fresh chat per task** — open a new Claude session between tasks; `tasks.md` status is the handover document
 
 ### 🧱 Monorepos, several repositories, any kind of app
 
 SDD reasons about **projects**, not about one stack. `/sdd:doctor init` finds them — an Nx or Turborepo workspace, pnpm/yarn/uv/Cargo/Go workspaces, Gradle includes, or stray manifests such as `apps/api/pyproject.toml` — and asks which sibling repositories belong to the product when the code is spread over several repos.
 
-- **`capabilities.md` → `## Projects`** lists each one with its kind (web, backend, mobile, library, e2e …), path and stack; the routing table's `Stack` column sends the same task type to a different specialist per project.
+- **`capabilities.md` → `## Projects`** lists each one with its kind (web, backend, mobile, library, e2e …), path and stack; `## Implementation` can name a different flow per project.
 - **Constitution §2** has one command row per project (`test`, `coverage`, `typecheck`, `lint`, `dev / ui-preview`), so a Python API runs `cd apps/api && uv run pytest`, the web app `pnpm nx run web:test`, a Flutter app `flutter test`.
-- **Several repositories**: assumes everyone checks the sibling repos out next to the spec repo under the same names (the relative paths are committed). `specs/` lives in one spec repo; `/sdd:implement` opens the same feature branch in each sibling repo it touches, and `/sdd:review` commits and opens a linked PR in every one of them. `init` adds the sibling repos to `permissions.additionalDirectories`.
+- **Several repositories**: assumes everyone checks the sibling repos out next to the spec repo under the same names (the relative paths are committed). `specs/` lives in one spec repo; `/sdd:implement` makes sure the same feature branch exists in each sibling repo before the flow edits it, and `/sdd:review` commits and opens a linked PR in every one of them. `init` adds the sibling repos to `permissions.additionalDirectories`.
 - **UI review** (`ui-critic`) covers web projects; mobile and desktop UI is skipped unless a screenshot skill or MCP server for that platform is installed.
 
 If you keep a Claude Code session loader (`CLAUDE.md` at the project root or per-module), keep it lean — Claude starts ignoring content past the first couple of thousand tokens. A useful convention is to point it at `specs/constitution.md` for detail and shard per module when the root file grows:
@@ -324,43 +312,31 @@ The SDD framework itself does not read, write, or enforce any structure on these
 
 `specs/capabilities.md` has two kinds of sections:
 
-- **`<!-- auto-generated -->`** — overwritten by `/sdd:doctor init` on every run (agents and skills come from the current session's lists)
-- **`<!-- user-override -->`** — preserved untouched, the safe place to keep customizations
-
-This lets you re-run `init` (e.g., after installing a new plugin) without losing your custom task-type routing rules.
+- **`<!-- auto-generated -->`** — `## Projects`, rewritten by `/sdd:doctor init` on every run
+- **`<!-- user-override -->`** — `## Implementation` and `## Generated / out-of-band paths`, preserved untouched
 
 Example schema:
 
 ```markdown
-## Specialist agents (delegate implementation work)
-<!-- auto-generated -->
-- **storybook-tester** (szum-tech) — Storybook stories + interaction tests
-- **nextjs-backend-engineer** (szum-tech) — Server Actions, route handlers
-- **testing-strategist** (szum-tech) — test strategy planning
-
-## Skills (load into context on demand)
-<!-- auto-generated -->
-- `@szum-tech/server-actions` — Server Action patterns
-- `@szum-tech/design-system` — components, design tokens, OKLCH palette
-- ...
-
 ## Projects
 <!-- auto-generated -->
 - **web** — web · apps/web · TypeScript, Next.js 15; pnpm + nx
 - **api** — backend · apps/api · Python 3.13, FastAPI; uv
 - **mobile** — mobile · ../mobile-app (repo) · Flutter 3, Dart
 
-## Task type → routing rules
+## Implementation
 <!-- user-override -->
-| Task type           | Stack   | Specialist agent          | Skills to load                    | Model  |
-|---------------------|---------|---------------------------|-----------------------------------|--------|
-| implementation      | *       | (orchestrator)            | —                                 | sonnet |
-| implementation      | python  | python-developer          | fastapi-rules, pytest-rules       | sonnet |
-| implementation      | nextjs  | nextjs-backend-engineer   | server-actions, error-handling    | sonnet |
-| ...                 | ...     | ...                       | ...                               | ...    |
+default: in-session
+api: agent:python-developer
+
+## Generated / out-of-band paths
+<!-- user-override -->
+- `**/*.generated.*`
+- `**/uv.lock`
 ```
 
 ---
+
 
 ## ⌨️ Slash Commands Reference
 
@@ -410,28 +386,19 @@ After generation, **human review of plan.md is mandatory** before proceeding to 
 
 ### 🧩 `/sdd:tasks`
 
-Phase 4 — Tasks. Decompose `plan.md` into a tagged task list (fields as in [Per-task routing](#-per-task-routing)):
+Phase 4 — Tasks. Split `plan.md` into a list of **self-contained tasks** (format in [Tasks and the implementation hand-off](#-tasks-and-the-implementation-hand-off)):
 
-- **One Epic per feature, Stories are user stories.** A Story like "user resets their password" may span the API, the web app and the mobile app; each task names its `project`.
-- **One task = one unit of behaviour with its tests**, in one project. The TDD shape is a field, not extra tasks:
-  - **`tdd: test-first`** (default) — failing test first, then the implementation. A missing export doesn't force contract-first; stub it trivially so the test fails on a **real assertion**.
-  - **`tdd: contract-first`** (narrow exception) — the unit's deliverable *is itself a public interface/contract* other code references by shape (a UI component's props, a typed service interface, an API/RPC schema): contract → failing tests → implementation, all inside the task.
-- **A contract shared between projects is its own task** (an OpenAPI/pydantic schema the web and mobile clients are generated from, shared types, a migration). Its consumers depend on it — and can then be built in parallel.
-- **`depends_on`** says what blocks what: a task depends on another only when it needs its result or touches the same files. No dependency just because of list order.
-- **Waves + flow diagram.** Under every Story, `/sdd:tasks` writes the execution waves (`1: T1.1 · 2: T1.2 ∥ T1.3 ∥ T1.4 · 3: T1.5`) and a Mermaid flowchart — one subgraph per wave, one colour per project — so you see the order and what runs in parallel before anything is built.
+- **One Epic per feature.** Tasks are tickets: one project, a coherent slice of behaviour, typically a few hours to a day — never a layer or a micro-step. Tests belong to the task that delivers the behaviour.
+- **Every acceptance criterion is covered by a task, and every task serves at least one criterion.**
+- **A contract shared between projects is its own task** (a schema the web and mobile clients are generated from, shared types, a migration); consumers depend on it.
+- **`depends_on`** only where a task needs another's result or touches the same files.
+- **No copies of the plan or the spec** — tasks refer to AC ids and plan sections.
+- Does not choose agents or models and writes no code; ends with a one-line `Order:` such as `T1 → T2 ∥ T3 → T4`.
 
-### 🔨 `/sdd:implement <story-id or task-id>`
+### 🔨 `/sdd:implement <task-id | all>`
 
-Phase 5 — Implement a **whole Story** (recommended), or a single task. Pipeline:
+Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.md` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies.
 
-1. Resolve scope and build the **waves** from `depends_on`; mark the tasks `in-progress`. A dependency that is not done yet stops the run (single-task mode names the blocking tasks).
-2. **Polyrepo:** before the first edit in a sibling repository, create the same feature branch there.
-3. **Run the waves.** A wave with several tasks runs them **in parallel** — one subagent per task, each on its own agent and `model` tier, each editing only its own `files`/`tests` and doing its own red → green.
-4. Each task runs its project's typecheck + lint (constitution §2) once its tests are green.
-5. After each wave the wave's tests run with each project's own `test` command; the next wave starts only when they pass. Tasks flip to `review`.
-6. `spec-guard` verifies the Story's combined diff — **once, at the Story boundary** (per repository when the Story touched several).
-
-✅ Parallel where the work allows it, sequential where it must be: the order comes from real dependencies, not from list position. A `tasks.md` written before this format (separate test and implementation tasks, no `depends_on`) still runs, sequentially, in listed order.
 
 ### 🔍 `/sdd:review`
 
@@ -461,13 +428,13 @@ Outputs a markdown matrix:
 
 ## 🤖 Sub-agents Reference
 
-This framework introduces **only 4 new generic agents**. Everything else is your existing plugin specialists, invoked via `Task` tool with `subagent_type`.
+This framework introduces **only 4 new generic agents**, all for verification. Implementation is whatever flow you configure.
 
 ### 🛡️ `spec-guard`
 
 **Purpose:** Verify that a code diff satisfies all Acceptance Criteria from `spec.md` and does not introduce out-of-scope changes.
 
-**Called by:** `/sdd:implement` (once per Story) and `/sdd:review` (whole feature).
+**Called by:** `/sdd:review` (whole feature).
 
 **Output:** JSON
 
@@ -632,81 +599,44 @@ Generates `specs/.../plan.md`:
 /sdd:tasks
 ```
 
-Generates one Story with tasks across three projects — the shared contract first, then the API, web and mobile work in parallel, then the end-to-end test:
+Generates one Epic with self-contained tasks across three projects — the shared contract first, then API, web and mobile:
 
-```yaml
-# Story S1: User resets their password
+```markdown
+## Epic: Password reset
 
-- id: T1.1
-  title: Password reset API contract (request + confirm schemas, OpenAPI)
-  project: api
-  type: contract
-  tdd: contract-first
-  agent: orchestrator
-  depends_on: []
-  acceptance: OpenAPI exposes POST /auth/reset and /auth/reset/confirm per AC1–AC3; schema tests pass
-  tests: [apps/api/tests/test_reset_schema.py]
-  files: [apps/api/app/auth/schemas.py, apps/api/openapi.json]
+### T1: Reset API (contract + endpoints)
+project: api · status: draft · depends_on: [] · acceptance: AC1, AC2, AC3
+scope: request/confirm schemas exposed in OpenAPI; endpoints, token storage, expiry (30 min), same response for unknown e-mails
+files: apps/api/app/auth/*
 
-- id: T1.2
-  title: Password reset endpoints
-  project: api
-  type: implementation
-  tdd: test-first
-  agent: python-developer
-  depends_on: [T1.1]
-  acceptance: AC1, AC2, AC3
-  tests: [apps/api/tests/test_reset.py]
-  files: [apps/api/app/auth/reset.py]
+### T2: Reset password screen (web)
+project: web · status: draft · depends_on: [T1] · acceptance: AC1, AC4
+scope: both forms with inline validation, generated client, loading/network/expired-token states
+files: apps/web/src/features/reset/*
 
-- id: T1.3
-  title: Reset password form
-  project: web
-  type: implementation
-  tdd: test-first
-  agent: nextjs-backend-engineer
-  depends_on: [T1.1]
-  acceptance: AC1, AC4 against the generated API client
-  tests: [apps/web/src/features/reset/reset-form.test.tsx]
-  files: [apps/web/src/features/reset/reset-form.tsx]
+### T3: Reset password screen (mobile)
+project: mobile · status: draft · depends_on: [T1] · acceptance: AC1, AC4
+files: ../mobile-app/lib/features/reset/*
 
-- id: T1.4
-  title: Reset password screen
-  project: mobile
-  type: implementation
-  tdd: test-first
-  agent: orchestrator
-  depends_on: [T1.1]
-  acceptance: AC1, AC4 on the mobile screen
-  tests: [../mobile-app/test/reset_screen_test.dart]
-  files: [../mobile-app/lib/features/reset/reset_screen.dart]
+### T4: Reset flow end to end
+project: e2e · status: draft · depends_on: [T1, T2] · acceptance: AC1
+files: apps/web-e2e/src/reset.spec.ts
 
-- id: T1.5
-  title: Password reset end-to-end flow
-  project: e2e
-  type: e2e-test
-  tdd: test-first
-  agent: orchestrator
-  depends_on: [T1.2, T1.3]
-  acceptance: a user requests a reset on the web, follows the link and sets a new password
-  tests: [apps/web-e2e/src/reset.spec.ts]
+Order: T1 → T2 ∥ T3 → T4
 ```
-
-**Waves:** 1: T1.1 · 2: T1.2 ∥ T1.3 ∥ T1.4 · 3: T1.5 — plus the Mermaid flow diagram of the same graph.
 
 ### Implement
 
 ```text
-/sdd:implement S1
+/sdd:implement all
 ```
 
-- **Wave 1:** `T1.1` declares the reset schemas and their tests (contract-first).
-- **Wave 2:** three subagents in parallel — `python-developer` on the API endpoints, `nextjs-backend-engineer` on the web form, a general-purpose agent on the Flutter screen. Each writes failing tests first, then the code, touching only its own files; each task runs its own project's typecheck and lint.
-- **Wave 3:** the end-to-end test, once the API and web tasks are green.
+- `T1` goes to the flow configured for `api` (here `agent:python-developer`).
+- `T2` and `T3` start once `T1` is done: `web` uses `skill:my-web-flow`, `mobile` falls back to `in-session`.
+- `T4` follows when `T1` and `T2` are done.
 
-One `spec-guard` at the Story boundary; every task flips to `review`.
+Each task flips to `review` when its implementer reports done; nothing is verified or committed here.
 
-> Need to re-run just one task after a fix? A task ID still works: `/sdd:implement T1.3` (it checks that `T1.1` is done first).
 
 ### Review
 
@@ -738,7 +668,7 @@ Pipeline executes:
 | `/sdd:plan` (Plan Mode) | 3 min (analysis + generation) |
 | Human review of plan.md | 5-10 min |
 | `/sdd:tasks` | 1 min |
-| `/sdd:implement` × 1-3 Stories (waves run in parallel) | 1-3 h (most of the time here) |
+| `/sdd:implement` | depends on your flow (most of the time here) |
 | `/sdd:review` | 5 min |
 | **Total** | **~2-4 h** for a medium feature |
 
@@ -757,11 +687,11 @@ your-project/
 ├── specs/
 │   ├── constitution.md                    # source of truth — created by `/sdd:doctor init` if missing, edited by `/sdd:constitution`
 │   ├── template.md                        # base template for new feature specs
-│   ├── capabilities.md                    # hybrid: auto-generated agents/skills/projects + user-override routing rules
+│   ├── capabilities.md                    # projects (auto-generated) + implementation flow and generated paths (yours)
 │   └── <feature-slug>/
 │       ├── spec.md                        # business specification
 │       ├── plan.md                        # architecture + Mermaid diagrams
-│       ├── tasks.md                       # YAML tasks with routing tags, dependencies, waves + Mermaid flow
+│       ├── tasks.md                       # self-contained tasks under one Epic
 │       └── review.md                      # generated by /sdd:review
 ├── .claude/
 └── CLAUDE.md                              # (optional, user-owned) Claude Code session loader — never touched by SDD
@@ -810,16 +740,16 @@ spec-driven-development/                    # or your own forked plugin path
 
 Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
 
-1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Typecheck and lint run per task. Default to **test-first** TDD (failing test first, then implementation; trivially stub a missing symbol so the test fails on a real assertion). Use **contract-first** TDD only when the unit's deliverable is itself a public interface/contract other code references by shape: declare the contract first, then the tests (which now fail with meaningful assertion errors), then the implementation — following the project's own conventions for where interfaces live.
+1. **🧪 Make the work verifiable.** Every task's `acceptance` field points to measurable acceptance criteria; the implementer runs the project's checks and `/sdd:review` verifies the result against them. Default to **test-first** TDD in your implementation flow.
 2. **📜 The constitution is the WHY.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken. If you also maintain a Claude Code session loader (`CLAUDE.md`), use it to surface the most-broken rules and point at the constitution for detail — but that file is yours to shape, not the framework's.
-3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer agent. Break it into Epic → Story → Task. Each specialist receives only its slice.
+3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer. Break it into Epic → Task; each implementer receives only its task's brief.
 4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.
 5. **🔒 Use Plan Mode before edits.** `/sdd:plan` and `/sdd:clarify` ideally run in Plan Mode (Shift+Tab) so Claude cannot accidentally modify files during exploration.
 6. **👤 Human-in-the-loop on `plan.md`.** Always read the generated plan before `/sdd:tasks`. This is the cheapest moment to correct course.
 7. **🌿 One branch per feature.** `/sdd:spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
 8. **🤝 Use sub-agents for large reads.** Don't grep 50 files in the main session — invoke a `Task` tool sub-agent and receive only a summary.
 9. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/sdd:analyze` to detect drift periodically.
-10. **💬 Fresh chat per Story — and `/clear` between phases.** Open a new Claude session when switching to a new Story, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
+10. **💬 Fresh chat per task — and `/clear` between phases.** Open a new Claude session when switching to a new task, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
 11. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
 12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:tasks`, `/sdd:implement`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
 13. **📦 Batch human feedback.** Collect visual/QA tweaks and NOT READY fixes into one message per round instead of many small turns — each turn reprocesses the full context and multiplies cost.
@@ -832,13 +762,13 @@ What to avoid — common failure modes when adopting SDD:
 
 - ❌ **Skipping `/sdd:clarify`** "because I know what I want." Open questions almost always surface real gaps.
 - ❌ **Skipping human review of `plan.md`.** Claude can hallucinate architecture, especially on unusual stacks.
-- ❌ **Running unrelated Stories in one chat.** Context bloats, hallucinations rise. One **Story** per session is the ideal — its tasks share scope and a single red→green cycle; don't chain Story after Story in the same chat.
+- ❌ **Running unrelated tasks in one chat.** Context bloats, hallucinations rise. One task per session is the ideal — don't chain task after task in one transcript.
 - ❌ **Manual `git commit` instead of `/sdd:review`.** You bypass `spec-guard` / `drift-detector` / `reviewer`.
 - ❌ **Code or tech details in `spec.md`.** The spec is a business document. Implementation belongs in plan.md and code.
 - ❌ **Bloated `CLAUDE.md`.** Above ~2,500 tokens, Claude starts ignoring the bottom. Shard per module.
 - ❌ **`--dangerously-skip-permissions` in production.** A hallucinated bash command can destroy your system.
 - ❌ **Implementing without a spec.** SDD only works if every feature has its `specs/<slug>/spec.md` first.
-- ❌ **Running Opus for mechanical phases.** Decomposition, TDD edits, and drift checks don't need the top tier — you pay Opus rates for Sonnet work.
+- ❌ **Running Opus for mechanical phases.** Decomposition and drift checks don't need the top tier — you pay Opus rates for Sonnet work.
 - ❌ **Drip-feeding feedback.** Ten small "move this 2px" turns each reprocess the whole context. Batch them into one message per round.
 - ❌ **Pulling generated diffs into the loop.** Regenerated clients/mocks/schemas (`*.msw.ts`, `*.schemas.ts`, …) balloon context and trigger false out-of-scope/drift findings. Declare them in `capabilities.md` → `Generated / out-of-band paths`.
 
@@ -852,11 +782,10 @@ The single biggest cost lever is **which model runs which phase**. A slash comma
 |---|---|---|
 | `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review` | **Opus** | Judgement-heavy — framing, architecture, and the final gate. Cheap to get right here, expensive to get wrong downstream. |
 | `/sdd:tasks`, `/sdd:analyze` | **Sonnet** | Mechanical decomposition / cross-check. |
-| `/sdd:implement` | **Sonnet** (Haiku for trivial Stories) | Mechanical TDD + edits. |
+| `/sdd:implement` | your flow's choice | The framework only hands over; the flow or agent sets its own model. |
 
 Two supporting mechanisms:
 
-- **Per-task tier.** `capabilities.md`'s routing table carries a `Model` column; `/sdd:tasks` stamps each task with a `model:` tier, and `/sdd:implement` passes it as the `model` of the subagent that runs the task. Defaults: `sonnet` for test/implementation types, `haiku` for `refactor`/`generic`.
 - **Per-agent tier.** The verification sub-agents carry their own `model:` frontmatter — `reviewer` on Opus (last line of defense), `spec-guard` / `drift-detector` / `ui-critic` on Sonnet — so they run at their own tier regardless of the session model.
 
 Keep large and generated output **out of the main loop**: verification agents exclude the `Generated / out-of-band paths` globs from every diff, `/sdd:plan` extracts reference sources (mockups, API specs, ADRs) **once** inside a sub-agent and caches what matters in `plan.md`, and large codebase scans return only a summary via a sub-agent.
@@ -869,11 +798,11 @@ Why this framework looks the way it does:
 
 | Decision | Rationale |
 |----------|-----------|
-| **Per-project, not global** | Different projects have different stacks, different specialist agents, different routing rules. A global framework would force homogeneity. |
-| **Only 4 new agents** | The rest already exists in the plugin marketplace (storybook-tester, nextjs-backend-engineer, …). Duplicating them would be wasted effort and version drift. |
-| **YAML tags in tasks.md** | Explicit > heuristic. The user knows exactly which agent will be invoked for each task. |
+| **Per-project, not global** | Different projects have different stacks, commands and implementation flows. A global framework would force homogeneity. |
+| **Only 4 new agents** | Implementation is yours (a skill, agent or command you already have); the framework only verifies. Duplicating implementers would be wasted effort and version drift. |
+| **Self-contained tasks** | A task carries scope, acceptance criteria and dependencies, so any implementer — or a person — can pick it up as a ticket. |
 | **Conventional Commits in `/sdd:spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
-| **Skills loaded on demand** | No global pre-loading means smaller context per task. Skills are referenced from `capabilities.md` and loaded only when the task type requires them. |
+| **Plan = decisions, tasks = tickets** | The plan holds architectural and technical decisions and the scope; tasks refer to it instead of copying it. |
 | **Plan Mode before `/sdd:implement`** | Forces human review and blocks destructive changes before a plan exists. |
 | **Hybrid capabilities.md** | `<!-- auto-generated -->` sections reflect installed plugins. `<!-- user-override -->` sections preserve customizations. Re-running `init` is safe. |
 | **Constitution lives under `specs/`, not in `CLAUDE.md`** | Two separate concerns. `specs/constitution.md` is the long-form source of truth — no token budget, rationale-rich, edited via `/sdd:constitution`. The project root `CLAUDE.md`, if you keep one, is a Claude Code session loader fully owned by you; the framework never reads, writes, or enforces its structure. |
@@ -886,11 +815,10 @@ Why this framework looks the way it does:
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
-| `claude -p "/sdd:implement S1"` (headless) stops before the wave's subagents report | print mode stops waiting for background subagents after a ceiling | Set `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` for headless runs of `/sdd:plan`, `/sdd:implement` and `/sdd:review` |
-| `/sdd:tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
+| `/sdd:implement` does not use my flow | no `## Implementation` line for the project, so it falls back to `in-session` | Add `<project>: skill:<name>`, `agent:<name>` or `command:<shell>` (or `default:`) under `## Implementation` in `capabilities.md` |
 | `spec-guard` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
 | Plan Mode disabled but `/sdd:plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |
-| New specialist agent installed but not appearing in `capabilities.md` | `init` not re-run | `/sdd:doctor init` to refresh the agent and skill lists |
+| `capabilities.md` lacks `## Implementation` | file written by an older version | `/sdd:doctor init` adds the section |
 
 ---
 

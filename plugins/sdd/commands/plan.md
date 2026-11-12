@@ -16,7 +16,7 @@ Plan Mode the command writes `plan.md` directly and stops for you to read and ed
 ### 1. Load context
 
 - `specs/constitution.md` (stack, commands, conventions, WHAT NOT TO DO)
-- `specs/capabilities.md`, only the `## Projects` section (routing and agents are `/sdd:tasks` work)
+- `specs/capabilities.md`, only the `## Projects` section
 - `specs/<current>/spec.md` (current branch, or `$ARGUMENTS`)
 
 ### 2. Survey the codebase
@@ -85,4 +85,4 @@ next step: `/sdd:tasks` (best after `/clear`; it re-reads `plan.md` from disk).
 ## Constraints
 
 - Write only `plan.md` (plus the Plan Mode plan file while drafting).
-- Do not invoke specialist agents or start implementing — that is `/sdd:tasks` + `/sdd:implement`.
+- Do not start implementing — that is `/sdd:tasks` + `/sdd:implement`.
