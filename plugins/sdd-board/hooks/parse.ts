@@ -12,8 +12,13 @@ export type SpecInfo = {
   created: string
   acTotal: number
   acDone: number
+  acReal: number // acceptance criteria that are not template placeholders
   openQuestions: number
+  hasSummary: boolean
+  storyCount: number
+  edgeCases: number
 }
+export type PlanInfo = { status: string; missing: string[]; openItems: number }
 
 function header(text: string, name: string): string {
   const m = text.match(new RegExp('^\\*\\*' + name + ':\\*\\*\\s*([^\\s<][^<]*?)\\s*(?:<!--.*)?$', 'm'))
@@ -34,14 +39,22 @@ function section(text: string, title: string): string[] {
   return out
 }
 
+// Bullet texts of a section, minus template placeholders ("?", "...", "<role>") and "none" notes.
+function bullets(lines: string[]): string[] {
+  return lines
+    .map((l) => l.trim())
+    .filter((l) => /^[-*]\s/.test(l))
+    .map((l) => l.replace(/^[-*]\s+/, '').trim())
+    .filter((t) => t !== '' && !/^(\?|\.\.\.|…)$/.test(t) && !/<[^>]+>/.test(t) && !/^_?none\b/i.test(t))
+}
+
 export function parseSpec(text: string): SpecInfo {
   const title = (text.match(/^#\s*Feature:\s*(.+)$/m)?.[1] ?? '').trim()
   const ac = section(text, 'Acceptance criteria').filter((l) => /^- \[[ xX]\]/.test(l))
-  const open = section(text, 'Open questions').filter((l) => {
+  const open = bullets(section(text, 'Open questions')).filter((t) => !/^\[[xX]\]/.test(t))
+  const summary = section(text, 'Summary').filter((l) => {
     const t = l.trim()
-    if (!t.startsWith('- ')) return false
-    if (/^-\s*(\?|\.\.\.)?\s*$/.test(t)) return false
-    return !/^-\s*\[[xX]\]/.test(t)
+    return t !== '' && !t.startsWith('<!--') && t !== '---'
   })
   return {
     title,
@@ -52,8 +65,23 @@ export function parseSpec(text: string): SpecInfo {
     created: header(text, 'Created'),
     acTotal: ac.length,
     acDone: ac.filter((l) => /^- \[[xX]\]/.test(l)).length,
+    acReal: ac.filter((l) => !/:\s*\.\.\.\s*$|given input X/.test(l)).length,
     openQuestions: open.length,
+    hasSummary: summary.length > 0,
+    storyCount: bullets(section(text, 'User stories')).length,
+    edgeCases: bullets(section(text, 'Edge cases')).length,
   }
+}
+
+// plan.md written by /sdd:plan. "missing" lists the required sections that are absent or empty.
+export function parsePlan(text: string): PlanInfo {
+  const required: [string, string][] = [
+    ['High-level approach', 'approach'],
+    ['File-by-file change list', 'change list'],
+    ['Risks', 'risks'],
+  ]
+  const missing = required.filter(([title]) => section(text, title).every((l) => l.trim() === '')).map(([, name]) => name)
+  return { status: header(text, 'Status').split(/\s/)[0], missing, openItems: bullets(section(text, 'Open questions')).length }
 }
 
 export function parsePlanStatus(text: string): string {

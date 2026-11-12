@@ -1,7 +1,7 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
-import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, derive, storyDone, taskCounts, warnings } from './model.ts'
+import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, derive, gate, storyDone, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
-import { badgeSvg, dotsSvg, progressSvg, stepperSvg } from './svg.ts'
+import { badgeSvg, checkSvg, dotsSvg, progressSvg, stepperSvg } from './svg.ts'
 
 export type Actions = {
   tab: (t: 'current' | 'all') => void
@@ -83,33 +83,50 @@ function stepper(el: any, ctx: Ctx, f: Feature) {
   return Box({ flexDirection: 'column', children: [Text({ wrap: 'wrap', children: [line] })] })
 }
 
-function nextCard(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Button } = el
-  const d = derive(f)
-  if (!d.next) {
-    return Box({
-      borderStyle: 'round', borderColor: 'green', padding: 'md', flexDirection: 'column', rowGap: 1,
+// What has to be true before the next command: one row per check, open ones first called out in amber.
+function checklist(el: any, ctx: Ctx, f: Feature) {
+  const { Box, Text, Svg } = el
+  const g = gate(f)
+  if (!g || g.checks.length === 0) return null
+  const ready = g.open === 0
+  const rows = g.checks.map((c) =>
+    Box({
+      key: 'check-' + c.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
       children: [
-        Text({ color: 'green', weight: 'semibold', children: ['✓ Feature done'] }),
-        Text({ dimColor: true, wrap: 'wrap', children: ['Review passed. Open the pull request when you are ready.'] }),
-      ],
-    })
-  }
-  const cmd = d.next.command
+        rich(ctx.surface)
+          ? Svg({ alt: c.ok ? 'done' : 'open', width: 16, height: 16, source: checkSvg(c.ok) })
+          : Text({ color: c.ok ? 'green' : 'yellow', children: [c.ok ? '✓' : '○'] }),
+        Text({ wrap: 'truncate-end', dimColor: c.ok, children: [c.label] }),
+        c.hint ? Text({ dimColor: true, wrap: 'truncate-end', children: ['· ' + c.hint] }) : null,
+      ].filter(Boolean),
+    }),
+  )
   return Box({
-    borderStyle: 'round', borderColor: 'yellow', padding: 'md', flexDirection: 'column', rowGap: 1,
+    borderStyle: 'round', borderColor: ready ? 'green' : 'yellow', padding: 'md', flexDirection: 'column', rowGap: 1,
     children: [
-      Text({ dimColor: true, children: ['NEXT STEP · model: ' + d.next.model] }),
-      Text({ mono: true, weight: 'semibold', color: 'yellow', children: [cmd] }),
-      Text({ dimColor: true, wrap: 'wrap', children: [d.next.why] }),
-      Button({ key: 'fill-next', label: 'Put in prompt', hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),
+      Text({ dimColor: true, children: ['BEFORE ' + g.command.split(' ')[0].toUpperCase() + ' · ' + (g.checks.length - g.open) + '/' + g.checks.length]}),
+      ...rows,
     ],
   })
 }
 
-function specFacts(f: Feature): string {
-  const s = f.spec
-  return ['AC ' + s.acDone + '/' + s.acTotal, s.openQuestions ? s.openQuestions + ' open question(s)' : 'no open questions'].join(' · ')
+function nextCard(el: any, ctx: Ctx, f: Feature) {
+  const { Box, Text, Button } = el
+  const d = derive(f)
+  if (!d.next) return null
+  const g = gate(f)
+  const open = g ? g.open : 0
+  const cmd = d.next.command
+  const blocked = open > 0
+  return Box({
+    borderStyle: 'round', borderColor: blocked ? 'yellow' : 'green', padding: 'md', flexDirection: 'column', rowGap: 1,
+    children: [
+      Text({ dimColor: true, children: [(blocked ? 'NEXT STEP · waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'NEXT STEP · ready') + ' · model: ' + d.next.model] }),
+      Text({ mono: true, weight: 'semibold', color: blocked ? 'yellow' : 'green', children: [cmd] }),
+      Text({ dimColor: true, wrap: 'wrap', children: [blocked ? 'Finish the open checks above first, then run this. ' + d.next.why : d.next.why] }),
+      Button({ key: 'fill-next', label: 'Put in prompt', hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),
+    ],
+  })
 }
 
 function progress(el: any, ctx: Ctx, f: Feature) {
@@ -239,9 +256,12 @@ export function renderCurrent(el: any, ctx: Ctx) {
   if (ctx.running) kids.push(Text({ color: 'yellow', children: ['⟳ ' + ctx.running + ' running…'] }))
   if (done) kids.push(doneCard(el, ctx))
   kids.push(stepper(el, ctx, f))
-  if (!done) kids.push(nextCard(el, ctx, f))
+  if (!done) {
+    const cl = checklist(el, ctx, f)
+    if (cl) kids.push(cl)
+    kids.push(nextCard(el, ctx, f))
+  }
   if (d.phase === 'implement' || d.phase === 'review') kids.push(progress(el, ctx, f))
-  else if (!done) kids.push(Text({ dimColor: true, children: [specFacts(f)] }))
   if (!done && f.review) kids.push(Text({ color: f.review === 'GO' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review] }))
   for (const w of warn) kids.push(Text({ color: 'red', wrap: 'wrap', children: ['⚠ ' + w] }))
   if (d.phase === 'implement' || d.phase === 'review') {

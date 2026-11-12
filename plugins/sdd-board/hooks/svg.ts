@@ -85,3 +85,11 @@ export function badgeSvg(label: string, color: string): { source: string; width:
     '<text x="' + width / 2 + '" y="14" text-anchor="middle" font-size="11" font-weight="600" fill="' + color + '" font-family="system-ui,sans-serif">' + esc(label) + '</text>'
   return { source: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' + body + '</svg>', width, height }
 }
+
+// Check icon for the readiness list: green disc with a tick, or an amber ring when still open.
+export function checkSvg(ok: boolean): string {
+  const body = ok
+    ? '<circle cx="8" cy="8" r="7" fill="' + PALETTE.done + '"/><path d="M4.6 8.2 l2.2 2.3 l4.2 -4.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+    : '<circle cx="8" cy="8" r="6.2" fill="' + PALETTE['in-progress'] + '" fill-opacity="0.14" stroke="' + PALETTE['in-progress'] + '" stroke-width="1.6"/>'
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">' + body + '</svg>'
+}

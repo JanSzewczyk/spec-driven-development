@@ -1,10 +1,11 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
-import type { SpecInfo, Story } from './parse.ts'
+import type { PlanInfo, SpecInfo, Story } from './parse.ts'
 
 export type Feature = {
   slug: string
   spec: SpecInfo
   planStatus: string | null
+  plan: PlanInfo | null
   stories: Story[] | null
   review: 'GO' | 'NO-GO' | null
   modified: number
@@ -99,6 +100,52 @@ export function derive(f: Feature): Derived {
   return { phase, steps, next }
 }
 
+export type Check = { key: string; label: string; ok: boolean; hint?: string }
+export type Gate = { command: string; checks: Check[]; open: number }
+
+const plural = (n: number, one: string, many: string) => n + ' ' + (n === 1 ? one : many)
+
+// What has to be true before the suggested next command is worth running. Read from the artifacts only.
+export function gate(f: Feature): Gate | null {
+  const d = derive(f)
+  if (!d.next) return null
+  const command = d.next.command
+  const verb = command.split(' ')[0]
+  const s = f.spec
+  const checks: Check[] = []
+  const content = () => {
+    checks.push({ key: 'summary', label: 'Summary written', ok: s.hasSummary })
+    checks.push({ key: 'stories', label: 'User stories added', ok: s.storyCount > 0 })
+    checks.push({ key: 'ac', label: 'Acceptance criteria defined', ok: s.acReal > 0, hint: s.acReal > 0 ? plural(s.acReal, 'criterion', 'criteria') : 'none yet' })
+    checks.push({ key: 'edge', label: 'Edge cases listed', ok: s.edgeCases > 0 })
+  }
+  const questions = () =>
+    checks.push({ key: 'questions', label: 'Open questions answered', ok: s.openQuestions === 0, hint: s.openQuestions ? plural(s.openQuestions, 'question', 'questions') + ' left' : undefined })
+  if (verb === '/sdd:clarify') {
+    content()
+  } else if (verb === '/sdd:plan') {
+    content()
+    questions()
+  } else if (verb === '/sdd:tasks') {
+    questions()
+    checks.push({ key: 'plan', label: 'Plan written', ok: !!f.plan && f.plan.missing.length === 0, hint: !f.plan ? 'plan.md not found' : f.plan.missing.length ? 'missing: ' + f.plan.missing.join(', ') : undefined })
+    checks.push({ key: 'plan-questions', label: 'Plan questions resolved', ok: !!f.plan && f.plan.openItems === 0, hint: f.plan && f.plan.openItems ? plural(f.plan.openItems, 'item', 'items') + ' left' : undefined })
+  } else if (verb === '/sdd:implement') {
+    const stories = f.stories ?? []
+    const target = command.split(' ')[1]
+    const idx = stories.findIndex((x) => x.id === target)
+    const unrouted = (idx >= 0 ? stories[idx].tasks : []).filter((t) => !t.agent || !t.type).length
+    checks.push({ key: 'routed', label: 'Tasks routed to agents', ok: unrouted === 0, hint: unrouted ? plural(unrouted, 'task', 'tasks') + ' without agent or type' : undefined })
+    if (idx > 0) checks.push({ key: 'earlier', label: 'Earlier stories finished', ok: stories.slice(0, idx).every(storyDone) })
+    questions()
+  } else if (verb === '/sdd:review') {
+    checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })
+    questions()
+    checks.push({ key: 'verdict', label: 'Last review not NO-GO', ok: f.review !== 'NO-GO', hint: f.review === 'NO-GO' ? 'fix the findings first' : undefined })
+  }
+  return { command, checks, open: checks.filter((c) => !c.ok).length }
+}
+
 // Overview order: in progress first, finished last.
 const RANK: Record<string, number> = { implement: 0, review: 1, tasks: 2, plan: 3, clarify: 4, done: 6 }
 
@@ -129,7 +176,6 @@ export function ago(ms: number, now: number): string {
 export function warnings(f: Feature, branch: string): string[] {
   const out: string[] = []
   const d = derive(f)
-  if (f.spec.openQuestions > 0 && d.phase !== 'clarify' && d.phase !== 'done') out.push(f.spec.openQuestions + ' open question(s) in the spec')
   if (d.phase !== 'done' && f.spec.branch && branch && f.spec.branch !== branch) out.push('You are on ' + branch + ', the spec belongs to ' + f.spec.branch)
   if (f.review === 'NO-GO') out.push('Last review verdict: NO-GO')
   return out
