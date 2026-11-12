@@ -1,6 +1,6 @@
 ---
 name: spec-guard
-description: Verifies whether a code diff satisfies ALL Acceptance criteria from spec.md and does NOT introduce out-of-scope changes. Invoked by /sdd:implement (once per Story, or per task in single-task mode) and /sdd:review (full feature). Returns JSON {satisfied, missing, out_of_scope}.
+description: Verifies whether a code diff satisfies ALL Acceptance criteria from spec.md and does NOT introduce out-of-scope changes. Invoked by /sdd:review (full feature). Returns JSON {satisfied, missing, out_of_scope}.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: cyan
@@ -13,12 +13,9 @@ DO NOT propose fixes (only report gaps), DO NOT comment on code quality.
 
 From the prompt you receive:
 - Path to `spec.md` (e.g. `specs/<slug>/spec.md`)
-- (optional) Path to tasks.md and the ID of a specific task
+- (optional) Path to tasks.md
 - The diff scope to evaluate. SDD does not commit until the end of `/sdd:review`, so the work is
   mostly **uncommitted** and new files are **untracked** — always read both:
-  - Per-Story / per-task: `git diff HEAD` (staged + unstaged) plus the untracked files, limited to
-    the files `/sdd:implement` lists for this scope (earlier Stories' uncommitted work is also in
-    the working tree — it is not this Story's scope, so do not flag it as out-of-scope)
   - Per-feature: `git diff <base>` where `<base>` is `git merge-base HEAD main` (or the default
     branch), plus the untracked files
   - Untracked files: `git ls-files --others --exclude-standard` — read each one; they are new code
@@ -82,4 +79,4 @@ Any diff change that:
 - ⛔ DO NOT judge code quality (that is `reviewer`'s job)
 - ⛔ NEVER flag `Generated / out-of-band paths` (from `capabilities.md`) as out-of-scope — they are regenerated artifacts, not authored changes
 - ✅ Be specific — cite line numbers from the diff
-- ✅ JSON output — used programmatically by the orchestrator
+- ✅ JSON output — used programmatically by `/sdd:review`
