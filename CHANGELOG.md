@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [sdd-board 0.2.0] — 2026-11-12
+
+### Added
+
+- **Setup card** for projects without `specs/`: only a card is drawn, and **Init SDD in this project** runs `/sdd:doctor init` in the session. The tabs appear on their own once `specs/` exists.
+- **Readiness checklist** above the next-step card in every phase (spec content, open questions, plan sections, task routing, review verdict). The card is yellow while a check is open and green when all pass.
+- **Phase-aware Current tab**: a "Feature done" card for finished features, tasks and stories only in Implement and Review, **+ New spec** in the tab bar, and "Nothing in progress" when no feature is open.
+- **Documents open in their own pane** (spec, plan, tasks, review) instead of expanding below; pill status badge; stepper and progress bar sized to the pane; panel title "Spec-driven Development by Szum-Tech".
+
+### Fixed
+
+- "All resolved" and "none" notes in Open questions no longer count as open questions.
+- A `# comment` after a task `status:` no longer turns the task into a draft.
+
 ## [0.7.4] — 2026-11-11
 
 ### Changed
