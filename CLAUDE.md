@@ -24,7 +24,7 @@ it you install the plugin and invoke the skill against a target project (see CON
 "Testing your changes locally"):
 
 ```
-/sdd:doctor check     # report-only: 10 checks against the target project
+/sdd:doctor check     # report-only: 6 checks against the target project
 /sdd:doctor init      # create/repair per-project artifacts
 /sdd:doctor check     # confirm the checks flip to pass
 ```
@@ -54,7 +54,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
   - `reviewer` — final READY/NOT READY audit; gets the test results and the other agents' results from `/sdd:review` (sub-agents cannot start sub-agents, so `/sdd:review` runs the suite and `ui-critic` itself), runs the domain audits and writes `review.md`.
   - `ui-critic` — screenshots changed UI via a browser MCP; skips gracefully if none is available (never blocks).
 
-- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` is the entire procedure: the `check` mode runs 10 read-only inspections; the `init` mode detects the target's stack and creates the per-project artifacts directly with file tools. It **generates project-local hook scripts** in `<target>/.claude/hooks/typecheck.sh` + `lint.sh` containing only the tools the project actually has (existing hook files are never overwritten), and **safe-merges `<target>/.claude/settings.json`** — strips only its own previously-installed hook entries (matched by `.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`, or legacy v0.4 plugin-path substrings) and preserves every other key. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`, and per-tool hook snippets in `templates/hooks/*.sh.template`) and `reference/settings-merge.md` (the mechanical settings.json merge procedure). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
+- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` holds the `check` mode (6 read-only inspections) and the common rules; `reference/init.md` (loaded only for `init`) holds the `init` procedure, which detects the target's stack and creates the per-project artifacts directly with file tools. It **generates project-local hook scripts** in `<target>/.claude/hooks/typecheck.sh` + `lint.sh` containing only the tools the project actually has (existing hook files are never overwritten), and **safe-merges `<target>/.claude/settings.json`** — strips only its own previously-installed hook entries (matched by `.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`, or legacy v0.4 plugin-path substrings) and preserves every other key. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`, and per-tool hook snippets in `templates/hooks/*.sh.template`) `reference/settings-merge.md` (the mechanical settings.json merge procedure). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
 
 ### Key concepts when editing
 

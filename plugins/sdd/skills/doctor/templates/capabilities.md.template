@@ -1,13 +1,11 @@
 # Project Capabilities
 
-> This file is auto-populated by `/sdd:doctor init` (auto-detect installed plugins
-> plus project type detection). Sections marked `<!-- user-override -->` are NEVER
-> overwritten on re-init — safe place for customizations.
+> `<!-- auto-generated -->` sections are rewritten by `/sdd:doctor init`; `<!-- user-override -->`
+> sections are never overwritten.
 
 ## Specialist agents (delegate implementation work)
 
 <!-- auto-generated -->
-<!-- /sdd:doctor init fills this in based on installed plugins -->
 
 ## Skills (load into context on demand)
 
@@ -16,66 +14,39 @@
 ## Projects
 
 <!-- auto-generated -->
-<!-- One line per project: `- **<name>** — <kind> · <path> · <stack>`. kind ∈ web | backend |
-     mobile | desktop | library | e2e | infra (or another word that fits). A single-app repo has one
-     project, `root` (path `.`). A project in a sibling repository adds `(repo)` after its path,
-     e.g. `- **mobile** — mobile · ../mobile-app (repo) · Flutter 3, Dart`.
-     Tasks name their project; /sdd:implement takes the project's commands from
-     specs/constitution.md §2 and routes by its stack. -->
+<!-- `- **<name>** — <kind> · <path> · <stack>`; `(repo)` after the path of a sibling repository.
+     Single-app repo: one project, `root` (`.`). -->
 
 ## Task type → routing rules
 
 <!-- user-override -->
-<!-- These are technology-neutral defaults. `/sdd:tasks` picks a task `type` from this table and
-     `/sdd:implement` routes the task to the listed agent + skills, on the listed model tier.
-     Add stack-specific types (and their agents/skills/model) below or in "Custom routing rules".
-
-     Stack = which projects a row applies to: `*` for any, a project name (`api`), its kind
-     (`mobile`) or a stack word from the Projects list (`python`, `nextjs`, `flutter`). The most
-     specific match wins (project name, then kind/stack word, then `*`), so one task type can route
-     to a different specialist per project. Route only to agents that can edit files (their tools
-     include Write/Edit) — a read-only agent (an architect, a reviewer) cannot implement a task.
-     One without Bash is fine: /sdd:implement runs its tests for it.
-
-     Model = the cost tier of the subagent that runs the task: /sdd:implement passes it as the
-     subagent's `model` (for a task done inline it only advises the session model, which a command
-     cannot switch). Reserve `opus` for judgement-heavy REASONING phases run at the session level
-     (/sdd:spec, /sdd:clarify, /sdd:plan, /sdd:review); keep the mechanical implement-phase task
-     tiers cheap. `haiku` for trivial/mechanical work, `sonnet` for
-     normal test + implementation work. -->
-| Task type           | Stack | Specialist agent          | Skills to load                          | Model   |
-|---------------------|-------|---------------------------|-----------------------------------------|---------|
-| contract            | *     | (orchestrator)            | —                                       | sonnet  |
-| implementation      | *     | (orchestrator)            | —                                       | sonnet  |
-| integration-test    | *     | (orchestrator)            | —                                       | sonnet  |
-| e2e-test            | *     | (orchestrator)            | —                                       | sonnet  |
-| migration           | *     | (orchestrator)            | —                                       | sonnet  |
-| refactor            | *     | (orchestrator)            | —                                       | haiku   |
-| generic             | *     | (orchestrator)            | —                                       | haiku   |
+<!-- `/sdd:tasks` picks a task `type`; `/sdd:implement` routes it to the agent + skills on the Model tier.
+     Stack: `*` = any, else a project name, its kind or a stack word — most specific match wins.
+     Agent must be able to edit files (tools include Write/Edit); a read-only agent cannot implement.
+     Model: subagent tier. `haiku` mechanical, `sonnet` test + implementation; `opus` only for the
+     session-level reasoning phases (spec, clarify, plan, review). -->
+| Task type        | Stack | Specialist agent | Skills to load | Model  |
+|------------------|-------|------------------|----------------|--------|
+| contract         | *     | (orchestrator)   | —              | sonnet |
+| implementation   | *     | (orchestrator)   | —              | sonnet |
+| integration-test | *     | (orchestrator)   | —              | sonnet |
+| e2e-test         | *     | (orchestrator)   | —              | sonnet |
+| migration        | *     | (orchestrator)   | —              | sonnet |
+| refactor         | *     | (orchestrator)   | —              | haiku  |
+| generic          | *     | (orchestrator)   | —              | haiku  |
 
 ## Custom routing rules
 
 <!-- user-override -->
-<!-- Add your own task types and routing rules. /sdd:tasks uses these alongside the defaults above.
-
-     Example — a Next.js web app, a FastAPI backend and a Flutter mobile app specializing the
-     defaults per stack (delete what does not apply):
-     | Task type         | Stack   | Specialist agent          | Skills to load                    | Model   |
-     |-------------------|---------|---------------------------|-----------------------------------|---------|
-     | implementation    | nextjs  | nextjs-backend-engineer   | server-actions, error-handling    | sonnet  |
-     | ui-component      | nextjs  | frontend-expert           | design-system                     | sonnet  |
-     | implementation    | python  | python-developer          | fastapi-rules, pytest-rules       | sonnet  |
-     | contract          | python  | python-developer          | fastapi-rules                     | sonnet  |
-     | implementation    | flutter | (orchestrator)            | —                                 | sonnet  |
--->
+<!-- Own task types and stack-specific rows, same columns as above. Example:
+     | implementation | python | python-developer | fastapi-rules, pytest-rules | sonnet |
+     | ui-component   | nextjs | frontend-expert  | design-system               | sonnet | -->
 
 ## Generated / out-of-band paths
 
 <!-- user-override -->
-<!-- Glob patterns for files that are GENERATED or otherwise not hand-authored (regenerated API
-     clients, mocks, schemas, snapshots, lockfiles). SDD's diff-consuming agents (spec-guard,
-     drift-detector, reviewer, /sdd:analyze) EXCLUDE these from any `git diff` they pull into
-     context and NEVER flag them as out-of-scope or drift. Tailor the list to your project. -->
+<!-- Globs of generated / non-hand-authored files. spec-guard, drift-detector, reviewer and
+     /sdd:analyze exclude them from every diff and never flag them. -->
 - `**/*.msw.ts`
 - `**/*.schemas.ts`
 - `**/*.generated.*`
@@ -90,4 +61,3 @@
 - `**/pubspec.lock`
 - `**/Podfile.lock`
 - `**/openapi-client/**`
-
