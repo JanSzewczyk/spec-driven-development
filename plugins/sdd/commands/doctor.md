@@ -1,7 +1,7 @@
 ---
 description: Audit project SDD readiness (or init). Wrapper over the doctor skill.
 argument-hint: "check | init"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
 ---
 
 Invoke the `doctor` skill with the user-supplied argument (`$ARGUMENTS`).

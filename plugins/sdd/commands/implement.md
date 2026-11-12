@@ -1,19 +1,19 @@
 ---
-description: Implement a whole Story (or a single task) with TDD loop + auto-routing to specialist agent (SDD step 5)
+description: Implement a whole Story wave by wave — unblocked tasks run in parallel on their specialist agents, each with its own TDD loop (SDD step 5)
 argument-hint: "<story-id or task-id>  # e.g. S1 (whole Story — recommended) or T1.2 (one task)"
 allowed-tools: "*"
 ---
 
 The **Implement** phase of SDD. The default and recommended unit of work is a **whole Story** —
-`/sdd:implement S1` runs every task in that Story in ONE session (one red→green cycle, one
-specialist invocation with the Story's full scope, one spec-guard at the Story boundary). This
-keeps the TDD discipline while cutting the per-micro-task ceremony (and cost) that batching avoids.
-A single task ID (e.g. `T1.2`) is still accepted for surgical re-runs.
+`/sdd:implement S1` runs every task in that Story **wave by wave**: the tasks of a wave do not
+block each other, so they run **in parallel**, each on its own specialist agent and each with its
+own red→green cycle; the next wave starts when the previous one is green. One spec-guard runs at
+the Story boundary. A single task ID (e.g. `T1.2`) is still accepted for surgical re-runs.
 
 > 💰 **Recommended session model: Sonnet** (Haiku for a trivial Story). Implementation is
 > mechanical TDD + edits — reserve Opus for the judgement-heavy phases (`/sdd:spec`, `/sdd:clarify`,
-> `/sdd:plan`, `/sdd:review`). Each task also carries an advisory `model:` tier from `tasks.md`;
-> run this session on the Story's tier for the lowest cost.
+> `/sdd:plan`, `/sdd:review`). Each task carries its own `model:` tier from `tasks.md`, which
+> becomes the `model` of the subagent that runs it.
 
 ## Steps
 
@@ -21,118 +21,125 @@ A single task ID (e.g. `T1.2`) is still accepted for surgical re-runs.
 
 Locate `specs/<current>/tasks.md`. From `$ARGUMENTS`:
 
-- **Story ID** (e.g. `S1`) → the scope is **all tasks in that Story**, in listed order. This is the default mode.
+- **Story ID** (e.g. `S1`) → the scope is **all tasks in that Story**. This is the default mode.
 - **Task ID** (e.g. `T1.2`) → the scope is that single task only.
 
-For every task in scope, extract from YAML: `title`, `type`, `agent`, `skills`, `model`, `acceptance`, `files`.
+For every task in scope, extract from YAML: `title`, `project`, `type`, `tdd`, `agent`, `skills`,
+`model`, `depends_on`, `acceptance`, `tests`, `files`.
 
-When the scope is a Story, run its tasks **in the order `tasks.md` lists them**. `/sdd:tasks`
-already wrote each unit's chain in TDD order — test → implementation for test-first units,
-contract → tests → implementation for contract-first units — so the listed order is the red→green
-order. Do not reorder by parsing `type` names; they differ per project (`capabilities.md`).
+From `specs/capabilities.md` `## Projects` (legacy: `## Stack profile`) read each task's project:
+its path, stack and — for a project in a sibling repository — its repo path. From
+`specs/constitution.md` §2 read that project's `test` command (a single-project table has one
+row, `root`).
 
-### 2. Status → in-progress
+**Legacy `tasks.md`** (written before tasks had `depends_on`/`tdd`, with separate test and
+implementation tasks): run the tasks one after another **in the listed order** — `/sdd:tasks`
+wrote each chain in TDD order — skipping the wave logic below. Treat a missing `project` as `root`.
 
-Edit `tasks.md`: change `status: draft` → `status: in-progress` for **every task in scope**.
+### 2. Waves and readiness
 
-If this is the first Story/task being implemented for the feature, also bump
-`specs/<current>/spec.md` header `**Status:**` → `in-progress` (and `plan.md` likewise).
+Build the waves of the Story from `depends_on` (wave 1 = tasks whose dependencies are empty or
+already `review|done`; wave N+1 = tasks whose dependencies are all in waves ≤ N). Use the waves
+written under the Story in `tasks.md` when they match; if they disagree with `depends_on`, the
+dependencies win — say so in the output.
 
-### 3. Phase validation (depends on `type`)
+- A dependency in an earlier Story that is not `review|done` → STOP: run that Story first.
+- **Single-task mode:** every task in `depends_on` must be `review|done`, otherwise STOP and name
+  the blocking tasks (`/sdd:implement <id>` for each).
+- Two tasks of one wave whose `files`/`tests` overlap → run them one after another, not in
+  parallel, and mention it (fix `tasks.md` with `/sdd:tasks` later).
 
-Different TDD strategies apply to different task families. Validate the prerequisite phase is complete before proceeding.
+### 3. Lifecycle, branches in other repositories
 
-> **When the scope is a whole Story**, the prerequisites of each sub-chain are satisfied
-> *within this same session* by running the tasks in order (test → impl, or contract → test → impl).
-> You do NOT need the prerequisite task to already be `review|done` on disk — just run it first
-> in the session and observe the red phase before writing the implementation. The rules below
-> still govern the ordering and the meaningful-red requirement.
+Task statuses follow the waves, so `tasks.md` (and the sdd-board panel) shows what is running and
+what still waits: a task goes `draft` → `in-progress` **when its wave starts** and → `review` when
+its wave is green (Step 4). Later waves stay `draft` until then. If this is the first Story/task of
+the feature, set `spec.md` and `plan.md` `**Status:**` → `in-progress` now.
 
-The two shapes are **technology-neutral**; ordering is what matters. Within a Story it is enforced
-**by the listed task order** (the preceding task in the Story is the prerequisite), not by parsing
-`type` strings. Test-first is the default; contract-first is the narrow exception (see `/sdd:tasks`).
+**Polyrepo** — for every task whose project lives in a sibling repository: before its first edit
+there, make sure that repo is on the feature branch `<type>/<slug>` (the same name as the spec
+repo's branch). If the branch is missing, check the repo's tree is clean (`git -C <repo> status
+--porcelain`; dirty → STOP and ask the user to commit/stash there) and create it from that repo's
+default branch (`git -C <repo> checkout -b <type>/<slug>`).
 
-**Test-first units** (the default — the deliverable is behavior):
-- The test task runs first. Generate ONLY the test(s). If a missing symbol stops them compiling, add a trivial stub so they compile and then fail on a **meaningful assertion** (not on an unresolved reference / "not found"). Confirm the failure reasons are correct.
-- The implementation task runs after, until those tests pass. In single-task mode, the prerequisite is the preceding task in the Story; if it is not yet `review|done`, STOP and require it first.
+### 4. Run the waves
 
-**Contract-first units** (the exception — the deliverable is itself a public interface/contract other code references by shape) — three phases, run in this order:
+**Before the first wave**, load the union of `skills` that tasks you will run **inline** need
+(`Use skill: <name>`); subagents load their own.
 
-| Phase | Runs after | Red/green expectation |
-|---|---|---|
-| **contract** | first in the chain | declare the unit's public interface/signature so consumers and tests can reference it; add a minimal stub only if the language needs one to compile/resolve |
-| **tests** | the contract | tests reference the contract and fail with **meaningful assertion** errors (not unresolved-reference / not-found) |
-| **implementation** | the tests | flesh out the unit until those tests pass |
+**For each wave, in order** — first set its tasks `status: in-progress` in `tasks.md`:
 
-In single-task mode, if a phase's prerequisite is not yet `review|done` → STOP and instruct the user to run `/sdd:implement <prerequisite-id>` first. In whole-Story mode you satisfy each prerequisite by running the phases in order in this session (see the note above).
+- **A wave with one task:** route it as below — inline when `agent: orchestrator`, otherwise one
+  Task-tool call to the specialist.
+- **A wave with several tasks — run them in parallel:** send **one message with one Task-tool call
+  per task**, so they run at the same time.
+  - `subagent_type`: the task's `agent`; for `agent: orchestrator` use `general-purpose`.
+  - `model`: the task's `model` tier (`haiku` / `sonnet` / `opus`).
+  - Prompt (see the template below): the task itself, the spec sections it serves, the plan
+    section for its project, its project's path, repo and `test` command, and the ownership rule.
 
-When building the contract, follow the **project's own conventions** for where interfaces/types live (inline, a dedicated file, a header, an `.proto`, etc.) — the framework imposes no file-layout rule. The stub must carry no real behavior (return a default/empty value or raise "not implemented").
+**Prompt for a task's subagent:**
 
-### 4. Implementation step
-
-**Before writing code**: load the union of `skills` across the tasks in scope (deduplicated):
 ```
-Use skill: <skill-name>
-```
-(e.g. `Use skill: storybook-testing`, `Use skill: @szum-tech/server-actions`)
-
-Route by the agent assigned to the Story's tasks. Tasks in a Story normally share one `agent`;
-if they differ, group by `agent` and make one invocation per group (still far fewer than one per task).
-
-If the `agent` ≠ `orchestrator`:
-- Invoke the **Task tool** ONCE with `subagent_type: <agent>` for the whole group.
-- Pass to it as a prompt:
-  - The relevant spec.md section (Summary + AC + Edge cases)
-  - Only the plan.md section that concerns this Story
-  - The combined list of `files` across the group's tasks
-  - The acceptance criteria of every task in the group
-  - The group's advisory `model` tier (the specialist should run at that cost tier where it can).
-  - Instruction: "Implement these tasks in TDD order (tests/contract first, observe red, then
-    implement to green). Run the affected tests. Return with a diff + per-task status."
-
-If the `agent` = `orchestrator`:
-- Implement inline in the main session, one task at a time in TDD order.
-- After every Edit/Write the PostToolUse hook automatically runs typecheck + lint.
-- If the hook returns exit 2 → fix the errors and continue.
-
-### 5. Verification
-
-After implementation, run the tests covering the Story's files (filtered, not the whole suite —
-the full suite is `/sdd:review`'s job):
-
-```bash
-# Run the tests for the files touched by this Story
-<the `test` command from specs/constitution.md §2> <story test paths>
+Task <id> — <title>   (project: <project>, path: <path>, repo: <repo or "this repo">)
+Acceptance: <acceptance>          Spec: <Summary + the ACs and edge cases this task covers>
+Plan: <the plan.md section for this project / unit>
+Load skills: <skills>
+TDD (<tdd>):
+  test-first      → write the failing tests in <tests> first; stub a missing symbol so they fail on
+                    a real assertion; run them and confirm the red; then implement <files> to green.
+  contract-first  → declare the public contract in <files> (minimal stub, no behaviour), write the
+                    failing tests in <tests>, confirm the red, then implement to green.
+Run: <project test command> <tests>   — all must pass before you finish.
+Ownership: edit ONLY <files> and <tests>. Other tasks run in parallel in this working tree. A
+typecheck/lint hook error in a file you do not own belongs to another task — do not touch it;
+mention it in your report.
+Return: the files you changed, the red you observed, the final test result.
 ```
 
-ALL of the Story's tests MUST pass.
+**Inline (orchestrator, one-task wave):** do the same yourself — tests first, observe a meaningful
+red (a failing assertion, not an unresolved reference), then implement to green. After every
+Edit/Write the PostToolUse hook runs typecheck + lint for that file's project; exit 2 → fix and
+continue.
 
-### 6. Spec-guard (once, at the Story boundary)
+**After each wave:**
+1. Check every subagent's report: the red was observed, its tests pass, it stayed within its files.
+2. Run each task's tests once more with its project's `test` command (`<command> <tests>`), all
+   projects of the wave — this catches one task breaking another.
+3. Failure → STOP the Story here: do not start the next wave. Fix inline or re-run that task
+   (`/sdd:implement <id>`), then continue.
+4. Mark the wave's tasks `status: review` in `tasks.md` and start the next wave.
+
+**TDD rules (whichever agent runs the task):**
+- `test-first` (default): tests first, meaningful red, then the implementation to green.
+- `contract-first` (exception — the deliverable is itself a public interface other code references
+  by shape): contract (minimal stub, no behaviour) → failing tests → implementation. Follow the
+  **project's own conventions** for where interfaces/types live — the framework imposes no file
+  layout.
+
+### 5. Spec-guard (once, at the Story boundary)
 
 Invoke the `spec-guard` sub-agent **once** (Task tool, `subagent_type: spec-guard`) over the
-Story's combined diff — NOT once per task. Nothing is committed yet, so pass it the scope as
-`git diff HEAD` plus untracked files, **limited to the union of the Story's `files`** (plus any file
-you had to touch beyond them, named explicitly) — earlier Stories' uncommitted work is not this
-Story's scope. If it returns `satisfied: false` or
-`out_of_scope: [...]`, DO NOT mark the Story done — address the findings.
+Story's combined diff — NOT once per task or wave. Nothing is committed yet, so pass it the scope
+as `git diff HEAD` plus untracked files, **limited to the union of the Story's `files` and
+`tests`** (plus any file you had to touch beyond them, named explicitly), **per repository** when
+the Story touched sibling repos (`git -C <repo> diff HEAD`) — earlier Stories' uncommitted work is
+not this Story's scope. If it returns `satisfied: false` or `out_of_scope: [...]`, DO NOT finish
+the Story — address the findings.
 
-(`/sdd:review` runs spec-guard again feature-wide as the final gate. Within `implement` it runs
-at most once per Story, so a feature with N stories pays N story-checks here, not one per task.)
+(`/sdd:review` runs spec-guard again feature-wide as the final gate.)
 
-### 7. Status → review
-
-In `tasks.md`: set `status: in-progress` → `status: review` for **every task in scope**.
-
-### 8. Output
+### 6. Output
 
 ```markdown
-✅ Story S1 implemented (tasks T1.1–T1.3)
-- Files changed: <list>
-- Tests: <X> passed (filtered to the Story)
+✅ Story S1 implemented — 3 waves, 5 tasks
+- Wave 1: T1.1 (api) ✅
+- Wave 2: T1.2 (api) ∥ T1.3 (web) ∥ T1.4 (mobile) ✅ — ran in parallel
+- Wave 3: T1.5 (e2e) ✅
+- Tests: <X> passed per project (filtered to the Story)
 - Spec-guard: satisfied=true (one check for the whole Story)
-- Model: this Story's tasks are tagged `model: <tier>` — run the next Story's session on its tier
+- Repos touched: <this repo, ../mobile-app> — each on branch <type>/<slug>
 - Next: /clear, then /sdd:implement S2  OR  /sdd:review (if this was the last Story)
-  (each command re-reads the spec files from disk, so /clear between Stories loses no context)
 ```
 
 > 💬 Collect visual/QA tweaks into a **single message per round** instead of many small turns —
@@ -140,15 +147,16 @@ In `tasks.md`: set `status: in-progress` → `status: review` for **every task i
 
 ## Constraints
 
-- ✅ Test-first by default; contract-first only when the unit's deliverable is itself a public interface/contract other code references by shape
-- ✅ Default unit is a **whole Story** — batch its tasks in one session, preserving red→green order
-- ✅ Load the union of `skills` for the Story before writing code
-- ✅ The specialist agent receives ONLY the Story's scope (spec + the plan section for this Story)
-- ✅ Follow the project's own conventions for where interfaces/types live — the framework imposes no file-layout rule
-- ✅ Run `spec-guard` and the filtered tests ONCE per Story, at its boundary — not per task
-- ⛔ DO NOT re-run `spec-guard` mid-Story — at most once, at the Story boundary
+- ✅ Default unit is a **whole Story**, run wave by wave; the tasks of a wave run **in parallel** (one message, one Task-tool call per task)
+- ✅ Each task keeps its own red→green cycle (`tdd`); test-first by default, contract-first only when the deliverable is itself a public interface
+- ✅ A subagent edits only its task's `files` and `tests`; tasks of one wave never share files
+- ✅ The next wave starts only when the previous wave's tests pass
+- ✅ Each task is verified with its **own project's** `test` command from `specs/constitution.md` §2
+- ✅ Pass each task's `model` tier as the subagent's `model`
+- ✅ Run `spec-guard` ONCE per Story, at its boundary
+- ⛔ DO NOT start a task whose `depends_on` are not all `review|done` (or finished earlier in this run)
 - ⛔ DO NOT spawn a subagent solely to run typecheck/lint/tests — run them inline (the PostToolUse
   hook handles typecheck+lint after each Edit/Write); summarize only large or failing output
-- ⛔ DO NOT skip the phase validation (Step 3) — it guarantees a meaningful red phase
+- ⛔ DO NOT skip the red phase — a task whose tests never failed has not been test-driven
 - ⛔ DO NOT skip `spec-guard`
 - ⛔ DO NOT commit — that is done by `/sdd:review`

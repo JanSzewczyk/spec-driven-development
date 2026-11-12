@@ -29,6 +29,11 @@ The `<glob>` list is the `Generated / out-of-band paths` section of `specs/capab
 the same exclusions to the untracked list. Pass this definition (base commit + "include untracked
 files") in every agent prompt below.
 
+**Several repositories:** when the feature has projects in sibling repositories
+(`specs/capabilities.md` `## Projects`, marked `(repo)`), compute the same diff **in each repo that
+is on the feature branch** (`git -C <repo> …`, its own default branch for the merge base) and pass
+every agent the list of repos with their bases.
+
 ## Steps
 
 ### 1. Pre-flight (runs the test suite — the only full run in this command)
@@ -36,10 +41,15 @@ files") in every agent prompt below.
 Verify:
 - All tasks in `specs/<current>/tasks.md` have status `review` or `done`.
 - Branch ≠ `main`/`master`.
-- The full test suite passes: run the `test` command from `specs/constitution.md` §2. If §2 also
-  has a `coverage` command, run that instead (it runs the suite and reports coverage in one go).
+- The full test suite of **every project the feature diff touches** passes: for each such project
+  run its `test` command from `specs/constitution.md` §2 (its `coverage` command instead, when it
+  has one — it runs the suite and reports coverage in one go). Which projects are touched follows
+  from the diff paths and the project paths in `specs/capabilities.md` `## Projects`; a
+  single-project repo has only `root`. Run independent projects' suites in parallel when their
+  commands allow it.
 
-Keep the result (passed/failed counts per layer, coverage numbers, the failing test names) — the
+Keep the result **per project** (passed/failed counts per layer, coverage numbers, the failing
+test names) — the
 `reviewer` agent receives it in Step 5 and does **not** re-run the suite.
 
 If anything fails → STOP, list the blockers.
@@ -68,12 +78,15 @@ prompt: "Detect drift between the documentation (specs/<current>/) and the curre
 ### 4. Visual review — `ui-critic` (only when UI files are in the diff)
 
 This command is the only place that invokes `ui-critic` (a sub-agent cannot start another
-sub-agent, so `reviewer` cannot). Invoke it when the feature diff contains UI component files:
+sub-agent, so `reviewer` cannot). Invoke it when the feature diff contains UI component files of a
+**web** project (kind `web` in `## Projects`). A mobile or desktop project's UI is skipped with
+`SKIPPED — no screenshot tool for <kind>`, unless capabilities lists a skill or MCP server that
+captures that platform's screens — then pass it to `ui-critic` instead:
 
 ```
 Task tool: subagent_type=ui-critic
-prompt: "Review these changed UI files: <list>. Storybook URL and start command: the `ui-preview`
-         row of specs/constitution.md §2."
+prompt: "Review these changed UI files: <list>. Storybook URL and start command: the
+         `dev / ui-preview` cell of that project's row in specs/constitution.md §2."
 ```
 
 Soft check — never blocks on infrastructure (no browser MCP / Storybook down → `SKIPPED`, warning
@@ -85,7 +98,8 @@ only). If no UI files changed, skip this step and record `SKIPPED — no UI chan
 Task tool: subagent_type=reviewer
 prompt: "Feature folder: specs/<current>/. Write specs/<current>/review.md.
          Feature diff: base <base>, include untracked files.
-         Test results from pre-flight (do NOT re-run the suite): <counts, coverage, failures>.
+         Test results from pre-flight, per project (do NOT re-run the suites): <counts, coverage, failures>.
+         Projects touched: <name — kind · path · stack> for each.
          spec-guard result: <JSON>. drift-detector result: <list>. ui-critic result: <JSON or SKIPPED>."
 ```
 
@@ -106,6 +120,11 @@ the commit title, the PR title and the exact list of files you will stage — th
 (Recommended), "Commit only", "Stop here"); otherwise ask in the conversation and wait for a yes.
 Never stage files that are not on that list — in particular never `git add -A` (it sweeps in
 screenshots, `.env*` files and other local leftovers).
+
+**Several repositories:** confirm once for all of them, listing the files per repo; then do step c
+in **each** touched repo (`git -C <repo> …`, `gh pr create` from inside it). The spec repo's PR
+also carries `specs/<slug>/`. After all PRs exist, add to each PR body a "Related PRs" list with
+the others' URLs (`gh pr edit <url> --body …`) so reviewers see the whole feature.
 
 **c. Commit and open the PR** (or only commit, per the answer):
 

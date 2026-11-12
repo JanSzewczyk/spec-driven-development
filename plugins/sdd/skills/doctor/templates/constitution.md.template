@@ -15,6 +15,9 @@
 
 ## 1. Tech stack
 
+<!-- Several apps (monorepo, or a feature spread over several repositories)? Repeat this list per
+     project — the project names are those in the `Projects` section of specs/capabilities.md. -->
+
 - **Runtime:**
 - **Framework:**
 - **Database:**
@@ -33,18 +36,22 @@
 ## 2. Run/build commands
 
 <!-- The SDD commands and agents read the commands below from this table — it is the single
-     source for them (the root CLAUDE.md is never read). Put the real command in each row; leave a
-     row empty when the project has no such command. -->
+     source for them (the root CLAUDE.md is never read). One row per project, as listed in the
+     `Projects` section of specs/capabilities.md; a single-app repo has one row, `root`.
+     Each command runs from the repository root of the spec repo: put the `cd`/`--project` part in
+     the command itself. `test` must accept test file paths appended to it (`/sdd:implement` runs a
+     subset that way). Leave a cell empty when the project has no such command. -->
 
-| Command | Purpose |
-|---------|---------|
-| `dev` | local development server |
-| `build` | production build |
-| `test` | full test suite (`/sdd:implement` appends test paths to run a subset) |
-| `coverage` | test suite with coverage report (optional) |
-| `typecheck` | type-checker only |
-| `lint` | lint + format check |
-| `ui-preview` | command + URL that serve UI components for visual review, e.g. Storybook (optional) |
+| Project | Path | test | coverage | typecheck | lint | dev / ui-preview |
+|---------|------|------|----------|-----------|------|------------------|
+| root | `.` | | | | | |
+
+<!-- Example — a monorepo plus a mobile app in a sibling repository (delete when not needed):
+| web    | `apps/web`      | `pnpm nx run web:test --`          | `pnpm nx run web:test -- --coverage` | `pnpm nx run web:typecheck` | `pnpm nx run web:lint` | `pnpm nx run web:storybook` → http://localhost:6006 |
+| api    | `apps/api`      | `uv run --project apps/api pytest` | `uv run --project apps/api pytest --cov` | `uv run --project apps/api mypy app` | `uv run --project apps/api ruff check` | `uv run --project apps/api fastapi dev` |
+| mobile | `../mobile-app` | `cd ../mobile-app && flutter test` | `cd ../mobile-app && flutter test --coverage` | `cd ../mobile-app && flutter analyze` | | `cd ../mobile-app && flutter run` |
+| e2e    | `apps/web-e2e`  | `pnpm nx run web-e2e:e2e --`       | | | | |
+-->
 
 Add notes for non-obvious flags or env vars required.
 
@@ -111,7 +118,7 @@ async function loadUser(id: any) { try { ... } catch {} }
 
 - **Test-first (default)** — write the failing test first, then the implementation; add a trivial stub if a missing symbol would otherwise stop the test compiling.
 - **Contract-first (exception)** — use only when the unit's deliverable is itself a public interface/contract other code references by shape (a UI component's props, a typed service interface, an API/RPC schema): declare the contract first, then the failing tests, then the implementation. Follow this project's own conventions for where interfaces live.
-- **Coverage targets:** unit > 70%, integration > 50%, E2E covers happy paths only.
+- **Coverage targets:** unit > 70%, integration > 50%, E2E covers happy paths only. <!-- per project when they differ, e.g. `api`: unit > 85% -->
 - **What we DO NOT test:** generated code, trivial getters, third-party library internals.
 
 ---

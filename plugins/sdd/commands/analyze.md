@@ -44,6 +44,9 @@ Generate the conflict matrix:
 
 - Does every file from the plan.md "File-by-file change list" have a corresponding task?
 - Is every task in tasks.md justified by something in plan.md?
+- Does every task name a `project` from `specs/capabilities.md` `## Projects`, with its files under
+  that project's path? Do the `depends_on` links point to existing tasks, without cycles, and do
+  tasks of the same wave avoid sharing files? (Skip for legacy tasks without these fields.)
 
 #### Tasks ↔ Code
 
