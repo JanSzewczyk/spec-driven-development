@@ -31,6 +31,12 @@ export type Ctx = {
 const GLYPH: Record<string, string> = { draft: '○', 'in-progress': '◐', review: '◑', done: '●' }
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
 
+// Svg sizes are CSS pixels, the pane reports columns. Estimate the content width from the columns,
+// deliberately a little short (too wide would scroll sideways). Tune PX_PER_COLUMN if the drawings
+// come out visibly narrower or wider than the cards.
+const PX_PER_COLUMN = 7
+const fullWidth = (ctx: { cols: number }) => Math.max(240, Math.min(900, Math.round((ctx.cols - 6) * PX_PER_COLUMN)))
+
 function bar(done: number, total: number, width: number): string {
   const w = Math.max(8, Math.min(width, 24))
   const filled = total ? Math.round((done / total) * w) : 0
@@ -77,7 +83,7 @@ function stepper(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Svg } = el
   const d = derive(f)
   if (rich(ctx.surface)) {
-    return Svg({ alt: 'Pipeline: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), width: 330, height: 62, source: stepperSvg(d.steps, 330) })
+    return Svg({ alt: 'Pipeline: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), width: fullWidth(ctx), height: 62, source: stepperSvg(d.steps, fullWidth(ctx)) })
   }
   const line = d.steps.map((s) => (s.state === 'done' ? '●' : s.state === 'current' ? '◉' : '○') + ' ' + s.label).join(' ─ ')
   return Box({ flexDirection: 'column', children: [Text({ wrap: 'wrap', children: [line] })] })
@@ -101,7 +107,7 @@ function checklist(el: any, ctx: Ctx, f: Feature) {
     }),
   )
   return Box({
-    marginTop: 1, flexDirection: 'column', rowGap: 1,
+    flexDirection: 'column', rowGap: 1,
     children: [
       Text({ dimColor: true, children: ['BEFORE ' + g.command.split(' ')[0].toUpperCase() + ' · ' + (g.checks.length - g.open) + '/' + g.checks.length]}),
       ...rows,
@@ -137,7 +143,7 @@ function progress(el: any, ctx: Ctx, f: Feature) {
     rows.push(Text({ weight: 'semibold', children: ['Tasks ' + done + '/' + c.total + (c.done ? ' · ' + c.done + ' done' : '')] }))
     rows.push(
       rich(ctx.surface)
-        ? Svg({ alt: done + ' of ' + c.total + ' tasks implemented', width: 330, height: 8, source: progressSvg(c, 330) })
+        ? Svg({ alt: done + ' of ' + c.total + ' tasks implemented', width: fullWidth(ctx), height: 8, source: progressSvg(c, fullWidth(ctx)) })
         : Text({ color: 'green', children: [bar(done, c.total, ctx.cols - 12)] }),
     )
   }
@@ -269,7 +275,8 @@ export function renderCurrent(el: any, ctx: Ctx) {
   if (!done && f.review) kids.push(Text({ color: f.review === 'GO' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review] }))
   for (const w of warn) kids.push(Text({ color: 'red', wrap: 'wrap', children: ['⚠ ' + w] }))
   kids.push(docSwitch(el, ctx, f))
-  return Box({ flexDirection: 'column', rowGap: 1, children: kids })
+  // Sections get room to breathe on Desktop/VS Code; the terminal keeps one line between them.
+  return Box({ flexDirection: 'column', rowGap: rich(ctx.surface) ? 2 : 1, children: kids })
 }
 
 export function renderDoc(el: any, doc: { slug: string; kind: string; text: string | null }) {
