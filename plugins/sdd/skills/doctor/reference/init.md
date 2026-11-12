@@ -3,7 +3,7 @@
 Create or repair the per-project artifacts. Write under the **project root** (cwd); read
 templates from `${CLAUDE_PLUGIN_ROOT}/skills/doctor/templates/`. Print one status line per
 artifact (created / skipped / merged). Never overwrite an existing `specs/constitution.md`,
-`specs/template.md` or hook script; never touch the root `CLAUDE.md`.
+`specs/template.md`; never touch the root `CLAUDE.md`.
 
 ## 0. Confirm roots
 `pwd`; verify the templates directory is readable, else stop — the plugin looks broken.
@@ -21,14 +21,14 @@ stack and commands.
   this product (`AskUserQuestion`, multi-select; skip when none). Each chosen repo becomes a
   project (path relative, `../mobile-app`); this repo stays the spec repo — `specs/` lives only
   here. Tell the user the assumption: everyone checks the sibling repos out next to this one
-  under the same names (paths are committed in `capabilities.md`, §2 and the hooks).
+  under the same names (paths are committed in `capabilities.md` and §2).
 
 Per project record: **name** (workspace project name, else directory), **kind** (web, backend,
 mobile, desktop, library, e2e, infra …; ask only when unclear), **path**, **stack** (language,
 framework, package manager), sibling repo or not.
 
 Per project, inside its directory, find the **one canonical command** for **test**, **coverage**,
-**typecheck** (or compile) and **lint**. Source, in priority order: declared scripts/tasks
+**typecheck** (or compile) and **lint**. These commands go into constitution §2 (`/sdd:implement` and the review run them). Source, in priority order: declared scripts/tasks
 (`package.json` scripts, `Makefile`/`justfile`, Gradle/Cargo/Go/dotnet tasks — prefer
 `nx run <project>:lint` / `turbo run … --filter` in workspaces); CI and pre-commit config (what
 merges are gated on); tool config files (`tsconfig.json`, `pyproject.toml` `[tool.*]`,
@@ -68,38 +68,11 @@ Idempotency: a second run with no other change writes an identical file. Match e
 as a single line; a section ends exactly where the next `## ` begins; one blank line between
 sections; the set of headings after regeneration equals the set before.
 
-## 4. Hook scripts
-Write `.claude/hooks/typecheck.sh` and `lint.sh` for the tools found in step 1 — whatever the
-project uses, not a fixed menu. Skip an existing file (still wire settings to it); a category with
-no runnable tool gets no script and no settings entry.
+## 4. Sibling repositories only
+When projects live in sibling repositories, add each path (`../mobile-app`) to
+`permissions.additionalDirectories` in `.claude/settings.json` following
+`reference/settings-merge.md`; without it Claude cannot edit files there. No sibling repos → do
+not touch `.claude/settings.json`.
 
-- Read the matching template's header (shebang → `ext=` line; copy verbatim) and only the example
-  block closest to the project's tool — they are **worked shapes, not a catalog**. Write a new
-  block by analogy for any other tool.
-- Block contract: gate on the extension(s) the tool covers; `exit 0` when the tool is not
-  runnable; on a real failure print to stderr and `exit 2` (blocks Claude).
-  ```bash
-  case "$ext" in
-    <exts>)
-      command -v <runner> >/dev/null 2>&1 || exit 0
-      if ! <check command> 2>&1; then echo "❌ <tool> failed for $file_path" >&2; exit 2; fi ;;
-  esac
-  ```
-- Through a runner (`npx`, `pnpm exec`, `bundle exec`, `poetry run`): probe the tool itself first
-  and no-op if absent (`npx --no-install --quiet tsc --version >/dev/null 2>&1 || exit 0`), else
-  the runner's failure falsely blocks.
-- The hook fires after **every** edit: run the project's tool on `$file_path`, not its whole-repo
-  script (`pnpm lint`, `make lint`, CI jobs). Whole-project runs only for tools without a per-file
-  mode (compilers, `tsc --noEmit`, `go vet ./...`, `cargo check`).
-- **Several projects:** route by path first (one branch per project prefix, `*/apps/api/*`), each
-  running that project's tool from its own directory with its own runner (`cd apps/api && uv run
-  ruff check …`, `pnpm nx run web:typecheck`); never a repo-wide `tsc` or a Python tool from the
-  monorepo root. `file_path` is absolute. A path outside every project → `exit 0`.
-- Drop the template's instruction block; replace `{{TOOLS}}` with the tool names written; end with
-  `exit 0`; `chmod +x`; check with `bash -n`.
-
-## 5. `.claude/settings.json`
-Follow `reference/settings-merge.md` exactly (stops on malformed JSON, never clobbers).
-
-## 6. Re-check
+## 5. Re-check
 Run `check` and show the report.

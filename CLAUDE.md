@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is **not an application** — it is a plugin marketplace with two plugins under `plugins/`: **`sdd`** (below) and **`sdd-board`**, a Claude Code mod that docks an SDD status panel in Claude Code Desktop (hooks module `plugins/sdd-board/hooks/register.ts`, pure parsers/model/views in the sibling files, tests in `plugins/sdd-board/tests/`; run `cd plugins/sdd-board && claude plugin test`). The rest of this file describes `sdd`, whose paths are relative to `plugins/sdd/`.
 
-`sdd` is a **Claude Code plugin** that ships the Spec-Driven Development framework. It contains slash commands, sub-agents, and a setup skill, all consumed by Claude Code itself. Blocking hooks (typecheck / lint) are NOT shipped by the plugin — they're generated per-project by `/sdd:doctor init` into `<target>/.claude/hooks/`. There is no build step and **no runtime code**: every asset is a Markdown prompt that Claude executes. The doctor skill, once script-based, is now fully **LLM-driven** — Claude performs the checks and file operations itself (see Architecture).
+`sdd` is a **Claude Code plugin** that ships the Spec-Driven Development framework. It contains slash commands, sub-agents, and a setup skill, all consumed by Claude Code itself. There is no build step and **no runtime code**: every asset is a Markdown prompt that Claude executes. The doctor skill, once script-based, is now fully **LLM-driven** — Claude performs the checks and file operations itself (see Architecture).
 
 The plugin is installed into a *target* project (`/plugin install sdd@spec-driven-development`) and operates on that project's `specs/` directory and git repo. When developing here, you are editing the plugin; to see behavior you exercise it against a separate target project.
 
@@ -46,7 +46,7 @@ The SDD flow is a fixed pipeline of slash commands, each writing artifacts under
 
 Three kinds of plugin asset, each in its own top-level dir, wired together by `.claude-plugin/plugin.json`:
 
-- **`commands/*.md`** — the 9 user-facing slash commands (`/sdd:<name>`). Each is a markdown prompt with YAML frontmatter (`description`, `argument-hint`, `allowed-tools`). The *body is the instruction set Claude executes* — editing behavior means editing prose, not code. `spec.md` creates the branch + skeleton; `implement.md` is the heart (TDD loop + per-task routing); `review.md` orchestrates the verification agents.
+- **`commands/*.md`** — the 8 user-facing slash commands (`/sdd:<name>`; `/sdd:doctor` is the `doctor` skill). Each is a markdown prompt with YAML frontmatter (`description`, `argument-hint`, `allowed-tools`). The *body is the instruction set Claude executes* — editing behavior means editing prose, not code. `spec.md` creates the branch + skeleton; `implement.md` is the heart (TDD loop + per-task routing); `review.md` orchestrates the verification agents.
 
 - **`agents/*.md`** — 4 verification sub-agents invoked via the Task tool, never directly by the user:
   - `spec-guard` — checks a diff satisfies all Acceptance Criteria and adds nothing out-of-scope; returns `{satisfied, missing, out_of_scope}`. Called once per Story by `/sdd:implement` and per-feature by `/sdd:review`.
@@ -54,23 +54,23 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
   - `reviewer` — final READY/NOT READY audit; gets the test results and the other agents' results from `/sdd:review` (sub-agents cannot start sub-agents, so `/sdd:review` runs the suite and `ui-critic` itself), runs the domain audits and writes `review.md`.
   - `ui-critic` — screenshots changed UI via a browser MCP; skips gracefully if none is available (never blocks).
 
-- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` holds the `check` mode (6 read-only inspections) and the common rules; `reference/init.md` (loaded only for `init`) holds the `init` procedure, which detects the target's stack and creates the per-project artifacts directly with file tools. It **generates project-local hook scripts** in `<target>/.claude/hooks/typecheck.sh` + `lint.sh` containing only the tools the project actually has (existing hook files are never overwritten), and **safe-merges `<target>/.claude/settings.json`** — strips only its own previously-installed hook entries (matched by `.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`, or legacy v0.4 plugin-path substrings) and preserves every other key. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`, and per-tool hook snippets in `templates/hooks/*.sh.template`) `reference/settings-merge.md` (the mechanical settings.json merge procedure). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
+- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` holds the `check` mode (5 read-only inspections); `reference/init.md` (loaded only for `init`) holds the `init` procedure, which detects the target's projects and quality commands and creates the per-project artifacts directly with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (`reference/settings-merge.md`; malformed JSON is never touched). The plugin generates no hooks. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
 
 ### Key concepts when editing
 
-- **Projects**: the framework works on *projects* — a unit with its own stack and commands, listed in the target's `specs/capabilities.md` `## Projects` (a single-app repo has one, `root`; a monorepo one per app/package; a feature spread over several repositories adds projects in sibling checkouts, with `specs/` only in the spec repo). Constitution §2 holds one command row per project, hooks route by path to each project's own tools, and nothing assumes a frontend — web, backend and mobile projects are peers.
+- **Projects**: the framework works on *projects* — a unit with its own stack and commands, listed in the target's `specs/capabilities.md` `## Projects` (a single-app repo has one, `root`; a monorepo one per app/package; a feature spread over several repositories adds projects in sibling checkouts, with `specs/` only in the spec repo). Constitution §2 holds one command row per project, and nothing assumes a frontend — web, backend and mobile projects are peers.
 - **Per-task routing**: every task in a target's `tasks.md` carries `project`, `type`, `agent`, `skills`, `model` and `depends_on`. Routing matches `type` plus the project's stack (`Stack` column, `*` = any). The framework *orchestrates existing agents* rather than duplicating them — when `agent: orchestrator`, work is done inline (or by a general-purpose subagent when it runs in parallel).
 - **Dependencies and waves**: `depends_on` (a task needs another's result, or they share files) decides the order; `/sdd:tasks` writes each Story's waves and a Mermaid flow diagram, and `/sdd:implement` runs the tasks of a wave in parallel as subagents in one working tree, each editing only its own files.
 - **Two technology-neutral TDD shapes, inside one task**: one task = one unit of behaviour with its tests. `tdd: test-first` is the default (failing test first, then implementation; trivially stub a missing symbol so the test fails on a real assertion); `tdd: contract-first` (contract → tests → implementation) is the narrow exception, used only when the unit's deliverable is itself a public interface/contract other code references by shape. A contract *shared between projects* is its own task the consumers depend on. The framework names no frontend tools and imposes no file-layout rule for interfaces.
 - **Constitution is the only file the framework writes outside of `specs/`**: `specs/constitution.md` is the long-form source of truth, edited via `/sdd:constitution`. The target's root `CLAUDE.md` (if any) is user-owned and never read or written by this framework.
-- **Hooks are project-specific and open-ended**: there is no fixed list of supported stacks. `/sdd:doctor init` discovers how a project checks its code (declared scripts/tasks, CI + pre-commit config, tool config files) and generates hooks reproducing those commands — for *any* language/tool, including ones never enumerated. Supporting a new tool usually requires **editing nothing**; the LLM handles it by reasoning from the project. The `case` blocks in `templates/hooks/*.sh.template` are **worked examples of the hook shape**, not a closed catalog — add one only when a common tool deserves a higher-quality reference pattern than the LLM would improvise. Never add a shared hook script to the plugin.
+- **No fixed list of supported stacks**: `/sdd:doctor init` discovers how each project checks its code (declared scripts/tasks, CI + pre-commit config, tool config files) and records the commands in constitution §2, for *any* language/tool. Supporting a new tool usually requires **editing nothing**.
 
 ## Conventions
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
 - **Versioning is manual and multi-file**: a bump (only when the user asks, see Versions below) touches `plugins/<name>/.claude-plugin/plugin.json`, its entry in `.claude-plugin/marketplace.json`, and `CHANGELOG.md`; for `sdd` also the README badge. Keep them in sync.
 - Command/agent references in docs use the `/sdd:<command>` form.
-- Behavior lives in Markdown prompts, not code. To change what an asset does, edit its prose. Generated hook scripts (`.claude/hooks/*.sh`) must exit 0 when nothing applies and exit 2 to block.
+- Behavior lives in Markdown prompts, not code. To change what an asset does, edit its prose.
 
 ## Where to make a change
 
@@ -78,9 +78,9 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 |---|---|
 | What a slash command does | `commands/<name>.md` (the prose body) |
 | A verification agent's behavior | `agents/<name>.md` |
-| Typecheck/lint blocking logic for a tool | add a `case` block to `skills/doctor/templates/hooks/{typecheck,lint}.sh.template` + teach tool-detection in `skills/doctor/SKILL.md` |
 | A doctor readiness check | edit the `check` procedure in `skills/doctor/SKILL.md` |
-| The settings.json merge behavior | `skills/doctor/reference/settings-merge.md` |
+| The `init` procedure | `skills/doctor/reference/init.md` |
+| Sibling-repo permissions edit in settings.json | `skills/doctor/reference/settings-merge.md` |
 | Files seeded into target projects | `skills/doctor/templates/` |
 | What the Desktop panel shows or how it derives the next step | `plugins/sdd-board/hooks/{model,view,svg}.ts` (logic, drawing); `register.ts` holds only hooks and `$` calls |
 | How `specs/` files are parsed by the panel | `plugins/sdd-board/hooks/parse.ts`, with a test in `plugins/sdd-board/tests/` |

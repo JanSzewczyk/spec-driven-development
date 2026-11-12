@@ -91,9 +91,10 @@ TDD (<tdd>):
                     a real assertion; run them and confirm the red; then implement <files> to green.
   contract-first  → declare the public contract in <files> (minimal stub, no behaviour), write the
                     failing tests in <tests>, confirm the red, then implement to green.
-Run: <project test command> <tests>   — all must pass before you finish.
+Run: <project test command> <tests>   — all must pass before you finish; then the project's
+     typecheck and lint commands (constitution §2) — fix what your files cause.
 Ownership: edit ONLY <files> and <tests>. Other tasks run in parallel in this working tree. A
-typecheck/lint hook error in a file you do not own belongs to another task — do not touch it;
+typecheck/lint error in a file you do not own belongs to another task — do not touch it;
 mention it in your report.
 Return: the files you changed, the red you observed, the final test result.
 ```
@@ -106,9 +107,8 @@ call 2 implements `<files>` to green; you run the tests again. A read-only agent
 cannot do a task at all — run that task with `general-purpose` instead and say so in the output.
 
 **Inline (orchestrator, one-task wave):** do the same yourself — tests first, observe a meaningful
-red (a failing assertion, not an unresolved reference), then implement to green. After every
-Edit/Write the PostToolUse hook runs typecheck + lint for that file's project; exit 2 → fix and
-continue.
+red (a failing assertion, not an unresolved reference), then implement to green. Once green, run the
+project's typecheck and lint commands (constitution §2) and fix what your files cause.
 
 **After each wave:**
 1. Check every subagent's report: the red was observed, its tests pass, it stayed within its files.
@@ -163,8 +163,7 @@ the Story — address the findings.
 - ✅ Pass each task's `model` tier as the subagent's `model`
 - ✅ Run `spec-guard` ONCE per Story, at its boundary
 - ⛔ DO NOT start a task whose `depends_on` are not all `review|done` (or finished earlier in this run)
-- ⛔ DO NOT spawn a subagent solely to run typecheck/lint/tests — run them inline (the PostToolUse
-  hook handles typecheck+lint after each Edit/Write); summarize only large or failing output
+- ⛔ DO NOT spawn a subagent solely to run typecheck/lint/tests — run them inline; summarize only large or failing output
 - ⛔ DO NOT skip the red phase — a task whose tests never failed has not been test-driven
 - ⛔ DO NOT skip `spec-guard`
 - ⛔ DO NOT commit — that is done by `/sdd:review`
