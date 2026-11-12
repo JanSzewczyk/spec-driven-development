@@ -17,7 +17,6 @@ let pinned: string | null = null
 let filter = 'all'
 let running: string | null = null
 let docView: { slug: string; kind: string } | null = null
-let expanded: Record<string, boolean> = {}
 let isClosedByUser = false
 
 async function readText($: any, path: string): Promise<string | null> {
@@ -78,7 +77,7 @@ async function scan($: any): Promise<boolean> {
           spec: parseSpec(spec),
           planStatus: plan === null ? null : parsePlan(plan).status || 'draft',
           plan: plan === null ? null : parsePlan(plan),
-          stories: tasks === null ? null : parseTasks(tasks),
+          tasks: tasks === null ? null : parseTasks(tasks),
           review: review === null ? null : parseReview(review),
           modified,
         })
@@ -221,11 +220,6 @@ export function register(on) {
         tab = 'current'
         redraw()
       },
-      toggle: (id) => {
-        const open = expanded[id] ?? false
-        expanded = { ...expanded, [id]: !open }
-        redraw()
-      },
       doc: async (kind) => {
         if (!current) return
         docView = { slug: current.slug, kind }
@@ -252,7 +246,6 @@ export function register(on) {
       current,
       branch,
       running,
-      expanded,
       filter,
       hasSpecs,
       now: Date.now(),

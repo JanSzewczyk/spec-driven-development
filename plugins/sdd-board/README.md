@@ -31,7 +31,7 @@ The panel also opens by itself when the project has a `specs/` folder (at least 
 | spec `draft` | `/sdd:clarify` |
 | spec `clarified` | `/sdd:plan` |
 | spec `planned`, no `tasks.md` | `/sdd:tasks` |
-| tasks exist, some Story not finished | `/sdd:implement S<n>` for the first unfinished Story |
+| tasks exist, some not implemented | `/sdd:implement T<n>` for the first unfinished task whose dependencies are done |
 | every task in `review` or `done` | `/sdd:review` |
 | spec `done` or review verdict READY | nothing, open the PR |
 

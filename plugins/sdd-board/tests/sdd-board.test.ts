@@ -25,34 +25,25 @@ const TASKS = `# Tasks: User Login
 
 ## Epic: Login
 
-### Story S1: Form
+### T1: Login API
+project: api
+status: done
+depends_on: []
+acceptance: AC1
 
-\`\`\`yaml
-- id: T1.1
-  title: Write tests
-  type: unit-test
-  agent: orchestrator
-  model: sonnet
-  status: done
+### T2: Login form
+project: web
+status: in-progress
+depends_on: [T1]
+acceptance: AC1, AC2
+scope:
+- form with inline errors
 
-- id: T1.2
-  title: Implement form
-  type: ui-component
-  agent: orchestrator
-  model: sonnet
-  status: in-progress
-\`\`\`
-
-### Story S2: Errors
-
-\`\`\`yaml
-- id: T2.1
-  title: Error states
-  type: unit-test
-  agent: orchestrator
-  model: haiku
-  status: draft
-\`\`\`
+### T3: Error states
+project: web
+status: draft
+depends_on: T2
+acceptance: AC2
 `
 
 const files: Record<string, string> = {
@@ -62,7 +53,7 @@ const files: Record<string, string> = {
 }
 
 function feature(over: Partial<Feature>): Feature {
-  return { slug: 'x', spec: parseSpec(SPEC), planStatus: null, plan: null, stories: null, review: null, modified: 0, ...over }
+  return { slug: 'x', spec: parseSpec(SPEC), planStatus: null, plan: null, tasks: null, review: null, modified: 0, ...over }
 }
 
 test('parseSpec reads header, criteria and open questions', () => {
@@ -75,83 +66,56 @@ test('parseSpec reads header, criteria and open questions', () => {
   expect(s.openQuestions).toBe(0)
 })
 
-test('parseTasks groups tasks into stories with their status', () => {
-  const stories = parseTasks(TASKS)
-  expect(stories.length).toBe(2)
-  expect(stories[0].tasks.map((t) => t.status)).toEqual(['done', 'in-progress'])
-  expect(stories[1].tasks[0].model).toBe('haiku')
+test('parseTasks reads the tasks with their status', () => {
+  const tasks = parseTasks(TASKS)
+  expect(tasks.map((t) => t.id)).toEqual(['T1', 'T2', 'T3'])
+  expect(tasks.map((t) => t.status)).toEqual(['done', 'in-progress', 'draft'])
+  expect(tasks[1].title).toBe('Login form')
 })
 
-test('parseTasks ignores trailing YAML comments on a field', () => {
-  const stories = parseTasks('### Story S1: X\n\n```yaml\n- id: T1.1\n  title: A\n  status: done  # skeleton created early\n```\n')
-  expect(stories[0].tasks[0].status).toBe('done')
+test('parseTasks ignores trailing comments on a field', () => {
+  const [t] = parseTasks('### T1: A\nstatus: done  # skeleton created early\n')
+  expect(t.status).toBe('done')
 })
 
-const WAVES = `# Tasks: Reset
+const DEPS = `# Tasks: Reset
 
 ## Epic: Reset
 
-### Story S1: User resets their password
+### T1: Reset API
+project: api
+status: review
+depends_on: []
+acceptance: AC1, AC3
 
-\`\`\`yaml
-- id: T1.1
-  title: Reset API contract
-  project: api
-  type: contract
-  agent: orchestrator
-  depends_on: []
-  status: review
+### T2: Reset endpoints
+project: "api"
+status: draft
+depends_on: [T1]
+acceptance: AC1
 
-- id: T1.2
-  title: Reset endpoints
-  project: api
-  type: implementation
-  agent: python-developer
-  depends_on: [T1.1]
-  status: draft
-
-- id: T1.3
-  title: Reset form
-  project: "web"
-  type: implementation
-  agent: orchestrator
-  depends_on:
-    - T1.1
-    - T1.2  # needs the endpoint for its integration test
-  status: draft
-\`\`\`
-
-**Waves:** 1: T1.1 · 2: T1.2 · 3: T1.3
-
-\`\`\`mermaid
-flowchart LR
-  subgraph W1["Wave 1"]
-    T1_1["T1.1 · api · contract"]
-  end
-  T1_1 --> T1_2 --> T1_3
-  classDef api fill:#dbeafe
-  class T1_1,T1_2 api
-\`\`\`
+### T3: Reset screen
+project: web
+status: draft
+depends_on: [T1, T2]  # needs the endpoints for its integration test
+acceptance: AC2
 `
 
-test('parseTasks reads project and depends_on, inline and as a block list', () => {
-  const [s] = parseTasks(WAVES)
-  expect(s.tasks.map((t) => t.project)).toEqual(['api', 'api', 'web'])
-  expect(s.tasks.map((t) => t.dependsOn)).toEqual([[], ['T1.1'], ['T1.1', 'T1.2']])
-  expect(s.tasks.length).toBe(3)
-  // tasks.md written before tasks had these fields
-  const legacy = parseTasks(TASKS)
-  expect(legacy[0].tasks[0].project).toBe('')
-  expect(legacy[0].tasks[0].dependsOn).toEqual([])
+test('parseTasks reads project, depends_on and acceptance', () => {
+  const tasks = parseTasks(DEPS)
+  expect(tasks.map((t) => t.project)).toEqual(['api', 'api', 'web'])
+  expect(tasks.map((t) => t.dependsOn)).toEqual([[], ['T1'], ['T1', 'T2']])
+  expect(tasks[0].acceptance).toEqual(['AC1', 'AC3'])
+  expect(parseTasks(TASKS)[2].dependsOn).toEqual(['T2'])
 })
 
 test('blockedBy lists dependencies that are not implemented yet', () => {
-  const stories = parseTasks(WAVES)
-  const [t1, t2, t3] = stories[0].tasks
-  expect(blockedBy(t1, stories)).toEqual([])
-  expect(blockedBy(t2, stories)).toEqual([])
-  expect(blockedBy(t3, stories)).toEqual(['T1.2'])
-  expect(blockedBy({ ...t2, dependsOn: ['T9.9'] }, stories)).toEqual(['T9.9'])
+  const tasks = parseTasks(DEPS)
+  const [t1, t2, t3] = tasks
+  expect(blockedBy(t1, tasks)).toEqual([])
+  expect(blockedBy(t2, tasks)).toEqual([])
+  expect(blockedBy(t3, tasks)).toEqual(['T2'])
+  expect(blockedBy({ ...t2, dependsOn: ['T9'] }, tasks)).toEqual(['T9'])
 })
 
 test('parseReview tells READY from NOT READY', () => {
@@ -171,13 +135,13 @@ test('derive walks the pipeline', () => {
   expect(derive(feature({ spec: { ...parseSpec(SPEC), status: 'draft' } })).next?.command).toBe('/sdd:clarify')
   expect(derive(feature({ spec: { ...parseSpec(SPEC), status: 'clarified' } })).next?.command).toBe('/sdd:plan')
   expect(derive(feature({})).next?.command).toBe('/sdd:tasks')
-  const stories = parseTasks(TASKS)
-  expect(derive(feature({ planStatus: 'tasks-ready', stories })).next?.command).toBe('/sdd:implement S1')
-  stories[0].tasks.forEach((t) => (t.status = 'review'))
-  expect(derive(feature({ planStatus: 'tasks-ready', stories })).next?.command).toBe('/sdd:implement S2')
-  stories[1].tasks.forEach((t) => (t.status = 'review'))
-  expect(derive(feature({ planStatus: 'tasks-ready', stories })).next?.command).toBe('/sdd:review')
-  expect(derive(feature({ planStatus: 'tasks-ready', stories, review: 'READY' })).next).toBeNull()
+  const tasks = parseTasks(TASKS)
+  expect(derive(feature({ planStatus: 'tasks-ready', tasks })).next?.command).toBe('/sdd:implement T2')
+  tasks[1].status = 'review'
+  expect(derive(feature({ planStatus: 'tasks-ready', tasks })).next?.command).toBe('/sdd:implement T3')
+  tasks[2].status = 'review'
+  expect(derive(feature({ planStatus: 'tasks-ready', tasks })).next?.command).toBe('/sdd:review')
+  expect(derive(feature({ planStatus: 'tasks-ready', tasks, review: 'READY' })).next).toBeNull()
 })
 
 const DRAFT = `# Feature: Flagship
@@ -244,6 +208,17 @@ test('the gate lists what blocks the next command', () => {
   expect(gate(feature({ review: 'READY' }))).toBeNull()
 })
 
+test('the implement gate checks acceptance criteria and dependencies', () => {
+  const tasks = parseTasks(DEPS)
+  tasks[0].status = 'draft'
+  tasks[1].acceptance = []
+  const g = gate(feature({ planStatus: 'tasks-ready', tasks }))!
+  expect(g.command).toBe('/sdd:implement T1')
+  expect(g.checks.find((c) => c.key === 'ac')?.ok).toBe(true)
+  tasks[0].dependsOn = ['T2']
+  expect(gate(feature({ planStatus: 'tasks-ready', tasks }))!.checks.find((c) => c.key === 'deps')?.ok).toBe(false)
+})
+
 test('currentSlug prefers pin, then branch, then newest', () => {
   const list = [feature({ slug: 'a', modified: 1 }), feature({ slug: 'user-login', modified: 0 })]
   expect(currentSlug(list, 'feat/user-login', null)).toBe('user-login')
@@ -296,7 +271,7 @@ test('the current tab shows the spec, its next step, and fills the prompt', asyn
     await ui.press({ key: 'fill-next' })
     await ui.unmount()
   }
-  expect(filled).toEqual(['/sdd:implement S1', '/sdd:implement S1'])
+  expect(filled).toEqual(['/sdd:implement T2', '/sdd:implement T2'])
 })
 
 test('the all tab lists every spec and can pin one', async ($, on) => {
@@ -360,13 +335,13 @@ test("another mod's pane is left alone", async ($, on) => {
 
 const DONE = { 'specs/user-login/review.md': 'Verdict: READY' }
 
-test('a finished feature shows the done card and hides tasks and stories', async ($, on) => {
+test('a finished feature shows the done card and hides the tasks', async ($, on) => {
   stubProject($, on, true, { files: DONE })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: '✓ Feature done' })).toBeDefined()
   expect(await ui.find({ key: 'fill-next' })).toBeUndefined()
-  expect(await ui.find({ key: 'story-S1' })).toBeUndefined()
+  expect(await ui.find({ key: 'task-T1' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^Tasks / })).toBeUndefined()
   await ui.unmount()
 })
@@ -419,21 +394,20 @@ test('the next step card waits on the open checks', async ($, on) => {
 })
 
 test('a task whose dependencies are open shows what it waits on', async ($, on) => {
-  stubProject($, on, true, { files: { 'specs/user-login/tasks.md': WAVES } })
+  stubProject($, on, true, { files: { 'specs/user-login/tasks.md': DEPS } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: 'waits on T1.2' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'api · python-developer' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'waits on T2' })).toBeDefined()
   await ui.unmount()
 })
 
-test('mid-run, a later wave still shows what it waits on', async ($, on) => {
-  // wave 1 done (review), wave 2 running (in-progress), wave 3 not started (draft)
-  const midRun = WAVES.replace('depends_on: [T1.1]\n  status: draft', 'depends_on: [T1.1]\n  status: in-progress')
-  expect(parseTasks(midRun)[0].tasks.map((t) => t.status)).toEqual(['review', 'in-progress', 'draft'])
+test('mid-run, a later task still shows what it waits on', async ($, on) => {
+  // T1 implemented (review), T2 running (in-progress), T3 not started (draft)
+  const midRun = DEPS.replace('status: draft\ndepends_on: [T1]', 'status: in-progress\ndepends_on: [T1]')
+  expect(parseTasks(midRun).map((t) => t.status)).toEqual(['review', 'in-progress', 'draft'])
   stubProject($, on, true, { files: { 'specs/user-login/tasks.md': midRun } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: 'waits on T1.2' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'waits on T2' })).toBeDefined()
   await ui.unmount()
 })
