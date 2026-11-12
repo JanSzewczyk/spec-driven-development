@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -210,8 +210,8 @@ flowchart TD
     N -->|yes| H
     N -->|no| O[/sdd:review/]
     O --> P[spec-guard + drift-detector + reviewer + skills]
-    P -->|GO| Q[git commit + gh pr create]
-    P -->|NO-GO| H
+    P -->|READY| Q[git commit + gh pr create]
+    P -->|NOT READY| H
 ```
 
 | Phase | Command | What happens |
@@ -222,7 +222,7 @@ flowchart TD
 | **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Decompose plan into YAML tasks with `project`, `type`, `agent`, `skills`, `depends_on`, auto-routed via `capabilities.md`; waves + Mermaid flow per Story |
 | **Implement** | `/sdd:implement <story-id>` | A whole Story wave by wave — unblocked tasks in parallel on their specialist agents, each with its own TDD loop; hooks enforce typecheck + lint per project |
-| **Review** | `/sdd:review` | spec-guard + drift-detector + reviewer + domain skills → verdict GO/NO-GO → commit + PR |
+| **Review** | `/sdd:review` | spec-guard + drift-detector + reviewer + domain skills → verdict READY/NOT READY → commit + PR |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
 ---
@@ -471,13 +471,13 @@ Phase 6 — Final audit before PR. Runs in sequence:
 2. `spec-guard` over the entire feature diff (committed + uncommitted + untracked files, against the merge base with `main`)
 3. `drift-detector` over spec ↔ plan ↔ tasks ↔ code
 4. `ui-critic` when UI files changed (soft check)
-5. `reviewer` agent receives all of the above, invokes the domain skills from `capabilities.md` relevant to the diff and writes `specs/<slug>/review.md` with verdict GO / NO-GO
-6. On GO: shows the commit title, PR title and file list and asks before committing; then stages exactly those files, `git commit` (Conventional Commits format) + `gh pr create` with body linking to `spec.md`
-7. On NO-GO: list concrete blockers
+5. `reviewer` agent receives all of the above, invokes the domain skills from `capabilities.md` relevant to the diff and writes `specs/<slug>/review.md` with verdict READY / NOT READY
+6. On READY: shows the commit title, PR title and file list and asks before committing; then stages exactly those files, `git commit` (Conventional Commits format) + `gh pr create` with body linking to `spec.md`
+7. On NOT READY: list concrete blockers
 
 ### 📊 `/sdd:analyze`
 
-Diagnostic tool — run anytime to detect drift between spec ↔ plan ↔ tasks ↔ code. Useful before `/sdd:review` to avoid a NO-GO verdict.
+Diagnostic tool — run anytime to detect drift between spec ↔ plan ↔ tasks ↔ code. Useful before `/sdd:review` to avoid a NOT READY verdict.
 
 Outputs a markdown matrix:
 
@@ -534,13 +534,13 @@ Cross-checks performed:
 
 ### 🧐 `reviewer`
 
-**Purpose:** Final quality audit before PR. Orchestrates domain-specific audits and decides GO/NO-GO.
+**Purpose:** Final quality audit before PR. Orchestrates domain-specific audits and decides READY/NOT READY.
 
 **Called by:** `/sdd:review`, which passes it the test results and the spec-guard, drift-detector and ui-critic results — it does not re-run the suite or start sub-agents itself.
 
 Pipeline:
 
-1. Read the test results from the prompt (any failure → NO-GO)
+1. Read the test results from the prompt (any failure → NOT READY)
 2. Check coverage against the targets in `specs/constitution.md` §6
 3. Invoke the audit skills from `capabilities.md` relevant to the diff, e.g. for a React project:
    - `react-doctor` skill if `.tsx`/`.jsx` files changed
@@ -548,9 +548,9 @@ Pipeline:
    - `@szum-tech/server-actions` skill if server actions added
 4. Verify commit messages follow Conventional Commits (when the branch has commits)
 5. Generate `specs/<slug>/review.md` with verdict, including the spec-guard, drift and visual-review sections
-6. Block GO if any test fails, spec-guard is not satisfied, or any critical a11y/security violation exists
+6. Never return READY if any test fails, spec-guard is not satisfied, or any critical a11y/security violation exists
 
-**Output:** JSON `{verdict: "GO" | "NO_GO", blockers: [...], warnings: [...]}`
+**Output:** JSON `{verdict: "READY" | "NOT_READY", blockers: [...], warnings: [...]}`
 
 ### 🎨 `ui-critic`
 
@@ -579,7 +579,7 @@ Pipeline:
 }
 ```
 
-Severity classification: `issue` (visible bug, blocks GO), `warning` (suboptimal but functional), `info` (observation). `SKIPPED` never blocks `/sdd:review` — it surfaces an infrastructure note instead.
+Severity classification: `issue` (visible bug, blocks a READY verdict), `warning` (suboptimal but functional), `info` (observation). `SKIPPED` never blocks `/sdd:review` — it surfaces an infrastructure note instead.
 
 Screenshots are saved under `./.sdd-screenshots/` — add this path to `.gitignore`.
 
@@ -754,7 +754,7 @@ Pipeline executes:
    - `react-doctor` skill: 89/100
    - `accessibility-audit` skill: 0 critical
    - Conventions: OK
-6. Verdict: **GO** — you confirm the commit and PR
+6. Verdict: **READY** — you confirm the commit and PR
 7. Commit: `feat(reset-password): add email-based reset flow`
 8. PR opened with body referencing `specs/user-can-reset-password-via-email/spec.md`
 
@@ -862,7 +862,7 @@ Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro,
 10. **💬 Fresh chat per Story — and `/clear` between phases.** Open a new Claude session when switching to a new Story, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
 11. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
 12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:tasks`, `/sdd:implement`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
-13. **📦 Batch human feedback.** Collect visual/QA tweaks and NO-GO fixes into one message per round instead of many small turns — each turn reprocesses the full context and multiplies cost.
+13. **📦 Batch human feedback.** Collect visual/QA tweaks and NOT READY fixes into one message per round instead of many small turns — each turn reprocesses the full context and multiplies cost.
 
 ---
 

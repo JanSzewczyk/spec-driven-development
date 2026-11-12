@@ -13,7 +13,7 @@ Use it when:
 - You feel something is off
 - The spec was changed after implementation
 - You have many tasks and aren't sure what is up to date
-- Before `/sdd:review` to avoid a NO-GO verdict
+- Before `/sdd:review` to avoid a NOT READY verdict
 
 ## Steps
 

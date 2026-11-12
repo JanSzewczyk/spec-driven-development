@@ -278,7 +278,7 @@ export function renderCurrent(el: any, ctx: Ctx) {
     if (st) kids.push(st)
   }
   if (!done) kids.push(nextCard(el, ctx, f))
-  if (!done && f.review) kids.push(Text({ color: f.review === 'GO' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review] }))
+  if (!done && f.review) kids.push(Text({ color: f.review === 'READY' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
   for (const w of warn) kids.push(Text({ color: 'red', wrap: 'wrap', children: ['⚠ ' + w] }))
   kids.push(docSwitch(el, ctx, f))
   // Sections get room to breathe on Desktop/VS Code; the terminal keeps one line between them.

@@ -154,13 +154,17 @@ test('blockedBy lists dependencies that are not implemented yet', () => {
   expect(blockedBy({ ...t2, dependsOn: ['T9.9'] }, stories)).toEqual(['T9.9'])
 })
 
-test('parseReview tells GO from NO-GO', () => {
-  expect(parseReview('Verdict: NO-GO')).toBe('NO-GO')
-  expect(parseReview('Verdict: GO')).toBe('GO')
+test('parseReview tells READY from NOT READY', () => {
+  expect(parseReview('Verdict: NOT READY')).toBe('NOT READY')
+  expect(parseReview('Verdict: READY')).toBe('READY')
+  expect(parseReview('**Verdict:** NOT_READY')).toBe('NOT READY')
+  expect(parseReview('# Review\n\n**Verdict:** READY\n\n## Drift (drift-detector)\n- the last round was NOT READY, now fixed\n')).toBe('READY')
+  // reviews written before the rename
+  expect(parseReview('Verdict: NO-GO')).toBe('NOT READY')
+  expect(parseReview('Verdict: GO')).toBe('READY')
   expect(parseReview('nothing')).toBeNull()
-  expect(parseReview('# Review\n\n**Verdict:** GO\n\n## Drift (drift-detector)\n- the last round was NO-GO, now fixed\n')).toBe('GO')
-  expect(parseReview('# Review\n\n**Verdict:** NO-GO\n')).toBe('NO-GO')
-  expect(parseReview('**Verdict:** NO_GO')).toBe('NO-GO')
+  expect(parseReview('# Review\n\n**Verdict:** GO\n\n## Drift (drift-detector)\n- the last round was NO-GO, now fixed\n')).toBe('READY')
+  expect(parseReview('**Verdict:** NO_GO')).toBe('NOT READY')
 })
 
 test('derive walks the pipeline', () => {
@@ -173,7 +177,7 @@ test('derive walks the pipeline', () => {
   expect(derive(feature({ planStatus: 'tasks-ready', stories })).next?.command).toBe('/sdd:implement S2')
   stories[1].tasks.forEach((t) => (t.status = 'review'))
   expect(derive(feature({ planStatus: 'tasks-ready', stories })).next?.command).toBe('/sdd:review')
-  expect(derive(feature({ planStatus: 'tasks-ready', stories, review: 'GO' })).next).toBeNull()
+  expect(derive(feature({ planStatus: 'tasks-ready', stories, review: 'READY' })).next).toBeNull()
 })
 
 const DRAFT = `# Feature: Flagship
@@ -237,7 +241,7 @@ test('the gate lists what blocks the next command', () => {
   const tasks = gate(feature({ planStatus: 'draft', plan: { status: 'draft', missing: [], openItems: 0 }, spec: { ...parseSpec(DRAFT), openQuestions: 0 } }))!
   expect(tasks.command).toBe('/sdd:tasks')
   expect(tasks.open).toBe(0)
-  expect(gate(feature({ review: 'GO' }))).toBeNull()
+  expect(gate(feature({ review: 'READY' }))).toBeNull()
 })
 
 test('currentSlug prefers pin, then branch, then newest', () => {
@@ -354,7 +358,7 @@ test("another mod's pane is left alone", async ($, on) => {
   await ui.unmount()
 })
 
-const DONE = { 'specs/user-login/review.md': 'Verdict: GO' }
+const DONE = { 'specs/user-login/review.md': 'Verdict: READY' }
 
 test('a finished feature shows the done card and hides tasks and stories', async ($, on) => {
   stubProject($, on, true, { files: DONE })
