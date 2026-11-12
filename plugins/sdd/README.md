@@ -4,9 +4,9 @@ Claude Code plugin that carries a feature through a fixed pipeline: `/sdd:spec` 
 
 | Part | What |
 | --- | --- |
-| Commands | `/sdd:constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `analyze`, `doctor` |
+| Commands | `/sdd:constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `analyze` |
 | Agents | `spec-guard`, `drift-detector`, `reviewer`, `ui-critic` |
-| Skill | `doctor` (project readiness audit and `init`) |
+| Skill | `doctor` — `/sdd:doctor check` / `init` (project readiness audit and setup) |
 
 ## Install
 
@@ -17,4 +17,4 @@ Claude Code plugin that carries a feature through a fixed pipeline: `/sdd:spec` 
 
 Then run `/sdd:doctor check` and `/sdd:doctor init` in your project.
 
-The full guide (flow, commands, agents, routing, hooks) is in the [repository README](../../README.md). The optional Claude Code Desktop panel for it is [sdd-board](../sdd-board/README.md).
+The full guide (flow, commands, agents, routing) is in the [repository README](../../README.md). The optional Claude Code Desktop panel for it is [sdd-board](../sdd-board/README.md).

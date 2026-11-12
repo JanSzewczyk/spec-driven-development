@@ -1,6 +1,7 @@
 ---
 name: doctor
-description: Audit (`check`) or set up (`init`) a project for the SDD framework — constitution, spec template, capabilities, quality hooks. Use for "is my project SDD-ready", "set up SDD", "why doesn't /sdd:spec work".
+description: Audit (`check`) or set up (`init`) a project for the SDD framework — constitution, spec template, capabilities. Use for "is my project SDD-ready", "set up SDD", "why doesn't /sdd:spec work".
+argument-hint: "check | init"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
 ---
 
@@ -36,12 +37,9 @@ check: `pass` ✅ / `warn` ⚠️ / `fail` ❌.
    `Stack profile`), `Task type` routing. Missing → fail; partial → warn. Missing `Model` / `Stack`
    routing columns or the `Generated / out-of-band paths` section (legacy files) → warn, suggest
    `init`. A project in `Projects` but not in constitution §2 (or reverse) → warn.
-4. **`.claude/settings.json` hooks** — valid JSON with a `hooks.PostToolUse` entry whose command
-   references `.claude/hooks/typecheck.sh` or `.claude/hooks/lint.sh`. No file → fail; no SDD
-   entry → warn.
-5. **Git + gh** — `.git` exists; `git status --porcelain` clean; `gh` on PATH and
+4. **Git + gh** — `.git` exists; `git status --porcelain` clean; `gh` on PATH and
    `gh auth status` ok. Dirty tree or no gh → warn.
-6. **Tooling** — per project in `Projects`: its path exists and the executables of its §2
+5. **Tooling** — per project in `Projects`: its path exists and the executables of its §2
    commands resolve (e.g. `node_modules` present, `uv`/`ruff`/`pytest` reachable). Missing → warn.
 
 ### Report
@@ -49,15 +47,14 @@ check: `pass` ✅ / `warn` ⚠️ / `fail` ❌.
 ```markdown
 # SDD Readiness Report
 
-**Status:** ⚠️ PARTIAL (5/6 passed)
+**Status:** ⚠️ PARTIAL (4/5 passed)
 **Projects:** web — Next.js 15, TS, Vitest (pnpm) · api — FastAPI (uv)
 
 | # | Check | Status | Detail |
 |---|-------|--------|--------|
-| 4 | .claude/settings.json hooks | ❌ | no PostToolUse hooks |
-| 6 | Tooling | ⚠️ | api: `uv` not found |
+| 5 | Tooling | ⚠️ | api: `uv` not found |
 
-✅ 4 passed: 1, 2, 3, 5
+✅ 4 passed: 1, 2, 3, 4
 
 ## Next steps
 - <one bullet per fix>

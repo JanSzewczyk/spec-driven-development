@@ -19,7 +19,7 @@
 
 Vibe coding (loose prompt → AI guesses → iterate by trial and error) works for demos but produces spaghetti in production: every fix breaks something else, security gaps multiply, the codebase becomes unmaintainable.
 
-SDD fixes this by enforcing **canonical phases**: `constitution → spec → clarify → plan → tasks → implement → review`. AI is forced to read and confirm a plan before writing a single line of code. Verification agents and blocking hooks make the feedback loop tight enough that the model **cannot skip** validation steps.
+SDD fixes this by enforcing **canonical phases**: `constitution → spec → clarify → plan → tasks → implement → review`. AI is forced to read and confirm a plan before writing a single line of code. Verification agents make the feedback loop tight enough that the model **cannot skip** validation steps.
 
 > SDD inverts traditional AI-assisted coding. Instead of "vibe coding" (vague prompt → AI guesses → fix loop), the **specification is the source of truth** and code is its mechanical consequence.
 
@@ -41,8 +41,7 @@ The unique contribution of this framework: **per-task routing to your existing s
 - 🏥 **`/sdd:doctor`** — preflight audit + one-command init
 - 🎭 **Orchestration of existing sub-agents** (does not duplicate — invokes specialist agents from the plugin marketplace via the Task tool)
 - 🏷️ **Tagged tasks** — every task in `tasks.md` has `project`, `type`, `agent`, `skills`, `depends_on` → auto-routing to the right specialist, and parallel waves for everything that does not block
-- 🧱 **Any layout, any app** — single app, monorepo (Nx, Turborepo, workspaces) or several repositories; web, backend and mobile projects side by side, each with its own commands, hooks and specialists
-- 🪝 **Auto-feedback hooks** — typecheck + lint block Claude via exit code 2
+- 🧱 **Any layout, any app** — single app, monorepo (Nx, Turborepo, workspaces) or several repositories; web, backend and mobile projects side by side, each with its own commands and specialists
 - 🌿 **Conventional Commits branches** — `/sdd:spec feat user login` → branch `feat/user-login`
 - 📐 **TDD-first** — tests always before implementation
 - 🧠 **Context discipline** — sub-agents receive only their scope, skills load on demand
@@ -61,7 +60,6 @@ The unique contribution of this framework: **per-task routing to your existing s
   - [🧱 Three-tier agent hierarchy](#-three-tier-agent-hierarchy)
   - [🏷️ Per-task routing](#-per-task-routing)
   - [🧠 Context management](#-context-management)
-  - [🪝 Verification hooks](#-verification-hooks)
   - [📇 Capabilities registry — hybrid mode](#-capabilities-registry--hybrid-mode)
 - [⌨️ Slash Commands Reference](#-slash-commands-reference)
 - [🤖 Sub-agents Reference](#-sub-agents-reference)
@@ -115,15 +113,15 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@0.7.0`. Once installed, the plugin's 9 slash commands, 4 verification sub-agents, and the `doctor` skill are available in **every** project — no per-project copy required. Hook scripts are NOT shipped by the plugin; doctor generates them per-project during init based on the detected stack.
+You should see `sdd@0.7.0`. Once installed, the plugin's 8 slash commands, 4 verification sub-agents, and the `doctor` skill (`/sdd:doctor`) are available in **every** project — no per-project copy required.
 
 ### 2. Initialize a project
 
 Open the target project in Claude Code and run:
 
 ```text
-/sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md, .claude/settings.json
-/sdd:doctor check     # confirms 6/6 — per-project files present, constitution valid
+/sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md
+/sdd:doctor check     # confirms 5/5 — per-project files present, constitution valid
 /sdd:constitution     # edit specs/constitution.md (long-form, no token limit)
 ```
 
@@ -131,9 +129,8 @@ What `init` does:
 
 - Bootstraps `specs/constitution.md` from the bundled template (skipped if already present — never overwrites).
 - Copies `specs/template.md` (the base for new feature specs) into the project.
-- Generates `specs/capabilities.md` by scanning your installed plugin marketplace (so it reflects the specialist agents and skills you actually have).
-- Generates project-local hook scripts at `.claude/hooks/typecheck.sh` and `.claude/hooks/lint.sh` containing ONLY the tools your project actually uses — discovered from its scripts/tasks, CI and pre-commit config, and tool configs, for any language (no fixed stack list). Existing hook files are never overwritten — once you customise one, it's yours.
-- Safe-merges `.claude/settings.json` with PostToolUse entries pointing at those project-local hooks. Existing keys (permissions, MCP config, your own hooks) are preserved verbatim.
+- Generates `specs/capabilities.md` from the specialist agents and skills available in your session.
+- With projects in sibling repositories, adds their paths to `permissions.additionalDirectories` in `.claude/settings.json` (other keys preserved; malformed JSON is left untouched).
 
 > **`CLAUDE.md` is not touched.** The project-root `CLAUDE.md` (if you keep one as a Claude Code session loader) is fully owned by you — the SDD framework never reads or writes it. The source of truth is `specs/constitution.md`, edited via `/sdd:constitution`.
 
@@ -201,9 +198,9 @@ flowchart TD
     H --> I{type ends with -test?}
     I -->|yes| J[Write tests<br/>red phase]
     I -->|no| K[Route to specialist<br/>per task.agent]
-    J --> L[Hook: typecheck + lint]
+    J --> L[Typecheck + lint]
     K --> L
-    L -->|fail exit 2| K
+    L -->|fail| K
     L -->|pass| M[spec-guard]
     M -->|missing AC| K
     M -->|satisfied| N{more tasks?}
@@ -218,10 +215,10 @@ flowchart TD
 |-------|---------|--------------|
 | **Constitution** | `/sdd:constitution` | Edit `specs/constitution.md` — the long-form source of truth (tech stack, conventions, **WHAT NOT TO DO** with rationale, testing philosophy, out-of-scope). No token limit. The only file this command touches. |
 | **Specify** | `/sdd:spec <type> <description>` | Validate clean git, create branch `<type>/<slug>`, generate `specs/<slug>/spec.md` (business only — no code) |
-| **Clarify** | `/sdd:clarify` | AI reads spec.md and asks 5-10 targeted gap questions; updates spec with answers |
+| **Clarify** | `/sdd:clarify` | AI finds the gaps in spec.md, asks up to 5 questions (with proposed answers) and writes the answers into the spec in one run |
 | **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Decompose plan into YAML tasks with `project`, `type`, `agent`, `skills`, `depends_on`, auto-routed via `capabilities.md`; waves + Mermaid flow per Story |
-| **Implement** | `/sdd:implement <story-id>` | A whole Story wave by wave — unblocked tasks in parallel on their specialist agents, each with its own TDD loop; hooks enforce typecheck + lint per project |
+| **Implement** | `/sdd:implement <story-id>` | A whole Story wave by wave — unblocked tasks in parallel on their specialist agents, each with its own TDD loop; typecheck + lint per project after each task |
 | **Review** | `/sdd:review` | spec-guard + drift-detector + reviewer + domain skills → verdict READY/NOT READY → commit + PR |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
@@ -259,9 +256,8 @@ flowchart TD
 This framework adds:
 
 - 1 skill (`doctor`)
-- 9 slash commands (`/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`)
+- 8 slash commands (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`)
 - 4 verification agents (`spec-guard`, `drift-detector`, `reviewer`, `ui-critic`)
-- 2 hook scripts (`.claude/hooks/typecheck.sh`, `.claude/hooks/lint.sh`) generated per-project by `/sdd:doctor init` from the detected stack
 
 All **specialist agents and skills already exist** in the plugin marketplace — SDD orchestrates them, it does not duplicate them.
 
@@ -293,7 +289,7 @@ When the user runs `/sdd:implement S1`:
    Each subagent gets only its task, the spec and plan slices it serves, its project's test command,
    and the rule to edit only its own `files`/`tests`.
 3. **Inside each task**: failing tests first (meaningful red), then the implementation to green.
-4. **Hooks** (PostToolUse) run the edited file's *project's* typecheck + lint after every Write.
+4. **Typecheck + lint**: each task runs its project's `typecheck` and `lint` commands (constitution §2) after reaching green.
 5. **After each wave**: the wave's tests run per project; the next wave starts only when they pass.
 6. **Spec-guard** verifies the Story's combined diff once, at the end.
 7. **Status** in `tasks.md`: `draft` → `in-progress` → `review`.
@@ -312,7 +308,6 @@ SDD reasons about **projects**, not about one stack. `/sdd:doctor init` finds th
 
 - **`capabilities.md` → `## Projects`** lists each one with its kind (web, backend, mobile, library, e2e …), path and stack; the routing table's `Stack` column sends the same task type to a different specialist per project.
 - **Constitution §2** has one command row per project (`test`, `coverage`, `typecheck`, `lint`, `dev / ui-preview`), so a Python API runs `cd apps/api && uv run pytest`, the web app `pnpm nx run web:test`, a Flutter app `flutter test`.
-- **Hooks route by path**: an edit in `apps/api/` runs that project's `ruff`/`mypy` from its own directory and virtualenv; an edit in `apps/web/` runs the web project's typecheck target — never a repo-wide `tsc` from the root.
 - **Several repositories**: assumes everyone checks the sibling repos out next to the spec repo under the same names (the relative paths are committed). `specs/` lives in one spec repo; `/sdd:implement` opens the same feature branch in each sibling repo it touches, and `/sdd:review` commits and opens a linked PR in every one of them. `init` adds the sibling repos to `permissions.additionalDirectories`.
 - **UI review** (`ui-critic`) covers web projects; mobile and desktop UI is skipped unless a screenshot skill or MCP server for that platform is installed.
 
@@ -324,31 +319,6 @@ If you keep a Claude Code session loader (`CLAUDE.md` at the project root or per
 - `packages/ui/CLAUDE.md` (component library)
 
 The SDD framework itself does not read, write, or enforce any structure on these files — they are entirely yours.
-
-### 🪝 Verification hooks
-
-Hook scripts are **not shipped by the plugin** — they're technology-specific, so the plugin would have to bake in assumptions about every possible stack. Instead, because the doctor skill is LLM-driven, `/sdd:doctor init` **inspects how your project actually checks its code** — its declared scripts/tasks (`package.json`, `Makefile`, Gradle/Maven, etc.), CI and pre-commit config, and tool config files — then generates minimal hooks that reproduce *those* commands, for **only the tools your project uses**:
-
-```text
-<project>/.claude/hooks/typecheck.sh   # e.g. just `tsc` for a Next.js + TS project
-<project>/.claude/hooks/lint.sh        # e.g. just `biome` if Biome is detected
-```
-
-**There is no fixed list of supported stacks.** New languages and code-quality tools appear constantly; the skill detects and reproduces whatever your project uses — TypeScript, Python, Rust, Go, Deno, Java/Kotlin, Ruby, PHP, C#/.NET, Swift, Elixir, or a tool released last month. A few worked examples, to show the shape:
-
-- **TypeScript / JavaScript** — `tsc --noEmit` for typecheck; the linter the project depends on (Biome / ESLint / oxlint)
-- **Python** — `mypy`/`pyright` for typecheck; `ruff check` for lint
-- **Rust** — `cargo check` for typecheck; `cargo clippy` for lint &nbsp;·&nbsp; **Go** — `go vet` / `golangci-lint`
-- **Java** — the build tool's compile task as typecheck (`./gradlew compileJava` → `mvn compile`); Checkstyle/PMD/SpotBugs for lint when configured
-- **…anything else** — the skill reuses the exact command your project already runs to verify code
-
-The plugin ships a handful of these as starter patterns in `templates/hooks/`; the skill extends them by analogy for tools they don't cover. PostToolUse entries in `.claude/settings.json` run the generated scripts after every `Edit`/`Write`/`MultiEdit`. Exit code **2** blocks Claude until the diagnostic is fixed; missing tools exit 0 (safe no-op).
-
-**Stack-aware, non-destructive, idempotent.** `/sdd:doctor init`:
-
-- Generates hook scripts only when they don't exist — your customisations are sacred.
-- Safe-merges `.claude/settings.json`, preserving every non-SDD key (permissions, MCP config, your own hooks, model overrides).
-- On re-init, strips stale SDD-managed entries (including legacy v0.4 plugin-path entries) and re-adds fresh ones built from current detection.
 
 ### 📇 Capabilities registry — hybrid mode
 
@@ -396,10 +366,10 @@ Example schema:
 
 ### 🏥 `/sdd:doctor [check|init]`
 
-Preflight audit and auto-setup. **6 checks**: specs/constitution.md, specs/template.md, specs/capabilities.md valid, .claude/settings.json hooks, git + gh, tooling per project.
+Preflight audit and auto-setup. **5 checks**: specs/constitution.md, specs/template.md, specs/capabilities.md valid, git + gh, tooling per project.
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
-- `init` — bootstrap missing files (constitution, template, capabilities, settings.json hook entries) and auto-detect the session's agents/skills + project stack. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md` and every non-SDD key in `settings.json`. Never touches the project-root `CLAUDE.md`.
+- `init` — bootstrap missing files (constitution, template, capabilities) and auto-detect the session's agents/skills + project stack. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. Never touches the project-root `CLAUDE.md`.
 
 ### 📜 `/sdd:constitution`
 
@@ -420,21 +390,21 @@ Steps:
 
 ### ❓ `/sdd:clarify`
 
-Phase 2 — Clarify. AI reads the current spec.md and asks 5-10 targeted questions about gaps (ambiguous requirements, missing edge cases, vague acceptance criteria). When the user answers, the spec is updated automatically.
+Phase 2 — Clarify. Fills the skeleton `/sdd:spec` created, so manual editing is optional. AI reads spec.md, finds the gaps (empty sections, ambiguous requirements, untestable acceptance criteria) and asks up to 5 questions, each with a proposed answer you can accept. Answers go straight into the spec; anything unanswered stays in *Open questions*. Run it again if gaps remain.
 
 ### 🗺️ `/sdd:plan`
 
 Phase 3 — Plan. **Run in Plan Mode** (Shift+Tab): Claude reads and analyzes, drafts the plan in the session's plan file, and calls ExitPlanMode — approving that dialog is your review of the plan, and only then is it saved to `specs/<slug>/plan.md`. Without Plan Mode the plan is written directly and the command stops for you to read it.
 
-Generates `plan.md` with:
+Generates `plan.md` — the architectural and technical **decisions** and the **scope** of the change, not a description of it:
 
-- High-level approach
-- Data model (Mermaid ER diagram)
-- Component diagram (Mermaid flowchart)
-- API surface table
-- File-by-file change list
-- Reused utilities (citing existing code paths)
-- Risks & mitigations
+- High-level approach (key decisions, reasons, rejected alternatives)
+- Contracts shared between projects or layers (when any)
+- File-by-file change list, grouped per project, one line per file (with the code it reuses)
+- Risks & mitigations and open questions
+- Only when they help: data model, component diagram, API surface, reference sources
+
+Real forks are put to you as questions (with a recommendation) before the draft.
 
 After generation, **human review of plan.md is mandatory** before proceeding to `/sdd:tasks`.
 
@@ -457,7 +427,7 @@ Phase 5 — Implement a **whole Story** (recommended), or a single task. Pipelin
 1. Resolve scope and build the **waves** from `depends_on`; mark the tasks `in-progress`. A dependency that is not done yet stops the run (single-task mode names the blocking tasks).
 2. **Polyrepo:** before the first edit in a sibling repository, create the same feature branch there.
 3. **Run the waves.** A wave with several tasks runs them **in parallel** — one subagent per task, each on its own agent and `model` tier, each editing only its own `files`/`tests` and doing its own red → green.
-4. Hooks run automatically after every edit, for the edited file's project (typecheck + lint, exit 2 on failure).
+4. Each task runs its project's typecheck + lint (constitution §2) once its tests are green.
 5. After each wave the wave's tests run with each project's own `test` command; the next wave starts only when they pass. Tasks flip to `review`.
 6. `spec-guard` verifies the Story's combined diff — **once, at the Story boundary** (per repository when the Story touched several).
 
@@ -731,7 +701,7 @@ Generates one Story with tasks across three projects — the shared contract fir
 ```
 
 - **Wave 1:** `T1.1` declares the reset schemas and their tests (contract-first).
-- **Wave 2:** three subagents in parallel — `python-developer` on the API endpoints, `nextjs-backend-engineer` on the web form, a general-purpose agent on the Flutter screen. Each writes failing tests first, then the code, touching only its own files; the hooks check each file with its own project's tools.
+- **Wave 2:** three subagents in parallel — `python-developer` on the API endpoints, `nextjs-backend-engineer` on the web form, a general-purpose agent on the Flutter screen. Each writes failing tests first, then the code, touching only its own files; each task runs its own project's typecheck and lint.
 - **Wave 3:** the end-to-end test, once the API and web tasks are green.
 
 One `spec-guard` at the Story boundary; every task flips to `review`.
@@ -764,7 +734,7 @@ Pipeline executes:
 |------|------|
 | `/sdd:doctor init` | 30 s |
 | `/sdd:spec` | 1 min (Claude generates, you edit business spec) |
-| `/sdd:clarify` × 2 | 5 min (Q&A) |
+| `/sdd:clarify` | 5 min (Q&A) |
 | `/sdd:plan` (Plan Mode) | 3 min (analysis + generation) |
 | Human review of plan.md | 5-10 min |
 | `/sdd:tasks` | 1 min |
@@ -794,14 +764,10 @@ your-project/
 │       ├── tasks.md                       # YAML tasks with routing tags, dependencies, waves + Mermaid flow
 │       └── review.md                      # generated by /sdd:review
 ├── .claude/
-│   ├── settings.json                      # PostToolUse hook entries → project-local scripts (safe-merged; user keys preserved)
-│   └── hooks/
-│       ├── typecheck.sh                   # generated from detected stack; existing files never overwritten
-│       └── lint.sh                        # generated from detected stack; existing files never overwritten
 └── CLAUDE.md                              # (optional, user-owned) Claude Code session loader — never touched by SDD
 ```
 
-> **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md`, SDD-tagged hook entries inside `.claude/settings.json`, and (if missing) the generated `.claude/hooks/typecheck.sh` + `.claude/hooks/lint.sh`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md`, any non-SDD keys in `.claude/settings.json`, and any hook script that already exists — is owned by you and is never modified.
+> **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md` and, only with sibling repositories, `permissions.additionalDirectories` in `.claude/settings.json`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md` — is yours.
 
 ### In the repository (installed once per machine)
 
@@ -819,20 +785,15 @@ spec-driven-development/                    # or your own forked plugin path
         ├── .claude-plugin/plugin.json     # plugin manifest
         ├── skills/
         │   └── doctor/                    # LLM-driven skill — no Python helpers
-        │       ├── SKILL.md               # the full procedure for `check` + `init`
+        │       ├── SKILL.md               # `check` procedure
         │       ├── reference/
-        │       │   └── settings-merge.md  # mechanical safe-merge procedure for settings.json
+        │       │   ├── init.md            # `init` procedure (loaded only for init)
+        │       │   └── settings-merge.md  # sibling-repo permissions edit for settings.json
         │       └── templates/             # bundled seed files read by `init`
         │           ├── constitution.md.template   # long-form project constitution
         │           ├── capabilities.md.template   # auto-generated + user-override hybrid
-        │           ├── specs/template.md          # base for new feature specs
-        │           └── hooks/                     # per-tool shell snippets composed into project hooks
-        │               ├── typecheck.sh.template
-        │               └── lint.sh.template
-        │       # settings.json is NOT a template — init builds hook entries from detected
-        │       # tools and safely merges them into any existing file.
-        ├── commands/                      # 9 slash commands (auto-discovered)
-        │   ├── doctor.md
+        │           └── specs/template.md          # base for new feature specs
+        ├── commands/                      # 8 slash commands (auto-discovered)
         │   ├── constitution.md / spec.md / clarify.md / plan.md
         │   └── tasks.md / implement.md / review.md / analyze.md
         └── agents/                        # 4 verification sub-agents
@@ -842,7 +803,6 @@ spec-driven-development/                    # or your own forked plugin path
             └── ui-critic.md               # optional — needs browser MCP
 ```
 
-> **No `hooks/` in the plugin.** Hook scripts are technology-specific and are generated per-project by `/sdd:doctor init` under `<project>/.claude/hooks/`. The plugin only carries the per-tool shell snippets (`templates/hooks/`) that doctor composes into those scripts, keeping only the blocks for the tools your project actually has.
 
 ---
 
@@ -850,7 +810,7 @@ spec-driven-development/                    # or your own forked plugin path
 
 Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro, OpenSpec, Anthropic guidance):
 
-1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Hooks make typecheck/lint non-skippable. Default to **test-first** TDD (failing test first, then implementation; trivially stub a missing symbol so the test fails on a real assertion). Use **contract-first** TDD only when the unit's deliverable is itself a public interface/contract other code references by shape: declare the contract first, then the tests (which now fail with meaningful assertion errors), then the implementation — following the project's own conventions for where interfaces live.
+1. **🧪 Force AI to validate its own work.** Every task's `acceptance` field must be measurable. Typecheck and lint run per task. Default to **test-first** TDD (failing test first, then implementation; trivially stub a missing symbol so the test fails on a real assertion). Use **contract-first** TDD only when the unit's deliverable is itself a public interface/contract other code references by shape: declare the contract first, then the tests (which now fail with meaningful assertion errors), then the implementation — following the project's own conventions for where interfaces live.
 2. **📜 The constitution is the WHY.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken. If you also maintain a Claude Code session loader (`CLAUDE.md`), use it to surface the most-broken rules and point at the constitution for detail — but that file is yours to shape, not the framework's.
 3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer agent. Break it into Epic → Story → Task. Each specialist receives only its slice.
 4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.
@@ -899,7 +859,7 @@ Two supporting mechanisms:
 - **Per-task tier.** `capabilities.md`'s routing table carries a `Model` column; `/sdd:tasks` stamps each task with a `model:` tier, and `/sdd:implement` passes it as the `model` of the subagent that runs the task. Defaults: `sonnet` for test/implementation types, `haiku` for `refactor`/`generic`.
 - **Per-agent tier.** The verification sub-agents carry their own `model:` frontmatter — `reviewer` on Opus (last line of defense), `spec-guard` / `drift-detector` / `ui-critic` on Sonnet — so they run at their own tier regardless of the session model.
 
-Keep large and generated output **out of the main loop**: verification agents exclude the `Generated / out-of-band paths` globs from every diff, `/sdd:plan` extracts a design source (Figma/MCP) **once** inside a sub-agent and caches the distilled style spec into `plan.md`, and large codebase scans return only a summary via a sub-agent.
+Keep large and generated output **out of the main loop**: verification agents exclude the `Generated / out-of-band paths` globs from every diff, `/sdd:plan` extracts reference sources (mockups, API specs, ADRs) **once** inside a sub-agent and caches what matters in `plan.md`, and large codebase scans return only a summary via a sub-agent.
 
 ---
 
@@ -913,12 +873,11 @@ Why this framework looks the way it does:
 | **Only 4 new agents** | The rest already exists in the plugin marketplace (storybook-tester, nextjs-backend-engineer, …). Duplicating them would be wasted effort and version drift. |
 | **YAML tags in tasks.md** | Explicit > heuristic. The user knows exactly which agent will be invoked for each task. |
 | **Conventional Commits in `/sdd:spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
-| **Hook exit code 2** | The strongest possible feedback signal for Claude. Cannot be ignored or skipped — Claude must fix the failure before continuing. |
 | **Skills loaded on demand** | No global pre-loading means smaller context per task. Skills are referenced from `capabilities.md` and loaded only when the task type requires them. |
 | **Plan Mode before `/sdd:implement`** | Forces human review and blocks destructive changes before a plan exists. |
 | **Hybrid capabilities.md** | `<!-- auto-generated -->` sections reflect installed plugins. `<!-- user-override -->` sections preserve customizations. Re-running `init` is safe. |
 | **Constitution lives under `specs/`, not in `CLAUDE.md`** | Two separate concerns. `specs/constitution.md` is the long-form source of truth — no token budget, rationale-rich, edited via `/sdd:constitution`. The project root `CLAUDE.md`, if you keep one, is a Claude Code session loader fully owned by you; the framework never reads, writes, or enforces its structure. |
-| **Framework lives in the plugin, project owns its specs** | Commands, agents, hooks, and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `specs/`, `.claude/settings.json`, and whatever `CLAUDE.md` you choose to maintain. Plugin updates roll out by reinstalling; project data is never overwritten. |
+| **Framework lives in the plugin, project owns its specs** | Commands, agents and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `specs/` and whatever `CLAUDE.md` you choose to maintain. Plugin updates roll out by reinstalling; project data is never overwritten. |
 
 ---
 
@@ -926,9 +885,7 @@ Why this framework looks the way it does:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Hooks not firing after Edit | `settings.json` not loaded, hook entries missing, or hook files not executable | Verify `.claude/settings.json` exists and its `hooks.PostToolUse` array contains entries pointing at `.claude/hooks/typecheck.sh` / `lint.sh`. Confirm the script files are executable (`chmod +x .claude/hooks/*.sh`). Re-run `/sdd:doctor init` to regenerate hook entries and any missing scripts from the detected stack. |
 | `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
-| `/sdd:implement` keeps producing the same code despite hook failures | typecheck error not propagating | Run `bash .claude/hooks/typecheck.sh < /dev/null` manually and check it exits 2 on a real failure. Verify the toolchain (`tsc`, `mypy`, etc.) is installed and reachable on `$PATH`. |
 | `claude -p "/sdd:implement S1"` (headless) stops before the wave's subagents report | print mode stops waiting for background subagents after a ceiling | Set `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` for headless runs of `/sdd:plan`, `/sdd:implement` and `/sdd:review` |
 | `/sdd:tasks` produces tasks with `agent: orchestrator` for everything | `capabilities.md` routing rules don't match task descriptions | Edit the `<!-- user-override -->` routing rules section in `capabilities.md` |
 | `spec-guard` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
@@ -944,7 +901,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 In short:
 
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
-2. Make changes inside the plugin (`plugins/sdd/commands/`, `plugins/sdd/agents/`, `plugins/sdd/skills/`, `plugins/sdd/skills/doctor/templates/`, `plugins/sdd/skills/doctor/reference/`, or the per-tool blocks in `plugins/sdd/skills/doctor/templates/hooks/*.sh.template`)
+2. Make changes inside the plugin (`plugins/sdd/commands/`, `plugins/sdd/agents/`, `plugins/sdd/skills/`, `plugins/sdd/skills/doctor/templates/`, `plugins/sdd/skills/doctor/reference/`)
 3. Exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and bump the version (`plugin.json`, `marketplace.json`, README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request
