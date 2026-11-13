@@ -1,8 +1,12 @@
 ---
+name: analyze
 description: Find conflicts between spec, plan, tasks and code at any point (SDD diagnostic)
+allowed-tools: Read, Glob, Bash, Agent
 argument-hint: "(none — works on the current branch)"
-allowed-tools: Read, Glob, Bash, Task
+disable-model-invocation: true
 ---
+
+# SDD Analyze
 
 A read-only diagnostic: where do the spec, plan, tasks and code disagree **right now**? Use it
 mid-feature, after changing the spec, or before `/sdd:review`. It edits nothing and runs no tests.
@@ -12,11 +16,8 @@ mid-feature, after changing the spec, or before `/sdd:review`. It edits nothing 
 ### 1. Verify
 
 Resolve the feature: the `specs/*/spec.md` whose `**Branch:**` equals `git branch --show-current`
-(none → list the specs and ask). Invoke `spec-verifier` once (Task
-tool) with the feature folder and the **feature diff**: a base commit (`git merge-base HEAD
-<default-branch>`), the changes `git diff <base>` plus the untracked files
-(`git ls-files --others --exclude-standard`) — in each sibling repository on the feature branch too
-(`## Projects` in `specs/capabilities.md`) — and the `Generated / out-of-band paths` globs to exclude.
+(none → list the specs and ask). Invoke `spec-verifier` once (Agent tool) with the feature folder and
+the **feature diff** as defined in [feature-diff.md](${CLAUDE_PLUGIN_ROOT}/references/feature-diff.md) (generated globs excluded).
 
 ### 2. Classify
 

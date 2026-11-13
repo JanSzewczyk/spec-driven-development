@@ -3,7 +3,7 @@
   "name": "sdd-board",
   "displayName": "SDD Board",
   "description": "Side panel for Claude Code Desktop that shows where each Spec-Driven Development feature stands: current spec with its pipeline phase and tasks, plus an overview of all specs. Companion to the sdd plugin.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "author": {
     "name": "Szum Tech Team",
     "email": "szum.tech@gmail.com",
@@ -17,5 +17,8 @@
     "mod",
     "panel",
     "dashboard"
+  ],
+  "dependencies": [
+    "sdd"
   ]
 }

@@ -1,0 +1,4 @@
+{
+  "description": "SDD doctor check tool",
+  "modules": ["./register.ts"]
+}

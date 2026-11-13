@@ -32,10 +32,11 @@
 <!-- Single source for SDD commands and agents. One row per project in specs/capabilities.md
      (`root` for a single app). Each command runs from the spec repo's root, so include the `cd`
      (`cd apps/api && uv run pytest`). `test` runs the full suite, `coverage` the suite with a
-     coverage report (/sdd:review prefers it). Empty cell = no command. -->
+     coverage report (/sdd:review prefers it), `dev` starts the app locally (extra review checks use it).
+     Empty cell = no command. -->
 
-| Project | Path | test | coverage | typecheck | lint | dev / ui-preview |
-|---------|------|------|----------|-----------|------|------------------|
+| Project | Path | test | coverage | typecheck | lint | dev |
+|---------|------|------|----------|-----------|------|-----|
 | root | `.` | | | | | |
 
 Add notes for non-obvious flags or env vars required.
@@ -48,7 +49,7 @@ Add notes for non-obvious flags or env vars required.
 
 ```mermaid
 flowchart LR
-    Client[Web client] --> API
+    Client --> API
     API --> DB[(Postgres)]
 ```
 
@@ -60,10 +61,11 @@ flowchart LR
 
 ## 4. Code conventions
 
-- TypeScript strict, no `any`.
-- File names: kebab-case.
+<!-- Per project when they differ. Examples: language strictness, file naming, import rules. -->
+
 - Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `docs`, `test`).
-- Errors: typed errors, no silent `catch`.
+- Errors: typed errors, no silent catches.
+- ...
 
 ---
 

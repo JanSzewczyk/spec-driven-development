@@ -3,7 +3,7 @@
   "name": "sdd",
   "displayName": "Spec-Driven Development",
   "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), self-contained Jira-like tasks handed to your own implementation flow, and verification against the spec.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "Szum Tech Team",
     "email": "szum.tech@gmail.com",
@@ -14,7 +14,6 @@
   "keywords": [
     "spec-driven-development",
     "sdd",
-    "tdd",
     "specification",
     "workflow",
     "agents"
@@ -23,6 +22,6 @@
   "agents": [
     "./agents/spec-verifier.md",
     "./agents/reviewer.md",
-    "./agents/ui-critic.md"
+    "./agents/codebase-surveyor.md"
   ]
 }

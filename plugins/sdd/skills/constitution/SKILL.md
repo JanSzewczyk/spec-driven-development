@@ -1,8 +1,12 @@
 ---
+name: constitution
 description: Edit the project constitution at specs/constitution.md (full long-form rules with rationale)
-argument-hint: "(none — opens specs/constitution.md for editing)"
 allowed-tools: Read, Edit, Bash, Glob
+argument-hint: "(none — opens specs/constitution.md for editing)"
+disable-model-invocation: true
 ---
+
+# SDD Constitution
 
 Edit `specs/constitution.md` — the source-of-truth constitution for this project. This is the long-form
 document where every rule carries its *Why*. This command operates only on `specs/constitution.md`.
@@ -25,10 +29,6 @@ If missing → STOP. Tell the user: "Run `/sdd:doctor init` first to bootstrap `
 
 ### 2. Read constitution
 
-```bash
-wc -l specs/constitution.md
-```
-
 Read the full file so you have its current state in context.
 
 ### 3. Propose edits
@@ -37,7 +37,7 @@ Help the user fill in or update the canonical sections:
 
 1. **Tech stack** — runtime versions, framework, DB, tests, lint. Include the *Why this stack* paragraph.
 2. **Run/build commands** — one row per project: `test`, `coverage`, `typecheck`, `lint`,
-   `dev / ui-preview`; document non-obvious flags.
+   `dev`; document non-obvious flags.
 3. **Architecture** — one paragraph + Mermaid diagram. The *Boundaries we maintain* list is the high-value piece.
 4. **Code conventions** — short list + concrete good/bad code examples from the repo.
 5. **WHAT NOT TO DO ⛔** — every entry MUST include a `**Why:**` line and (when available) `**Incident:**` reference. If the user gives a rule without a reason, ask for the rationale instead of guessing.
@@ -65,7 +65,7 @@ Show the user:
 
 - ✅ The ONLY write target is `specs/constitution.md`. Always.
 - ✅ Every "WHAT NOT TO DO" entry should carry its rationale.
-- ⛔ DO NOT modify the project-root `CLAUDE.md` or any per-module `CLAUDE.md`. They are likewise
+- ⛔ DO NOT modify the project-root `CLAUDE.md` or any per-module `CLAUDE.md`. Both are
   user-owned and outside this command's write scope.
 - ⛔ DO NOT put changelog / ADR-style history here — that belongs in `docs/adr/` or `CHANGELOG.md`.
 - ⛔ DO NOT invent rationale (`**Why:**`) for a rule. Ask the user.

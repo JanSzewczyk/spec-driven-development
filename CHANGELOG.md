@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-11-13
+
+`sdd` goes to 1.1.0 and `sdd-board` to 0.5.0. Breaking for existing installs: `ui-critic` and the `ui:` review key are gone, the `dev / ui-preview` column is `dev`, and `sdd-board` now requires `sdd`. Run `/sdd:doctor check` after updating.
+
+### Changed
+
+- **Every slash command is a skill** (`skills/<name>/SKILL.md`, `commands/` removed). The names stay `/sdd:<name>`. All ten skills set `disable-model-invocation: true`, so none is started by Claude on its own and their descriptions leave the always-loaded context. `Task` is `Agent` in `allowed-tools`.
+- **Shared text in `plugins/sdd/references/`** (`feature-diff`, `capabilities`, `status-lifecycle`, `sibling-repos`, `formats`), linked from the skills that used to repeat it.
+- **`/sdd:doctor check` runs as a tool.** `sdd` now carries a small mod that registers `doctor_check` (`mcp__sdd__doctor_check`); the skill renders its JSON. It covers 7 checks: the original 5, sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, `project`/`acceptance`/`depends_on` references, dependency cycles). Without mods (`--safe-mode`, WSL, Claude Code older than 2.1.287) the skill does the same checks itself.
+- **One TypeScript codebase for `sdd` and `sdd-board`** in `shared/sdd-core/` (`parse.ts`, `formats.ts`, `check.ts`), copied into each plugin by `scripts/sync-core.sh`. CI fails when a copy drifts. `sdd` needs Claude Code 2.1.287+.
+- **Constitution §2 column `dev`** replaces `dev / ui-preview` (the old name is still read); extra review checks use it to start the app.
+- `/sdd:plan` calls `sdd:codebase-surveyor` instead of a generic `Explore` agent.
+- **Seed templates assume no stack**: the constitution conventions and diagram are generic, and the generated-paths defaults drop `*.msw.ts`, `*.schemas.ts` and `openapi-client`. The `tdd` keyword is gone from `sdd`.
+- **Doctor check 4** needs `gh` only while no `pr` action is set under `## Actions`.
+- Documentation fixes: the unsupported "Polish diacritics grep" and timeline claims, Kiro "hooks", the 1 h / 30 min token example, the duplicated per-module `CLAUDE.md` advice, `/plan` → `/sdd:plan` in the spec template, and a dead `wc -l` step in `/sdd:constitution`.
+
+### Added
+
+- **`codebase-surveyor` agent**: read-only survey of the affected projects, at most 30 lines.
+- **`/sdd:retro`**: after a review, proposes WHAT NOT TO DO entries (with a `**Why:**` from the review or the user) for the constitution.
+- Tests for the doctor rules (`plugins/sdd/tests/`) and a CI job that runs `claude plugin test` for both plugins and checks the shared copies.
+
+### Removed
+
+- **`ui-critic` agent**, the `ui:` key of `## Review` (an old one is ignored, and the doctor suggests deleting it) and the `.sdd-screenshots/` glob. The framework no longer assumes a frontend; a visual or functional check of the running app is an agent of your own under `checks:`.
+
 ## [1.0.0] — 2026-11-13
 
 `sdd` goes to 1.0.0 and `sdd-board` to 0.4.0. The framework now **plans, hands off and verifies** instead of implementing: this changes the `tasks.md` and `capabilities.md` formats and removes the hooks, so existing specs need `/sdd:tasks` re-run and `/sdd:doctor init`.

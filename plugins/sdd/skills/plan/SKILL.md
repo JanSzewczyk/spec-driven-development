@@ -1,8 +1,12 @@
 ---
+name: plan
 description: Generate the architectural plan from the spec (SDD step 3) — run in Plan Mode
+allowed-tools: Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, ExitPlanMode, Bash(git branch:*)
 argument-hint: "(optional path to spec.md)"
-allowed-tools: Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, ExitPlanMode, Bash(git branch:*)
+disable-model-invocation: true
 ---
+
+# SDD Plan
 
 The **Plan** phase of SDD. Produce `plan.md`: the architectural and technical **decisions** and the
 **scope** of the change. No code.
@@ -22,12 +26,12 @@ Plan Mode the command writes `plan.md` directly and stops for you to read and ed
 
 ### 2. Survey the codebase
 
-Spawn a `Explore` subagent aimed at the paths of the affected projects. It returns a summary of at
-most ~30 lines: structure and naming patterns, and existing code to **reuse** (with paths). Nothing
-else enters the main context.
+Spawn the `sdd:codebase-surveyor` subagent (Agent tool) with the spec's Summary and acceptance
+criteria and the affected projects (name, kind, path). It returns at most 30 lines: structure,
+conventions and existing code to **reuse** (with paths). Nothing else enters the main context.
 
 If `spec.md` links reference sources (mockups, an OpenAPI/protocol spec, ADRs, schemas), extract
-them **once, in a subagent**, and return only what the plan needs; cache that in the plan's
+them **once, in a general-purpose subagent**, and return only what the plan needs; cache that in the plan's
 *Reference sources* section so later phases do not re-pull the raw material.
 
 ### 3. Decide
