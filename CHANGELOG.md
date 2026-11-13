@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] — 2026-11-13
 
-Breaking for existing installs: `ui-critic` and the `ui:` review key are gone, the `dev / ui-preview` column is `dev`, and `sdd-board` now requires `sdd`. Run `/sdd:doctor check` after updating.
+`sdd` goes to 1.1.0 and `sdd-board` to 0.5.0. Breaking for existing installs: `ui-critic` and the `ui:` review key are gone, the `dev / ui-preview` column is `dev`, and `sdd-board` now requires `sdd`. Run `/sdd:doctor check` after updating.
 
 ### Changed
 
