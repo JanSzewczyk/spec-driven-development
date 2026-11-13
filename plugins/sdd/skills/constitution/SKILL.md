@@ -29,10 +29,6 @@ If missing → STOP. Tell the user: "Run `/sdd:doctor init` first to bootstrap `
 
 ### 2. Read constitution
 
-```bash
-wc -l specs/constitution.md
-```
-
 Read the full file so you have its current state in context.
 
 ### 3. Propose edits
@@ -69,7 +65,7 @@ Show the user:
 
 - ✅ The ONLY write target is `specs/constitution.md`. Always.
 - ✅ Every "WHAT NOT TO DO" entry should carry its rationale.
-- ⛔ DO NOT modify the project-root `CLAUDE.md` or any per-module `CLAUDE.md`. They are likewise
+- ⛔ DO NOT modify the project-root `CLAUDE.md` or any per-module `CLAUDE.md`. Both are
   user-owned and outside this command's write scope.
 - ⛔ DO NOT put changelog / ADR-style history here — that belongs in `docs/adr/` or `CHANGELOG.md`.
 - ⛔ DO NOT invent rationale (`**Why:**`) for a rule. Ask the user.

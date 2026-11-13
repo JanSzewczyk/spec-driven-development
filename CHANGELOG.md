@@ -17,6 +17,9 @@ Breaking for existing installs: `ui-critic` and the `ui:` review key are gone, t
 - **One TypeScript codebase for `sdd` and `sdd-board`** in `shared/sdd-core/` (`parse.ts`, `formats.ts`, `check.ts`), copied into each plugin by `scripts/sync-core.sh`. CI fails when a copy drifts. `sdd` needs Claude Code 2.1.287+.
 - **Constitution §2 column `dev`** replaces `dev / ui-preview` (the old name is still read); extra review checks use it to start the app.
 - `/sdd:plan` calls `sdd:codebase-surveyor` instead of a generic `Explore` agent.
+- **Seed templates assume no stack**: the constitution conventions and diagram are generic, and the generated-paths defaults drop `*.msw.ts`, `*.schemas.ts` and `openapi-client`. The `tdd` keyword is gone from `sdd`.
+- **Doctor check 4** needs `gh` only while no `pr` action is set under `## Actions`.
+- Documentation fixes: the unsupported "Polish diacritics grep" and timeline claims, Kiro "hooks", the 1 h / 30 min token example, the duplicated per-module `CLAUDE.md` advice, `/plan` → `/sdd:plan` in the spec template, and a dead `wc -l` step in `/sdd:constitution`.
 
 ### Added
 
