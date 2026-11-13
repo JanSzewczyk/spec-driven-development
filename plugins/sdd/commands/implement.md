@@ -13,7 +13,8 @@ against the acceptance criteria.
 
 ### 1. Resolve scope
 
-Read `specs/<current>/tasks.md`. `$ARGUMENTS`: a task id → that task; `all` → every task not yet
+The feature is the `specs/*/spec.md` whose `**Branch:**` equals `git branch --show-current` (none →
+list the specs and ask). Read its `tasks.md`. `$ARGUMENTS`: a task id → that task; `all` → every task not yet
 `review|done`, in dependency order. A task whose `depends_on` are not all `review|done` → STOP and
 name the blockers. Independent tasks may be handed over together when the flow runs in the
 background; otherwise one after another.
@@ -50,8 +51,9 @@ The task is self-contained only by reference, so inline what it points to:
 otherwise leave it and show what is missing.
 
 **Sibling repositories.** Before the first edit in one, make sure it is on the feature branch
-`<type>/<slug>` (same name as here); create it from its default branch if missing, and stop and ask
-when its tree is dirty (`git -C <repo> status --porcelain`).
+with exactly the spec's `**Branch:**` name; create it from its default branch with
+`git -C <repo> checkout -b <branch>` if missing (not the `branch` action — it may pick another
+name), and stop and ask when its tree is dirty (`git -C <repo> status --porcelain`).
 
 ### 4. In-session implementation
 

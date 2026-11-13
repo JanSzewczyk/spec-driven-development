@@ -1,7 +1,7 @@
 ---
 description: Generate the architectural plan from the spec (SDD step 3) — run in Plan Mode
 argument-hint: "(optional path to spec.md)"
-allowed-tools: Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, ExitPlanMode
+allowed-tools: Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, ExitPlanMode, Bash(git branch:*)
 ---
 
 The **Plan** phase of SDD. Produce `plan.md`: the architectural and technical **decisions** and the
@@ -17,7 +17,8 @@ Plan Mode the command writes `plan.md` directly and stops for you to read and ed
 
 - `specs/constitution.md` (stack, commands, conventions, WHAT NOT TO DO)
 - `specs/capabilities.md`, only the `## Projects` section
-- `specs/<current>/spec.md` (current branch, or `$ARGUMENTS`)
+- the spec: `$ARGUMENTS`, else the `specs/*/spec.md` whose `**Branch:**` equals
+  `git branch --show-current` (none → list the specs and ask); its folder is `specs/<current>/`
 
 ### 2. Survey the codebase
 
@@ -38,7 +39,7 @@ decisions in *Open questions* that the user can make now.
 ### 4. Write the plan
 
 The plan carries **decisions and scope, not description**: do not restate the spec or the
-constitution, no code, one line per file. Required sections:
+constitution, no code, one line per file. Sections (Contracts only when something is shared):
 
 ```markdown
 # Plan: <feature_title>
@@ -69,7 +70,8 @@ shape and who provides/consumes it>
 
 Optional, only when they clarify the change: **Data model** (ER diagram when the schema changes),
 **Component diagram** (flowchart when the change spans several components or projects), **API
-surface** (table), **Reference sources** (from step 2). Diagrams are Mermaid. Keep the heading
+surface** (table), **Testing** (test layers and where tests live, per project, when the
+constitution does not settle it), **Reference sources** (from step 2). Diagrams are Mermaid. Keep the heading
 `Open questions` as is — the board counts its bullets.
 
 ### 5. Review, save, advance

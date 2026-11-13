@@ -25,14 +25,16 @@ Unset → use a branch-creating skill the session has, else run `git checkout -b
 git branch --show-current
 ```
 
-`feature_slug` = that name without the `<type>/` prefix. Only this repository (the **spec repo**,
+`feature_slug` = that name without its prefix up to the first `/` (the whole name when it has
+none), lowercased, `[a-z0-9-]` only. Only this repository (the **spec repo**,
 where `specs/` lives) gets the branch now; when `specs/capabilities.md` lists projects in sibling
 repositories, `/sdd:implement` creates the same branch name there when it first edits that repo.
 
 ### 2. Folder + spec
 
-`feature_title` = the description in Title Case. Substitute the placeholders with `sed`, do not
-read the template into context:
+`specs/template.md` missing → STOP: "Run `/sdd:doctor init` first." `feature_title` = the
+description in Title Case, with `\`, `&` and `|` escaped as `\\`, `\&` and `\|` (sed treats them as
+special). Substitute the placeholders with `sed`, do not read the template into context:
 
 ```bash
 mkdir -p specs/<feature_slug>
@@ -43,8 +45,9 @@ sed -e 's|{{feature_title}}|<feature_title>|g' -e 's|{{feature_slug}}|<feature_s
     specs/template.md > specs/<feature_slug>/spec.md
 ```
 
+The `**Branch:**` line holds the real branch name: every later command finds the feature by it.
 Then edit only the **Summary** section: ONE business-level sentence from the description. Leave the
-other sections empty (filled manually or by `/sdd:clarify`).
+other sections as the template has them (filled manually or by `/sdd:clarify`).
 
 ### 3. Output
 

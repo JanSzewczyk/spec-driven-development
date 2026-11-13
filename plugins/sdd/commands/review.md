@@ -28,7 +28,8 @@ their bases.
 
 ### 1. Pre-flight and configuration
 
-- Branch ≠ default branch; every task in `specs/<current>/tasks.md` is `review` or `done`.
+- Branch ≠ default branch. The feature is the `specs/*/spec.md` whose `**Branch:**` equals the
+  current branch (`specs/<current>/`); every task in its `tasks.md` is `review` or `done`.
 - Read from `specs/capabilities.md` the sections `## Projects`, `## Review` and `## Actions`
   (missing section → defaults: `tests: run`, `ui: auto`, `publish: ask`, audits `auto`, no extra
   checks, no actions configured).
@@ -42,10 +43,10 @@ Start everything that does not depend on another result **in one message** and w
   project — counts, coverage, failing test names. `tests: skip` → "skipped".
 - **`spec-verifier`** (Task tool): the feature folder, the diff definition, the generated globs.
   Returns the JSON with AC status, non-goal violations, out-of-scope, drift and per-task status.
-- **`ui-critic`** (`ui: auto`, only when the diff has UI files of a **web** project): the changed UI
-  files and that project's `dev / ui-preview` command from constitution §2. Mobile/desktop UI is
-  `SKIPPED` unless a screenshot tool for that platform exists. Soft check: it never blocks on
-  infrastructure.
+- **`ui-critic`** (`ui: auto`, only when the diff has UI files): the changed UI files, the spec's
+  AC, the project's kind and its `dev / ui-preview` command from constitution §2. It reviews web UI
+  in a browser; mobile/desktop UI is `SKIPPED` unless a screenshot tool for that platform exists.
+  Soft check: it never blocks on infrastructure.
 - **Extra checks and audit agents** from `## Review` that are `agent:<name>` — `checks:` entries
   (e.g. a QA agent that runs the app and tests the functionality against the acceptance criteria)
   and `agent:` audit lines for the touched projects. Brief each with the spec's AC, the touched
@@ -56,8 +57,16 @@ Start everything that does not depend on another result **in one message** and w
 
 Invoke `reviewer` (Task tool) once with: the feature folder and `review.md` path, the diff definition
 and changed files per project (kind, stack), every result from step 2, and the skill audits to run
-(`skill:` lines from `## Review`, or `auto`). It checks the constitution's rules, runs the skill
-audits, writes `review.md` and returns `{verdict, blockers, warnings}`.
+(`skill:` lines from `## Review`, or `auto`), and the `## Accepted` list of the previous `review.md`
+if there is one. It checks the constitution's rules, runs the skill audits, writes `review.md` and
+returns `{verdict, blockers, warnings}`; each blocker says whether the user may accept it.
+
+**Accepting blockers.** NOT_READY and every blocker `acceptable` (an out-of-scope change, a
+constitution rule, a `ui-critic` issue, a non-critical audit finding) → ask once with
+`AskUserQuestion`, listing them: "Fix them" (Recommended) / "Accept all and continue". Accepted →
+add each with the user's reason under `## Accepted` in `review.md`, set its verdict to READY and go
+on as READY. Failing tests, unmet AC, non-goal violations, failed checks and critical
+security/accessibility findings are never acceptable.
 
 ### 4. Record the outcome
 

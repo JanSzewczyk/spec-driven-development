@@ -55,7 +55,7 @@ byte-for-byte). **Keep these exact headings — other commands match them.**
   sibling repo's path.
 - `## Implementation`, `## Actions`, `## Review`, `## Generated / out-of-band paths` —
   user-override. New file → `cp` [capabilities.md.template](../templates/capabilities.md.template), then Edit `## Projects`. Existing file → keep them;
-  add any of the first three from the template when missing.
+  add each one that is missing from the template, in the template's order.
 - Legacy files: drop the old auto-generated `Specialist agents` and `Skills` sections and rename
   `Stack profile` → `Projects`. Leave `Task type → routing rules` and `Custom routing rules` as they
   are (user content, no longer read) and tell the user they can delete them.

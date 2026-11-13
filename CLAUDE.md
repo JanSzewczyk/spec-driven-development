@@ -24,13 +24,13 @@ it you install the plugin and invoke the skill against a target project (see CON
 "Testing your changes locally"):
 
 ```
-/sdd:doctor check     # report-only: 6 checks against the target project
+/sdd:doctor check     # report-only: 5 checks against the target project
 /sdd:doctor init      # create/repair per-project artifacts
 /sdd:doctor check     # confirm the checks flip to pass
 ```
 
 Smoke-test loop: `check` against a fresh project → `init` → `check` again, then verify by hand
-that the artifacts landed under the **project root** (not the plugin) and that a re-`init` is
+that the artifacts landed under the **repo root** (not the plugin) and that a re-`init` is
 idempotent. `sdd` has no automated test; manual exercise of the skill is the test.
 
 `sdd-board` has tests (`cd plugins/sdd-board && claude plugin test`). Try the panel locally with
@@ -53,11 +53,12 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
   - `reviewer` — final READY/NOT READY audit; gets the test results and the other agents' results from `/sdd:review` (sub-agents cannot start sub-agents, so `/sdd:review` runs the suite, `ui-critic` and the configured checks itself), checks the constitution's rules, runs the domain audits and writes `review.md`.
   - `ui-critic` — screenshots changed UI via a browser MCP; skips gracefully if none is available (never blocks).
 
-- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` holds the `check` mode (5 read-only inspections); `references/init.md` (loaded only for `init`) holds the `init` procedure, which detects the target's projects and quality commands and creates the per-project artifacts directly with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (malformed JSON is never touched). The plugin generates no hooks. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
+- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` holds the `check` mode (5 read-only inspections); `references/init.md` (loaded only for `init`) holds the `init` procedure, which detects the target's projects and quality commands and creates the per-project artifacts directly with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (malformed JSON is never touched). The plugin generates no hooks. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`). **Critical invariant:** artifacts are written under the *repo root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
 
 ### Key concepts when editing
 
 - **Projects**: the framework works on *projects* — a unit with its own stack and commands, listed in the target's `specs/capabilities.md` `## Projects` (a single-app repo has one, `root`; a monorepo one per app/package; a feature spread over several repositories adds projects in sibling checkouts, with `specs/` only in the spec repo). Constitution §2 holds one command row per project, and nothing assumes a frontend — web, backend and mobile projects are peers.
+- **Feature lookup and stable ids**: every command finds the feature by the `**Branch:**` line of `spec.md` (branch naming is configurable). AC ids never change once written; a `/sdd:tasks` re-run keeps task ids and statuses.
 - **Self-contained tasks**: `/sdd:tasks` writes one Epic with Jira-like tasks (`project`, `status`, `depends_on`, `acceptance` ids, `plan` refs, `scope`, `files`). Tasks refer to the spec and plan instead of copying them; `/sdd:implement` inlines the references into a brief. No agents, models or TDD tags in tasks.
 - **Configuration in `capabilities.md`**: `## Implementation` (who implements a task), `## Actions` (`branch` / `commit` / `pr` — a skill, agent or command per git action; unset → the session does it with git and gh) and `## Review` (tests, ui, publish, audit flow per project, extra `checks:` such as a QA agent that runs the app).
 - **The framework does not implement**: `/sdd:implement` reads `## Implementation` in `capabilities.md` (`skill:` / `agent:` / `command:` / `in-session`, per project or `default`), hands the brief to that flow and tracks status; with nothing configured the session implements the task itself. The implementer runs the project's checks; `/sdd:review` verifies against the acceptance criteria.

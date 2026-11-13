@@ -30,7 +30,7 @@ check: `pass` ✅ / `warn` ⚠️ / `fail` ❌.
    command → warn, naming it (fix via `/sdd:constitution`). A legacy §2 `Command | Purpose` list
    counts as project `root`.
 2. **`specs/template.md`** — exists with Summary, User stories, Acceptance criteria, Edge cases,
-   Open questions, Testing guidelines. Missing → fail; partial → warn.
+   Non-goals, Open questions. Missing → fail; partial → warn.
 3. **`specs/capabilities.md`** — exists with `Projects` (legacy `Stack profile`), `Implementation`,
    `Actions`, `Review` and `Generated / out-of-band paths`. Missing → fail; a section missing → warn, suggest `init`.
    A project in `Projects` but not in constitution §2 (or reverse) → warn.
