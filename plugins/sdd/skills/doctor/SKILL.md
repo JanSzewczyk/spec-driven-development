@@ -1,26 +1,24 @@
 ---
 name: doctor
-description: Audit (`check`) or set up (`init`) a project for the SDD framework — constitution, spec template, capabilities. Use for "is my project SDD-ready", "set up SDD", "why doesn't /sdd:spec work".
+description: Audit (`check`) or set up (`init`) a project for the SDD framework — constitution, spec template, capabilities. Use when the user asks "is my project SDD-ready", wants to set up SDD, or `/sdd:spec` fails for a missing file.
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 argument-hint: "check | init"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
 ---
 
 # SDD Doctor
-
-LLM-driven: you run every check and file operation yourself — no helper scripts.
 
 ## Two roots
 
 | Root | Resolve | Holds |
 |------|---------|-------|
-| **Project root** | your cwd (`pwd`) | `specs/`, `.claude/`, manifests, the git repo — **all artifacts are written here** |
-| **Plugin root** | `${CLAUDE_PLUGIN_ROOT}` | `templates/`, `reference/` — **read-only** |
+| **Repo root** | your cwd (`pwd`) | `specs/`, `.claude/`, manifests, the git repo — **all artifacts are written here** |
+| **Plugin root** | `${CLAUDE_PLUGIN_ROOT}` | `templates/`, `references/` — **read-only** |
 
 ## Modes
 
 Mode comes from the user message: `check` (default; "audit", "is ready") reports only;
 `init` ("setup", "create", "fix") creates or repairs artifacts, then runs `check`.
-`init`: follow `${CLAUDE_PLUGIN_ROOT}/skills/doctor/reference/init.md` — load it only for `init`.
+`init`: follow [references/init.md](references/init.md) — load it only for `init`, and start with a task list of its steps (roots, discover, seed, capabilities, sibling repos, re-check) kept current. Seed files it copies: [constitution](templates/constitution.md.template), [capabilities](templates/capabilities.md.template), [spec template](templates/specs/template.md).
 
 ## `check`
 

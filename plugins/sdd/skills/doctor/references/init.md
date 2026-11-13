@@ -1,6 +1,6 @@
 # `init` procedure
 
-Create or repair the per-project artifacts. Write under the **project root** (cwd); read
+Create or repair the per-project artifacts. Write under the **repo root** (cwd); read
 templates from `${CLAUDE_PLUGIN_ROOT}/skills/doctor/templates/`. Print one status line per
 artifact (created / skipped / merged). Never overwrite an existing `specs/constitution.md`,
 `specs/template.md`; never touch the root `CLAUDE.md`.
@@ -38,11 +38,11 @@ linter). Confirm it is runnable (on `$PATH`, via the package manager, or a repo-
 
 ## 2. Seed constitution and spec template
 - `mkdir -p specs`. Copy with `cp`, not Read + Write; use Edit for the fill-in.
-- `specs/constitution.md` absent → `cp templates/constitution.md.template`, then Edit the §2 table:
+- `specs/constitution.md` absent → `cp` [constitution.md.template](../templates/constitution.md.template), then Edit the §2 table:
   one row per project (`Project`, `Path`, `test`, `coverage`, `typecheck`, `lint`,
   `dev / ui-preview` if declared), each command runnable from this repo's root (`cd apps/api && uv
   run pytest`); remove the example rows; empty cell when nothing found. Present → leave untouched.
-- `specs/template.md` absent → `cp templates/specs/template.md` verbatim. Present → skip.
+- `specs/template.md` absent → `cp` [specs/template.md](../templates/specs/template.md) verbatim. Present → skip.
 - Legacy renames, only when the new path is absent: `specs/_constitution.md` →
   `specs/constitution.md`, `specs/_template.md` → `specs/template.md`, `.claude/capabilities.md` →
   `specs/capabilities.md`.
@@ -54,7 +54,7 @@ byte-for-byte). **Keep these exact headings — other commands match them.**
 - `## Projects` — auto-generated: `- **<name>** — <kind> · <path> · <stack>`, `(repo)` after a
   sibling repo's path.
 - `## Implementation`, `## Actions`, `## Review`, `## Generated / out-of-band paths` —
-  user-override. New file → `cp` the template, then Edit `## Projects`. Existing file → keep them;
+  user-override. New file → `cp` [capabilities.md.template](../templates/capabilities.md.template), then Edit `## Projects`. Existing file → keep them;
   add any of the first three from the template when missing.
 - Legacy files: drop the old auto-generated `Specialist agents` and `Skills` sections and rename
   `Stack profile` → `Projects`. Leave `Task type → routing rules` and `Custom routing rules` as they
@@ -65,10 +65,16 @@ as a single line; a section ends exactly where the next `## ` begins; one blank 
 sections.
 
 ## 4. Sibling repositories only
-When projects live in sibling repositories, add each path (`../mobile-app`) to
-`permissions.additionalDirectories` in `.claude/settings.json` following
-`reference/settings-merge.md`; without it Claude cannot edit files there. No sibling repos → do
-not touch `.claude/settings.json`.
+Only when projects live in sibling repositories (without this Claude cannot edit files there);
+otherwise do not touch `.claude/settings.json`. Make the one edit:
+
+1. Read `<repo root>/.claude/settings.json`; missing or empty → start from
+   `{ "$schema": "https://json.schemastore.org/claude-code-settings" }`.
+2. Malformed JSON → **stop, write nothing**, tell the user: "`.claude/settings.json` is malformed
+   JSON — refusing to touch it. Fix it and re-run `/sdd:doctor init`."
+3. Ensure `permissions.additionalDirectories` (array) exists; append each sibling path
+   (`../mobile-app`) not yet listed. Never remove or reorder entries; leave every other key as is.
+4. Write with 2-space indent and a trailing newline.
 
 ## 5. Re-check
 Run `check` and show the report.
