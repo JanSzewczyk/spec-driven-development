@@ -15,7 +15,7 @@ The repository is a Claude Code plugin. Its layout:
 - **`plugins/sdd/`** — the SDD plugin: manifest `.claude-plugin/plugin.json` and the payload below.
 - **`plugins/sdd-board/`** — the Desktop side-panel mod (hooks module in `hooks/`, tests in `tests/`). Run its tests with `cd plugins/sdd-board && claude plugin test`, and try it with `claude --plugin-dir plugins/sdd-board`.
 - **`plugins/sdd/skills/`, `agents/`, `commands/`** — framework payload, auto-discovered by Claude Code once the plugin is installed.
-- **`plugins/sdd/skills/doctor/`** — the LLM-driven doctor skill. `SKILL.md` holds `check`; `reference/init.md` holds `init` (no Python helpers). `templates/` holds the per-project seed files copied/adapted into target projects; `reference/settings-merge.md` is the sibling-repo permissions edit for `.claude/settings.json`.
+- **`plugins/sdd/skills/doctor/`** — the LLM-driven doctor skill. `SKILL.md` holds `check`; `references/init.md` holds `init` (no Python helpers). `templates/` holds the per-project seed files copied/adapted into target projects.
 - **Root docs** (`README.md`, `LICENSE`, `CHANGELOG.md`, `.github/`) — repo-level documentation.
 
 ## Testing your changes locally
@@ -24,7 +24,7 @@ This is a documentation-and-config framework, not runtime code, and the doctor s
 **LLM-driven** (no Python helpers to invoke). The test loop is therefore hands-on: install the
 plugin and exercise the real skill against a target project, then verify the artifacts by hand.
 
-1. Make changes inside the plugin (`plugins/sdd/commands/`, `agents/`, `skills/`, `skills/doctor/templates/`, `skills/doctor/reference/`).
+1. Make changes inside the plugin (`plugins/sdd/commands/`, `agents/`, `skills/`, `skills/doctor/templates/`, `skills/doctor/references/`).
 2. Install the plugin into Claude Code from the local checkout and exercise the real flow against
    a fresh project:
 

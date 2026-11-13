@@ -53,7 +53,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
   - `reviewer` — final READY/NOT READY audit; gets the test results and the other agents' results from `/sdd:review` (sub-agents cannot start sub-agents, so `/sdd:review` runs the suite, `ui-critic` and the configured checks itself), checks the constitution's rules, runs the domain audits and writes `review.md`.
   - `ui-critic` — screenshots changed UI via a browser MCP; skips gracefully if none is available (never blocks).
 
-- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` holds the `check` mode (5 read-only inspections); `reference/init.md` (loaded only for `init`) holds the `init` procedure, which detects the target's projects and quality commands and creates the per-project artifacts directly with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (`reference/settings-merge.md`; malformed JSON is never touched). The plugin generates no hooks. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
+- **`skills/doctor/`** — the `doctor` skill (audit + setup), **fully LLM-driven, no Python**. `SKILL.md` holds the `check` mode (5 read-only inspections); `references/init.md` (loaded only for `init`) holds the `init` procedure, which detects the target's projects and quality commands and creates the per-project artifacts directly with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (malformed JSON is never touched). The plugin generates no hooks. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`). **Critical invariant:** artifacts are written under the *project root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
 
 ### Key concepts when editing
 
@@ -78,8 +78,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 | What a slash command does | `commands/<name>.md` (the prose body) |
 | A verification agent's behavior | `agents/<name>.md` |
 | A doctor readiness check | edit the `check` procedure in `skills/doctor/SKILL.md` |
-| The `init` procedure | `skills/doctor/reference/init.md` |
-| Sibling-repo permissions edit in settings.json | `skills/doctor/reference/settings-merge.md` |
+| The `init` procedure (incl. the sibling-repo `settings.json` edit) | `skills/doctor/references/init.md` |
 | Files seeded into target projects | `skills/doctor/templates/` |
 | What the Desktop panel shows or how it derives the next step | `plugins/sdd-board/hooks/{model,view,svg}.ts` (logic, drawing); `register.ts` holds only hooks and `$` calls |
 | How `specs/` files are parsed by the panel | `plugins/sdd-board/hooks/parse.ts`, with a test in `plugins/sdd-board/tests/` |

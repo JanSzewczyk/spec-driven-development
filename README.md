@@ -703,9 +703,8 @@ spec-driven-development/                    # or your own forked plugin path
         ├── skills/
         │   └── doctor/                    # LLM-driven skill — no Python helpers
         │       ├── SKILL.md               # `check` procedure
-        │       ├── reference/
-        │       │   ├── init.md            # `init` procedure (loaded only for init)
-        │       │   └── settings-merge.md  # sibling-repo permissions edit for settings.json
+        │       ├── references/
+        │       │   └── init.md            # `init` procedure (loaded only for init)
         │       └── templates/             # bundled seed files read by `init`
         │           ├── constitution.md.template   # long-form project constitution
         │           ├── capabilities.md.template   # auto-generated + user-override hybrid
@@ -816,7 +815,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 In short:
 
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
-2. Make changes inside the plugin (`plugins/sdd/commands/`, `plugins/sdd/agents/`, `plugins/sdd/skills/`, `plugins/sdd/skills/doctor/templates/`, `plugins/sdd/skills/doctor/reference/`)
+2. Make changes inside the plugin (`plugins/sdd/commands/`, `plugins/sdd/agents/`, `plugins/sdd/skills/`, `plugins/sdd/skills/doctor/templates/`, `plugins/sdd/skills/doctor/references/`)
 3. Exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and bump the version (`plugin.json`, `marketplace.json`, README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request
