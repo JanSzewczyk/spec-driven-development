@@ -1,111 +1,38 @@
 ---
-description: Find conflicts between spec ↔ plan ↔ tasks ↔ code (SDD diagnostic tool)
+description: Find conflicts between spec, plan, tasks and code at any point (SDD diagnostic)
 argument-hint: "(none — works on the current branch)"
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Read, Glob, Bash, Task
 ---
 
-A diagnostic tool for SDD. Scans all documentation layers and the current code state
-and detects **inconsistencies**.
-
-> 💰 **Recommended session model: Sonnet** — this is a mechanical cross-check, not a design phase.
-
-Use it when:
-- You feel something is off
-- The spec was changed after implementation
-- You have many tasks and aren't sure what is up to date
-- Before `/sdd:review` to avoid a NOT READY verdict
+A read-only diagnostic: where do the spec, plan, tasks and code disagree **right now**? Use it
+mid-feature, after changing the spec, or before `/sdd:review`. It edits nothing and runs no tests.
 
 ## Steps
 
-### 1. Load everything
+### 1. Verify
 
-- `specs/<current>/spec.md`
-- `specs/<current>/plan.md` (if it exists)
-- `specs/<current>/tasks.md` (if it exists)
-- `specs/capabilities.md` — read the `Generated / out-of-band paths` globs
-- The diff, **excluding** those generated globs so they never enter context:
-  ```bash
-  base=$(git merge-base HEAD main)   # or the repo's default branch
-  git diff "$base" -- . ':(exclude)**/*.msw.ts' ':(exclude)**/*.schemas.ts' <…other globs>
-  git ls-files --others --exclude-standard   # new, untracked files (SDD commits only at the end)
-  ```
-- `git log main..HEAD --oneline`
+Resolve the feature (`specs/<slug>/` from the current branch). Invoke `spec-verifier` once (Task
+tool) with the feature folder and the **feature diff**: a base commit (`git merge-base HEAD
+<default-branch>`), the changes `git diff <base>` plus the untracked files
+(`git ls-files --others --exclude-standard`) — in each sibling repository on the feature branch too
+(`## Projects` in `specs/capabilities.md`) — and the `Generated / out-of-band paths` globs to exclude.
 
-### 2. Cross-check matrix
+### 2. Classify
 
-Generate the conflict matrix:
+Combine its result with the task statuses in `tasks.md`:
 
-#### Spec ↔ Plan
+- an unmet AC whose task is `draft` or `in-progress` → **progress** (not done yet, not an error);
+- an unmet AC whose task is `review` or `done`, or that no task serves → **gap**;
+- out-of-scope changes, non-goal violations and every `drift` item → **findings**.
 
-- Does every **Acceptance criterion** from spec.md have a counterpart in plan.md (file change list / API surface)?
-- Does plan.md introduce anything **beyond** the spec.md scope?
+### 3. Report
 
-#### Plan ↔ Tasks
+Short, in chat: AC met / pending / gaps, then the findings, at most about 10, each with `file:line`.
+For each, the next move:
 
-- Does every file from the plan.md "File-by-file change list" have a corresponding task?
-- Is every task in tasks.md justified by something in plan.md?
-- Does every task name a `project` from `specs/capabilities.md` `## Projects`, with its files under
-  that project's path? Do the `acceptance` ids exist in spec.md, and do the `depends_on` links point to
-  existing tasks, without cycles? Do independent tasks avoid sharing files?
+- unmet AC of an implemented task → `/sdd:implement <task>`
+- plan or tasks do not cover an AC → edit `plan.md`, then `/sdd:tasks`
+- ambiguous or outdated spec → `/sdd:clarify`
+- nothing wrong → `/sdd:review` when every task is `review|done`
 
-#### Tasks ↔ Code
-
-- Do tasks with status `done`/`review` actually have changes (committed or not) in their declared `files`?
-- Are there changes in the diff in files NOT covered by any task? (out-of-scope drift)
-
-#### Spec ↔ Code
-
-- Are the AC covered by tests (check the test files)?
-- Are there feature flags / TODO / FIXME in code that aren't reflected in the spec's open questions?
-
-### 3. Generate the report
-
-```markdown
-# Analyze report: <feature>
-
-**Branch:** <type>/<slug>
-**Date:** <today>
-
-## ✅ Consistent
-- Spec AC1 → plan.md L42 → task T1.2 → 3 commits
-- ...
-
-## ⚠️ Drift detected
-
-### Spec → Plan mismatch
-- AC3 ("user can reset via SMS") has no counterpart in plan.md API surface.
-  → Fix: add a POST /auth/reset-sms endpoint to plan.md OR remove AC3 from spec.md.
-
-### Plan → Tasks mismatch
-- plan.md L67 mentions `packages/sms/twilio.ts` but no task creates this file.
-
-### Tasks → Code mismatch
-- Task T1.4 (status: done) declared `files: [LoginForm.tsx]` but the diff also shows
-  changes in `Header.tsx` — out-of-scope.
-
-### Spec → Code mismatch
-- The code contains `// TODO: rate limiting` but the spec's Open Questions don't mention it.
-
-## 🔴 Critical conflicts
-- (if any — e.g. spec says X, code does Y without explanation)
-
-## Suggested actions
-1. Update plan.md (API surface section)
-2. Add task T1.5: create twilio.ts
-3. Refactor T1.4: move Header.tsx changes to a new task OR roll back
-4. Add to spec Open Questions: rate limiting decision
-```
-
-### 4. Suggestions
-
-After the report, propose:
-- Concrete file edits (which to edit manually / which through `/sdd:implement`)
-- `/sdd:clarify` if the spec is ambiguous
-- `/sdd:review` if everything is consistent
-
-## Constraints
-
-- ⛔ DO NOT edit files — this is diagnostics only
-- ⛔ NEVER flag `Generated / out-of-band paths` (from `capabilities.md`) as drift or out-of-scope — they are regenerated artifacts, not authored changes
-- ✅ Be concrete — quote line numbers, task IDs, file paths
-- ✅ Classify severity: ✅ Consistent / ⚠️ Drift / 🔴 Critical
+Quote task ids, AC ids and file paths; never flag the generated globs.
