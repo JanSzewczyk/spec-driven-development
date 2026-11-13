@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-11-13
+
+`sdd` goes to 1.0.0 and `sdd-board` to 0.4.0. The framework now **plans, hands off and verifies** instead of implementing: this changes the `tasks.md` and `capabilities.md` formats and removes the hooks, so existing specs need `/sdd:tasks` re-run and `/sdd:doctor init`.
+
+### Changed
+
+- **Tasks are self-contained, Jira-like tickets under one Epic** (`project`, `status`, `depends_on`, `acceptance` ids, `plan` refs, `scope`, `files`), written by `/sdd:tasks` without agents, models, `tdd` tags, waves or Mermaid diagrams. A task refers to the spec and plan instead of copying them.
+- **`/sdd:implement <task-id | all>` is a dispatcher.** It builds a brief (task, AC text, plan sections, the project's commands from constitution §2) and hands it to the flow set in `capabilities.md` `## Implementation` (`skill:`, `agent:`, `command:` or `in-session`, per project or `default`). It runs no checks itself; the implementer does.
+- **`/sdd:review` is the single verification gate.** Tests, `spec-verifier`, `ui-critic` and the configured extra checks (e.g. a QA agent) run in parallel; the `reviewer` also checks the constitution's WHAT NOT TO DO rules. Met acceptance criteria are ticked in `spec.md`, tasks with unmet ones go back to `in-progress`, and commit/PR use the `commit` / `pr` actions or git and `gh`.
+- **`capabilities.md` holds `## Projects` (auto) plus `## Implementation`, `## Actions` (`branch`, `commit`, `pr`), `## Review` and the generated paths (yours).** Agent and skill lists and the routing table are gone.
+- **`/sdd:plan`** records decisions and scope (optional diagrams, `AskUserQuestion` for real forks, "Reference sources" instead of Figma-specific wording); **`/sdd:clarify`** is a single run with proposed answers written to the spec; **`/sdd:spec`** creates the branch through the `branch` action and fills the template with `sed`; **`/sdd:analyze`** delegates to `spec-verifier`.
+- **Doctor** is a skill only (`/sdd:doctor check|init`): `SKILL.md` 25 KB → 3 KB, `init` in `reference/init.md`, 5 checks, templates trimmed.
+- **`sdd-board`** reads the new task format and shows a flat task list; its implement gate checks acceptance criteria and dependencies.
+
+### Added
+
+- **`spec-verifier` agent** (replaces `spec-guard` and `drift-detector`): one read of the diff, per-AC status, non-goal violations, out-of-scope, drift and per-task completeness.
+
+### Removed
+
+- Hook generation (`templates/hooks/`, `.claude/hooks/*`, PostToolUse entries); `init` only adds sibling-repo paths to `permissions.additionalDirectories`.
+- The `/sdd:doctor` command file (the skill remains), `.claude/roles/` discovery in `/sdd:constitution`, and the `spec-guard` and `drift-detector` agents.
+
 ## [0.10.0] — 2026-11-12
 
 `sdd` goes to 0.10.0 (the reviewer's verdict values change) and `sdd-board` to 0.3.1.
