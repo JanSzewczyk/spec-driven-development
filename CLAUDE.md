@@ -50,13 +50,17 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 - **`skills/<name>/SKILL.md`** — the 10 user-facing slash commands (`/sdd:<name>`). Each is a markdown prompt with YAML frontmatter (`name`, `description`, `argument-hint`, `allowed-tools`, `disable-model-invocation: true`: only the user starts them). The *body is the instruction set Claude executes* — editing behavior means editing prose. `spec` creates the branch + skeleton; `tasks` writes self-contained tasks; `implement` is a dispatcher that hands a task to the flow configured in `capabilities.md`; `review` orchestrates the verification agents; `retro` turns review lessons into WHAT NOT TO DO entries. No skill runs `context: fork`: `plan` needs `ExitPlanMode` and several need `AskUserQuestion`, which sub-agents do not have.
 - **`references/*.md`** (plugin root) — text shared by several skills, linked as `${CLAUDE_PLUGIN_ROOT}/references/<file>.md`: `feature-diff`, `capabilities` (value grammar), `status-lifecycle`, `sibling-repos`, `formats` (artifact sections and the 7 doctor checks). A block goes here when ≥2 skills repeat it and it is longer than ~5 lines; shorter rules stay inline.
 - **`hooks/`** — the `sdd` mod: `register.ts` registers the `doctor_check` tool (`mcp__sdd__doctor_check`), `core/` is a generated copy of `shared/sdd-core/`. Mods run on Claude Code 2.1.287+, not in WSL and not under `--safe-mode`; `doctor` falls back to a manual check there.
-- **`shared/sdd-core/`** (repo root) — pure TypeScript, no mods API: `parse.ts` (spec/plan/tasks/review parsers), `formats.ts` (required sections, statuses, value grammar), `check.ts` (the doctor rules). A mod may import only files inside its own plugin and `claude plugin validate` refuses symlinks, so `scripts/sync-core.sh` copies it into `plugins/sdd/hooks/core/` and `plugins/sdd-board/hooks/core/`.
+- **`shared/sdd-core/`** (repo root) — pure TypeScript, no mods API: `parse.ts` (spec/plan/tasks/review parsers), `formats.ts` (required sections, statuses, value grammar), `check.ts` (the doctor rules). A mod may import only files inside its own plugin and `claude plugin validate` refuses symlinks, so `scripts/sync-core.sh` copies it into `plugins/sdd/hooks/core/` and `plugins/sdd-board/hooks/core/`. Forgetting to run it fails the CI `tests` job; never edit the copies.
 - **`agents/*.md`** — 3 sub-agents invoked via the Agent tool, never directly by the user:
   - `spec-verifier` — one read of the diff against the docs: per-AC status, non-goal violations, out-of-scope, drift between spec/plan/tasks/code and per-task completeness; returns JSON. Called by `/sdd:review`.
   - `reviewer` — final READY/NOT READY audit; gets the test results and the other agents' results from `/sdd:review` (`/sdd:review` runs the suite and the configured checks itself and hands over their results), checks the constitution's rules, runs the domain audits and writes `review.md`.
   - `codebase-surveyor` — read-only map of the affected projects (structure, conventions, code to reuse), at most 30 lines; called by `/sdd:plan`.
 
-- **`skills/doctor/`** — the `doctor` skill (audit + setup). `SKILL.md` holds the `check` mode: it calls the `doctor_check` tool (7 read-only checks, rules in `shared/sdd-core/check.ts`, listed in `references/formats.md`) and falls back to doing the checks itself when the tool is missing; `references/init.md` (loaded only for `init`) holds the `init` procedure (LLM-driven, since detection needs judgement), which detects the target's projects and quality commands and creates the per-project artifacts directly with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (malformed JSON is never touched). The plugin generates no settings hooks. Supporting files: `templates/` (seed `constitution.md.template`, `capabilities.md.template`, `specs/template.md`). **Critical invariant:** artifacts are written under the *repo root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`) — keeping the two distinct is what guarantees artifacts land in the project, not the plugin.
+- **`skills/doctor/`** — the `doctor` skill (audit + setup):
+  - `SKILL.md` holds `check`: it calls the `doctor_check` tool (7 read-only checks, rules in `shared/sdd-core/check.ts`, listed in `references/formats.md`) and does the checks itself when the tool is missing.
+  - `references/init.md` (loaded only for `init`) is LLM-driven, since detection needs judgement: it detects projects and quality commands and writes the per-project artifacts with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (malformed JSON is never touched). No settings hooks are generated.
+  - `templates/` seeds `constitution.md.template`, `capabilities.md.template`, `specs/template.md`.
+  - **Critical invariant:** artifacts are written under the *repo root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`), so artifacts land in the project, not the plugin.
 
 ### Key concepts when editing
 
@@ -96,8 +100,9 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 ### Where things live
 
 - Two plugins under `plugins/`, listed in one marketplace `.claude-plugin/marketplace.json`
-  (`sdd` → `./plugins/sdd`, `sdd-board` → `./plugins/sdd-board`). `sdd` keeps `commands/`,
-  `agents/` and `skills/` at its root; `sdd-board` (a mod) keeps `hooks/` and `tests/`.
+  (`sdd` → `./plugins/sdd`, `sdd-board` → `./plugins/sdd-board`). `sdd` keeps `skills/`,
+  `agents/`, `references/`, `hooks/` and `tests/` at its root; `sdd-board` (a mod) keeps `hooks/` and `tests/`.
+  Both mods carry a generated copy of `shared/sdd-core/` in `hooks/core/`.
 
 - Each manifest is `<plugin>/.claude-plugin/plugin.json`. `skills/`, `agents/`, `hooks/` and every
   other component sit at the plugin root, never inside `.claude-plugin/`.
@@ -110,7 +115,7 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 ### After a change to a plugin
 
 1. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure),
-   `plugins/sdd-board/README.md`, the Plugins table and Architecture sections of this file, and
+   `plugins/sdd/README.md`, `plugins/sdd-board/README.md`, the Plugins table and Architecture sections of this file, and
    `CONTRIBUTING.md` when the repo layout changes.
 2. **Run `/marketplace-creator audit`** and fix what it reports before committing. It checks manifests,
    docs and frontmatter against what is on disk.
