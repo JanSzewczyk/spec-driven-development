@@ -432,15 +432,9 @@ pr: skill:create-pull-request
 
 ### 📊 `/sdd:analyze`
 
-Diagnostic tool — run anytime to detect drift between spec ↔ plan ↔ tasks ↔ code. Useful before `/sdd:review` to avoid a NOT READY verdict.
+Diagnostic — run anytime to find where spec ↔ plan ↔ tasks ↔ code disagree. It runs `spec-verifier` once over the feature diff and reports, in a few lines, acceptance criteria that are met, **pending** (their task is not implemented yet) or a **gap** (implemented, not covered), plus the findings with `file:line` and the next command for each. Useful mid-feature, after changing the spec, and before `/sdd:review`.
 
-Outputs a markdown matrix:
-
-- ✅ **Aligned** items (spec AC → plan → task → commits)
-- ⚠️ **Drift** items (with file paths and suggested fixes)
-- 🔴 **Critical** conflicts (spec says X, code does contradictory Y)
-
-⛔ Read-only — never edits files.
+⛔ Read-only — never edits files and runs no tests.
 
 ---
 
@@ -743,7 +737,7 @@ Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro,
 9. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/sdd:analyze` to detect drift periodically.
 10. **💬 Fresh chat per task — and `/clear` between phases.** Open a new Claude session when switching to a new task, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
 11. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
-12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:tasks`, `/sdd:implement`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
+12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:tasks`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
 13. **📦 Batch human feedback.** Collect visual/QA tweaks and NOT READY fixes into one message per round instead of many small turns — each turn reprocesses the full context and multiplies cost.
 
 ---
@@ -773,7 +767,8 @@ The single biggest cost lever is **which model runs which phase**. A slash comma
 | Phase | Recommended model | Why |
 |---|---|---|
 | `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review` | **Opus** | Judgement-heavy — framing, architecture, and the final gate. Cheap to get right here, expensive to get wrong downstream. |
-| `/sdd:tasks`, `/sdd:analyze` | **Sonnet** | Mechanical decomposition / cross-check. |
+| `/sdd:tasks` | **Sonnet** | Mechanical decomposition. |
+| `/sdd:analyze` | any | Delegates to `spec-verifier` (Sonnet). |
 | `/sdd:implement` | your flow's choice | The framework only hands over; the flow or agent sets its own model. |
 
 Two supporting mechanisms:
