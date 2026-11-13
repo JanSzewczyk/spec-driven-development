@@ -58,3 +58,4 @@ checks:
 - `**/pubspec.lock`
 - `**/Podfile.lock`
 - `**/openapi-client/**`
+- `**/.sdd-screenshots/**`
