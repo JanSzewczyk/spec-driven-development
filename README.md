@@ -298,7 +298,7 @@ Every command finds the feature by the `**Branch:**` line of its `spec.md`, so t
 | `plan.md` | `draft` → `tasks-ready` → `in-progress` → `done` | `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` → `/sdd:review` |
 | task in `tasks.md` | `draft` → `in-progress` → `review` → `done` | `/sdd:tasks` → `/sdd:implement` (hand-over, then implementer done) → `/sdd:review` (READY) |
 
-`/sdd:review` moves a task with unmet acceptance criteria back to `in-progress`; statuses never move backwards otherwise.
+Two moves go backwards: `/sdd:review` sets a task with unmet acceptance criteria back to `in-progress`, and a `/sdd:tasks` re-run sets a started task back to `draft` when the change touches its scope. Nothing else moves a status backwards.
 
 ### 🧠 Context management
 

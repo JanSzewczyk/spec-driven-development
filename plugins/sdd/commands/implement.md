@@ -40,7 +40,7 @@ The task is self-contained only by reference, so inline what it points to:
 - the task itself (scope, files, notes) and its `project` with path and, for a sibling repository,
   its repo path
 - the text of the spec ACs it lists, plus the Summary and the edge cases it touches
-- the plan sections it names
+- the plan sections it names, plus the plan's *Testing* section when present
 - the project's `test`, `coverage`, `typecheck` and `lint` commands (`specs/constitution.md` §2)
   and the §5 rules that apply
 - definition of done: every listed AC is met and has a test, the project's checks pass, only the
