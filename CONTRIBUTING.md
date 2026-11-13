@@ -59,7 +59,7 @@ the plugin and exercise the real skills against a target project, then verify th
 
 ## Style guidelines
 
-- **All framework files are English-only.** The audit grep used during review catches Polish diacritics.
+- **All framework files are English-only.**
 - **No new generic agents without strong justification.** The framework intentionally only adds 3 (`spec-verifier`, `reviewer`, `codebase-surveyor`). Implementation is the user's own flow, configured under `## Implementation` in `capabilities.md`.
 - **Slash commands** should declare `allowed-tools` explicitly. Avoid `"*"` unless the command genuinely needs every tool (`/sdd:implement` and `/sdd:review` hand work to flows and agents the user picks).
 - **Skills (`SKILL.md`)** must have a clear `description` frontmatter saying what it does and when to use it — that is what Claude uses to decide whether to trigger it. The version lives in `plugin.json`, not in the skill.
@@ -91,7 +91,7 @@ the plugin and exercise the real skills against a target project, then verify th
 
 Please open a GitHub issue with:
 
-- Plugin version (`.claude-plugin/plugin.json` `version` or the commit SHA you installed).
+- Plugin version (`plugins/<name>/.claude-plugin/plugin.json` `version` or the commit SHA you installed).
 - Target project stack (Next.js / Python / etc.).
 - The output of `/sdd:doctor check` from the failing project.
 - Steps to reproduce.

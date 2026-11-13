@@ -296,12 +296,15 @@ function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult 
   return finish(3, name, f, `${caps.projects.length} project(s), sections and values valid`)
 }
 
-function checkGit(s: Snapshot): CheckResult {
+function checkGit(s: Snapshot, caps: Capabilities | null): CheckResult {
   const name = 'Git + gh'
   const g = s.git
   if (!g.isRepo) return finish(4, name, [fail('not a git repository (`.git` missing)')], '')
   const f: Finding[] = []
   if (g.clean === false) f.push(warn('working tree is not clean'))
+  // `gh` opens the PR only when no `pr` action is configured.
+  const prAction = keyValues(caps?.sections.Actions ?? []).some(([k, v]) => k === 'pr' && v !== '')
+  if (prAction) return finish(4, name, f, 'repository present (a `pr` action is set, gh not needed)')
   if (g.gh === false) f.push(warn('`gh` not found on PATH (needed for the PR unless a `pr` action is set)'))
   else if (g.ghAuth === false) f.push(warn('`gh auth status` failed: run `gh auth login`'))
   const skipped = g.gh === null || (g.gh && g.ghAuth === null)
@@ -440,7 +443,7 @@ export function runChecks(s: Snapshot): Report {
     checkConstitution(s),
     checkTemplate(s),
     checkCapabilities(s, caps),
-    checkGit(s),
+    checkGit(s, caps),
     checkTooling(s, caps),
     checkSiblings(s, caps),
     checkFeatures(s, caps),

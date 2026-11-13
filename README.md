@@ -27,7 +27,7 @@ This framework is the synthesis of:
 
 - GitHub Spec Kit (canonical phases)
 - BMAD Method (sharding, role-based sub-agents)
-- Amazon Kiro (hooks, Mermaid generation)
+- Amazon Kiro (Mermaid generation)
 - OpenSpec (lightweight CLI for legacy code)
 - Custom Claude Code workflows (slash commands, plan mode, custom agents)
 
@@ -316,14 +316,7 @@ SDD reasons about **projects**, not about one stack. `/sdd:doctor init` finds th
 - **Constitution §2** has one command row per project (`test`, `coverage`, `typecheck`, `lint`, `dev`), so a Python API runs `cd apps/api && uv run pytest`, the web app `pnpm nx run web:test`, a Flutter app `flutter test`.
 - **Several repositories**: assumes everyone checks the sibling repos out next to the spec repo under the same names (the relative paths are committed). `specs/` lives in one spec repo; `/sdd:implement` makes sure the same feature branch exists in each sibling repo before the flow edits it, and `/sdd:review` commits and opens a linked PR in every one of them. `init` adds the sibling repos to `permissions.additionalDirectories`.
 
-If you keep a Claude Code session loader (`CLAUDE.md` at the project root or per-module), keep it lean — Claude starts ignoring content past the first couple of thousand tokens. A useful convention is to point it at `specs/constitution.md` for detail and shard per module when the root file grows:
-
-- `CLAUDE.md` (root, cross-cutting concerns)
-- `apps/web/CLAUDE.md` (frontend-specific)
-- `apps/api/CLAUDE.md` (backend-specific)
-- `packages/ui/CLAUDE.md` (component library)
-
-The SDD framework itself does not read, write, or enforce any structure on these files — they are entirely yours.
+A Claude Code session loader (`CLAUDE.md`, root or per-module) stays yours: the framework never reads, writes or enforces it (see Best Practices).
 
 ### 📇 Capabilities registry — hybrid mode
 
@@ -549,7 +542,7 @@ Effects:
 You open the spec, fill in:
 
 - User stories (Reset via email, optional MFA)
-- Acceptance criteria (AC1: token valid for 1h, AC2: rate-limited to 3 attempts, …)
+- Acceptance criteria (AC1: token valid for 30 min, AC2: rate-limited to 3 attempts, …)
 - Edge cases (unknown email — silent success per security best practice)
 
 ### Clarify
@@ -660,8 +653,6 @@ Pipeline executes:
 | `/sdd:review` | 5 min |
 | **Total** | **~2-4 h** for a medium feature |
 
-Without SDD a similar feature is 4-6 h with frequent rework. With SDD: 2-4 h, deterministic.
-
 ---
 
 ## 📁 File Structure
@@ -733,7 +724,7 @@ Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro,
 1. **🧪 Make the work verifiable.** Every task's `acceptance` field points to measurable acceptance criteria; the implementer runs the project's checks and `/sdd:review` verifies the result against them. Default to **test-first** TDD in your implementation flow.
 2. **📜 The constitution is the WHY.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken. If you also maintain a Claude Code session loader (`CLAUDE.md`), use it to surface the most-broken rules and point at the constitution for detail — but that file is yours to shape, not the framework's.
 3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer. Break it into Epic → Task; each implementer receives only its task's brief.
-4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.
+4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting rules, one per app or package (`apps/web/CLAUDE.md`, `apps/api/CLAUDE.md`) for the rest, so a session does not read rules of code it never touches. Keep each lean and point at `specs/constitution.md` for detail; the framework itself never reads or writes them.
 5. **🔒 Run `/sdd:plan` in Plan Mode.** Plan Mode (Shift+Tab) keeps Claude from modifying files while it explores; approving the plan saves it. Not for `/sdd:clarify` — it writes the answers into `spec.md`, which Plan Mode blocks.
 6. **👤 Human-in-the-loop on `plan.md`.** Always read the generated plan before `/sdd:tasks`. This is the cheapest moment to correct course.
 7. **🌿 One branch per feature.** `/sdd:spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
@@ -775,7 +766,7 @@ The single biggest cost lever is **which model runs which phase**. A slash comma
 | `/sdd:analyze` | any | Delegates to `spec-verifier` (Sonnet). |
 | `/sdd:implement` | your flow's choice | The framework only hands over; the flow or agent sets its own model. |
 
-Two supporting mechanisms:
+One supporting mechanism:
 
 - **Per-agent tier.** The verification sub-agents carry their own `model:` frontmatter — `reviewer` on Opus (last line of defense), `spec-verifier` on Sonnet, `codebase-surveyor` on Haiku — so they run at their own tier regardless of the session model.
 
@@ -847,7 +838,7 @@ SDD is a synthesis of ideas from the spec-driven and agentic-coding ecosystem:
 
 - [GitHub Spec Kit](https://github.com/github/spec-kit) — canonical phases
 - BMAD Method — sharding and role-based sub-agents
-- Amazon Kiro — hooks and Mermaid generation
+- Amazon Kiro — Mermaid generation
 - OpenSpec — lightweight CLI for legacy code
 - [Anthropic Claude Code](https://claude.com/claude-code) — slash commands, plan mode, custom agents, and the plugin system this framework is built on
 

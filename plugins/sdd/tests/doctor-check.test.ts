@@ -207,6 +207,12 @@ test('a dirty tree and a missing gh warn; no repository fails', () => {
   expect(runChecks(allTools(snapshot({ git: { isRepo: false, clean: null, gh: null, ghAuth: null } }))).checks[3].status).toBe('fail')
 })
 
+test('gh is not needed when a pr action is set', () => {
+  const caps = CAPABILITIES.replace('pr:\n', 'pr: skill:create-pull-request\n')
+  const r = runChecks(allTools(snapshot({ capabilities: caps, git: { isRepo: true, clean: true, gh: false, ghAuth: null } })))
+  expect(r.checks[3].status).toBe('pass')
+})
+
 test('offline skips the gh lookups without a warning', () => {
   const r = runChecks(allTools(snapshot({ git: { isRepo: true, clean: true, gh: null, ghAuth: null } })))
   expect(r.checks[3].status).toBe('pass')

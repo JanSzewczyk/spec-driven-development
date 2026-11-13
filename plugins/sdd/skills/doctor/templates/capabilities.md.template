@@ -43,8 +43,6 @@ checks:
 <!-- user-override -->
 <!-- Globs of generated / non-hand-authored files. spec-verifier, reviewer and
      /sdd:analyze exclude them from every diff and never flag them. -->
-- `**/*.msw.ts`
-- `**/*.schemas.ts`
 - `**/*.generated.*`
 - `**/generated/**`
 - `**/__snapshots__/**`
@@ -56,4 +54,3 @@ checks:
 - `**/poetry.lock`
 - `**/pubspec.lock`
 - `**/Podfile.lock`
-- `**/openapi-client/**`
