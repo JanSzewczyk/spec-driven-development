@@ -63,3 +63,21 @@ jobs:
       - name: Audit every skill 🔎
         uses: JanSzewczyk/claude-plugins/.github/actions/skill-audit@main
         # Inputs: path, skills-glob (default plugins/*/skills/*/).
+
+  # Not managed by /plugin-setup: the shared TypeScript copies and the plugin tests.
+  tests:
+    name: Plugin Tests 🧪
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check the shared core copies are in sync 🔗
+        run: scripts/sync-core.sh --check
+      - name: Install Claude Code 🤖
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Test sdd 🧪
+        run: claude plugin test
+        working-directory: plugins/sdd
+      - name: Test sdd-board 🧪
+        run: claude plugin test
+        working-directory: plugins/sdd-board

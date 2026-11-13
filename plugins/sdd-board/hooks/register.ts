@@ -1,4 +1,4 @@
-import { parsePlan, parseReview, parseSpec, parseTasks } from './parse.ts'
+import { parsePlan, parseReview, parseSpec, parseTasks } from './core/parse.ts'
 import { currentSlug, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderDoc, renderPane } from './view.ts'

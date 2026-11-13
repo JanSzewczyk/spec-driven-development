@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Final quality audit before PR. Receives the test results and the spec-verifier / ui-critic / extra-check results from /sdd:review, checks the constitution's rules, runs the domain audits, writes review.md and returns verdict READY/NOT READY + action list. Invoked by /sdd:review.
+description: Final quality audit before PR. Receives the test results and the spec-verifier / extra-check results from /sdd:review, checks the constitution's rules, runs the domain audits, writes review.md and returns verdict READY/NOT READY + action list. Invoked by /sdd:review.
 tools: "*"
 model: opus
 color: green
@@ -16,7 +16,7 @@ From the prompt (all sent by `/sdd:review`):
 - the diff definition (a base commit; `git diff <base>` plus untracked files) and the list of
   changed files per project, with each project's kind and stack;
 - the **test results** from the pre-flight run (counts, coverage, failures) — or "skipped";
-- the **spec-verifier** result, the **ui-critic** result and the results of any extra checks
+- the **spec-verifier** result and the results of any extra checks
   (agents the user configured, e.g. QA) and configured audit agents;
 - the **skill audits** to run (configured skills, or `auto`);
 - the `## Accepted` items of the previous `review.md` (blockers the user accepted), if any.
@@ -35,14 +35,13 @@ From the prompt (all sent by `/sdd:review`):
    stack and the files changed (a Python API, a Next.js app and a Flutter app each get their own;
    none relevant → none). Each audit's own threshold decides its result; a critical security or
    accessibility violation is a blocker.
-5. **Other results.** `ui-critic`: `ISSUES` is an acceptable blocker, `WARNINGS` are listed,
-   `SKIPPED` never blocks. Extra checks: `FAIL` blocks, `SKIPPED` never does. A `spec-verifier`
+5. **Other results.** Extra checks: `FAIL` blocks, `SKIPPED` never does. A `spec-verifier`
    `out_of_scope` entry is an acceptable blocker.
 6. **Accepted items.** A blocker that matches an item of the previous `## Accepted` list (same
    finding, same file) is not a blocker again; copy the item into the new `## Accepted` section.
 7. **Write `specs/<slug>/review.md`** and return the verdict.
 
-**Acceptable** blockers: out-of-scope changes, constitution rule violations, `ui-critic` issues,
+**Acceptable** blockers: out-of-scope changes, constitution rule violations,
 non-critical audit findings — `/sdd:review` may let the user accept them. **Never acceptable:** a
 failing test, an unmet AC, a non-goal violation, a failed extra check, a critical
 security/accessibility violation.
@@ -72,7 +71,7 @@ Exclude the `Generated / out-of-band paths` globs from every diff you read.
 - <rule> — respected | violated (`file:line`)
 
 ## Audits
-<!-- one section per audit, extra check and the visual review that ran -->
+<!-- one section per audit and extra check that ran -->
 - <name>: result and findings
 
 ## Accepted
@@ -96,5 +95,5 @@ Return JSON at the end:
   `out_of_scope` that is not accepted, an extra check failed, or a critical security/accessibility
   violation exists.
 - Every check carries a concrete metric (count, score, file:line); a NOT READY lists concrete actions.
-- Do not re-run the suite and do not invoke `ui-critic`, `spec-verifier` or other agents — the
+- Do not re-run the suite and do not invoke `spec-verifier` or other agents — the
   command already did.

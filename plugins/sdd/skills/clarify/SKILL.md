@@ -1,8 +1,12 @@
 ---
+name: clarify
 description: AI finds gaps in the current spec, asks the questions and writes the answers (SDD step 2)
-argument-hint: "(optional path to spec.md)"
 allowed-tools: Read, Edit, Glob, AskUserQuestion, Bash(git branch:*)
+argument-hint: "(optional path to spec.md)"
+disable-model-invocation: true
 ---
+
+# SDD Clarify
 
 The **Clarify** phase of SDD: find the gaps in the specification and close them with the user in
 this one run. No code, no plan, no technology choices (frameworks, test layers belong to

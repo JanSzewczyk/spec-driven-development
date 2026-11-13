@@ -84,7 +84,7 @@ The unique contribution of this framework: it **manages the thinking and the ver
 
 ### 1. Install the plugin (one-time, per machine)
 
-Inside Claude Code (2.1.275 or later):
+Inside Claude Code (2.1.287 or later, the first version with mods; `sdd` registers the doctor check tool as a mod):
 
 ```
 /plugin marketplace add JanSzewczyk/spec-driven-development
@@ -108,15 +108,13 @@ Then enable it in your user settings (`~/.claude/settings.json`):
 }
 ```
 
-(Depending on your Claude Code version, the `claude plugin install` command may handle this for you.)
-
 Verify the install:
 
 ```bash
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@1.0.0`. Once installed, the plugin's 8 slash commands, 3 verification sub-agents, and the `doctor` skill (`/sdd:doctor`) are available in **every** project — no per-project copy required.
+You should see `sdd@1.0.0`. Once installed, the plugin's 10 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
 
 ### 2. Initialize a project
 
@@ -124,7 +122,7 @@ Open the target project in Claude Code and run:
 
 ```text
 /sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md
-/sdd:doctor check     # confirms 5/5 — per-project files present, constitution valid
+/sdd:doctor check     # confirms 7/7 — files present and valid, git, tooling, feature specs
 /sdd:constitution     # edit specs/constitution.md (long-form, no token limit)
 ```
 
@@ -163,10 +161,10 @@ If you want a customized copy (e.g. with org-specific defaults in `capabilities.
 
 ## 📦 Plugins
 
-| Plugin | Description | Commands | Agents | Skills |
+| Plugin | Description | Skills | Agents | Mod |
 | --- | --- | --- | --- | --- |
-| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec | 8 | 3 | 1 |
-| [**sdd-board**](./plugins/sdd-board/.claude-plugin/plugin.json) | Claude Code Desktop side panel (a mod): current spec with phase, next command and tasks, plus an overview of all specs | | | |
+| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec | 10 | 3 | `doctor_check` tool |
+| [**sdd-board**](./plugins/sdd-board/.claude-plugin/plugin.json) | Claude Code Desktop side panel (a mod): current spec with phase, next command and tasks, plus an overview of all specs. Requires `sdd` (installed with it) | | | panel |
 
 See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Reference](#-sub-agents-reference) for each one.
 
@@ -205,6 +203,7 @@ flowchart TD
     K --> M
     M --> P[spec-verifier + reviewer + your checks]
     P -->|READY| Q[git commit + gh pr create]
+    Q --> R[/sdd:retro, optional/]
     P -->|NOT READY| H
 ```
 
@@ -216,7 +215,8 @@ flowchart TD
 | **Plan** | `/sdd:plan` | Generate `plan.md`: decisions, contracts, file-by-file change list, risks (diagrams, data model, API surface only when they help). **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Split the plan into self-contained, Jira-like tasks (project, scope, acceptance criteria, dependencies) under one Epic |
 | **Implement** | `/sdd:implement <task-id or all>` | Build a brief from the task and hand it to the flow configured in `capabilities.md` (or implement in the session). Does not verify on its own |
-| **Review** | `/sdd:review` | Tests, `spec-verifier`, `ui-critic` and your extra checks in parallel, then `reviewer` → verdict READY/NOT READY → AC ticked in the spec → commit + PR |
+| **Review** | `/sdd:review` | Tests, `spec-verifier` and your extra checks in parallel, then `reviewer` → verdict READY/NOT READY → AC ticked in the spec → commit + PR |
+| **Retro** | `/sdd:retro` | Optional, after review: turns the repeatable mistakes in `review.md` into WHAT NOT TO DO entries (with a reason) in the constitution |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
 ---
@@ -231,21 +231,21 @@ flowchart TD
 │  constitution → spec → clarify → plan → tasks → hand-off     │
 │  → review                                                    │
 └──────────────────────────────────────────────────────────────┘
-        ↓ brief per task                    ↓ Task tool
+        ↓ brief per task                    ↓ Agent tool
 ┌───────────────────────────────┐  ┌───────────────────────────┐
 │  IMPLEMENTATION FLOW          │  │  VERIFICATION AGENTS      │
 │  your skill / agent / command │  │  • spec-verifier          │
 │  or the session itself        │  │  • reviewer               │
-│  (writes code and tests,      │  │  • ui-critic              │
-│   runs the project's checks)  │  │  • your own checks (QA)   │
+│  (writes code and tests,      │  │  • your own checks (QA)   │
+│   runs the project's checks)  │  │                           │
 └───────────────────────────────┘  └───────────────────────────┘
 ```
 
 This framework adds:
 
-- 1 skill (`doctor`)
-- 8 slash commands (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`)
-- 3 verification agents (`spec-verifier`, `reviewer`, `ui-critic`)
+- 10 skills, each a slash command: `/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`, `/sdd:retro` (none is started by Claude on its own)
+- 3 agents: `spec-verifier` and `reviewer` verify, `codebase-surveyor` maps the code for `/sdd:plan`
+- a small mod that registers the `doctor_check` tool behind `/sdd:doctor check`
 
 Implementation is deliberately not part of it: you point `/sdd:implement` at the flow you already use.
 
@@ -313,9 +313,8 @@ Three techniques prevent context bloat:
 SDD reasons about **projects**, not about one stack. `/sdd:doctor init` finds them — an Nx or Turborepo workspace, pnpm/yarn/uv/Cargo/Go workspaces, Gradle includes, or stray manifests such as `apps/api/pyproject.toml` — and asks which sibling repositories belong to the product when the code is spread over several repos.
 
 - **`capabilities.md` → `## Projects`** lists each one with its kind (web, backend, mobile, library, e2e …), path and stack; `## Implementation` can name a different flow per project.
-- **Constitution §2** has one command row per project (`test`, `coverage`, `typecheck`, `lint`, `dev / ui-preview`), so a Python API runs `cd apps/api && uv run pytest`, the web app `pnpm nx run web:test`, a Flutter app `flutter test`.
+- **Constitution §2** has one command row per project (`test`, `coverage`, `typecheck`, `lint`, `dev`), so a Python API runs `cd apps/api && uv run pytest`, the web app `pnpm nx run web:test`, a Flutter app `flutter test`.
 - **Several repositories**: assumes everyone checks the sibling repos out next to the spec repo under the same names (the relative paths are committed). `specs/` lives in one spec repo; `/sdd:implement` makes sure the same feature branch exists in each sibling repo before the flow edits it, and `/sdd:review` commits and opens a linked PR in every one of them. `init` adds the sibling repos to `permissions.additionalDirectories`.
-- **UI review** (`ui-critic`) covers web projects; mobile and desktop UI is skipped unless a screenshot skill or MCP server for that platform is installed.
 
 If you keep a Claude Code session loader (`CLAUDE.md` at the project root or per-module), keep it lean — Claude starts ignoring content past the first couple of thousand tokens. A useful convention is to point it at `specs/constitution.md` for detail and shard per module when the root file grows:
 
@@ -360,7 +359,7 @@ api: agent:python-developer
 
 ### 🏥 `/sdd:doctor [check|init]`
 
-Preflight audit and auto-setup. **5 checks**: specs/constitution.md, specs/template.md, specs/capabilities.md valid, git + gh, tooling per project.
+Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.md valid, git + gh, tooling per project, sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
 - `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. Never touches the project-root `CLAUDE.md`.
@@ -421,9 +420,9 @@ Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`,
 
 Phase 6 — the only verification gate, judging the result against the acceptance criteria and the project's rules:
 
-1. In parallel: the test suite once (`test`/`coverage` from `specs/constitution.md` §2), `spec-verifier` over the whole feature diff (committed, uncommitted and untracked, against the merge base), `ui-critic` when web UI files changed, and every extra check you configured (see below)
+1. In parallel: the test suite once (`test`/`coverage` from `specs/constitution.md` §2), `spec-verifier` over the whole feature diff (committed, uncommitted and untracked, against the merge base), and every extra check you configured (see below)
 2. `reviewer` gets all results, checks the diff against each **WHAT NOT TO DO** rule of the constitution, runs the domain audits and writes `specs/<slug>/review.md` with the verdict READY / NOT READY
-3. When every blocker is one you may accept (an out-of-scope change, a constitution rule, a `ui-critic` issue, a non-critical audit finding), you are asked once: fix them, or accept them with a reason — accepted items go under `## Accepted` in `review.md` and are not raised again. Failing tests, unmet acceptance criteria, non-goal violations and failed checks cannot be accepted
+3. When every blocker is one you may accept (an out-of-scope change, a constitution rule, a non-critical audit finding), you are asked once: fix them, or accept them with a reason — accepted items go under `## Accepted` in `review.md` and are not raised again. Failing tests, unmet acceptance criteria, non-goal violations and failed checks cannot be accepted
 4. Whatever the verdict: acceptance criteria are ticked `[x]` / unticked in `spec.md`, and tasks with unmet criteria go back to `in-progress`
 5. READY: shows the commit title, PR title and file list and asks (`publish: ask`); then commits and opens the PR with the `commit` / `pr` actions from `capabilities.md`, or with git and `gh` when none is set
 6. NOT READY: concrete blockers, each unmet criterion with the task to re-run (`/sdd:implement T3`)
@@ -448,6 +447,10 @@ pr: skill:create-pull-request
 `## Actions` is shared with `/sdd:spec` (the `branch` action). A check returns `PASS | FAIL | SKIPPED`; `FAIL` blocks READY, `SKIPPED` never does.
 
 
+### 🔁 `/sdd:retro`
+
+Optional, after `/sdd:review`. Reads `review.md` (blockers, violated rules, accepted items, drift) and proposes **WHAT NOT TO DO** entries for the constitution — only repeatable mistakes, only ones §5 does not already cover. Each entry needs a `**Why:**` that comes from the review or from you; it asks instead of inventing one. Writes only constitution §5.
+
 ### 📊 `/sdd:analyze`
 
 Diagnostic — run anytime to find where spec ↔ plan ↔ tasks ↔ code disagree. It runs `spec-verifier` once over the feature diff and reports, in a few lines, acceptance criteria that are met, **pending** (their task is not implemented yet) or a **gap** (implemented, not covered), plus the findings with `file:line` and the next command for each. Useful mid-feature, after changing the spec, and before `/sdd:review`.
@@ -458,7 +461,7 @@ Diagnostic — run anytime to find where spec ↔ plan ↔ tasks ↔ code disagr
 
 ## 🤖 Sub-agents Reference
 
-This framework introduces **only 3 new generic agents**, all for verification. Implementation is whatever flow you configure.
+This framework introduces **3 agents**: two verify the work, one surveys the code before the plan. Implementation is whatever flow you configure.
 
 ### 🛡️ `spec-verifier`
 
@@ -486,7 +489,7 @@ Strict constraints: **never** writes code, **never** suggests fixes, **never** j
 
 **Purpose:** Final quality audit before PR; decides READY/NOT READY.
 
-**Called by:** `/sdd:review`, which passes it the test results and the `spec-verifier`, `ui-critic` and extra-check results — it does not re-run the suite or start sub-agents itself.
+**Called by:** `/sdd:review`, which passes it the test results and the `spec-verifier` and extra-check results — it does not re-run the suite or start sub-agents itself.
 
 Pipeline:
 
@@ -500,31 +503,15 @@ Pipeline:
 **Output:** JSON `{verdict: "READY" | "NOT_READY", blockers: [...], warnings: [...]}`
 
 
-### 🎨 `ui-critic`
+### 🗺️ `codebase-surveyor`
 
-**Purpose:** Visual review of the changed UI — opens the affected screens (or their component previews, e.g. Storybook stories, when the project has them) in a browser tool, takes desktop and mobile screenshots and checks layout, the states the acceptance criteria name, visual consistency with the design system and obvious visual accessibility problems.
+**Purpose:** Read-only map of the projects a feature touches, so `/sdd:plan` reuses what exists: structure, naming and test conventions, and code to reuse with paths. Fixed output of at most 30 lines per run; says "none found" instead of guessing. It does not search the reference sources linked in the spec — `/sdd:plan` reads those once in its own sub-agent.
 
-**Called by:** `/sdd:review` when the diff contains UI files. The preview URL and start command come from the `dev / ui-preview` cell of the project's row in `specs/constitution.md` §2.
+**Called by:** `/sdd:plan` (step 2) with the spec's Summary, acceptance criteria and the affected projects. Runs on Haiku.
 
-**Requirements:** a browser tool (an MCP server, a built-in browser pane, Playwright …) and a reachable dev or preview server; mobile/desktop UI also needs a screenshot tool for that platform. If something is missing, the agent returns `SKIPPED` and `/sdd:review` carries on.
+**Output:** Markdown, per project: `Structure`, `Conventions`, `Reuse` (`path` — what it does).
 
-**Output:** JSON
-
-```json
-{
-  "verdict": "OK" | "WARNINGS" | "ISSUES" | "SKIPPED",
-  "skip_reason": "no_browser_tool | no_screenshot_tool | preview_unreachable | null",
-  "reviewed": ["/reset-password"],
-  "findings": [
-    {"target": "/reset-password", "severity": "issue", "category": "layout",
-     "detail": "Submit button cut off at 375px", "screenshot": "./.sdd-screenshots/reset-mobile.png"}
-  ]
-}
-```
-
-Severity classification: `issue` (visible bug; blocks READY unless you accept it), `warning` (suboptimal but functional), `info` (observation). `SKIPPED` never blocks `/sdd:review` — it surfaces an infrastructure note instead.
-
-Screenshots are saved under `./.sdd-screenshots/` — add this path to `.gitignore`.
+> Visual or functional checks of the running app (a QA or UI agent) are yours: add them under `checks:` in `## Review`.
 
 ---
 
@@ -544,7 +531,7 @@ In Claude Code:
 
 ```text
 /sdd:doctor init       # detects the projects (api, web, mobile) and their commands
-/sdd:doctor check      # ✅ READY (5/5)
+/sdd:doctor check      # ✅ READY (7/7)
 /sdd:constitution      # fill specs/constitution.md: Tech stack, Run/build, WHAT NOT TO DO with rationale
 ```
 
@@ -653,7 +640,7 @@ Each task flips to `review` when its implementer reports done; nothing is verifi
 
 Pipeline executes:
 
-1. In parallel: tests 23/23 passed; `spec-verifier`: all 4 AC met, no drift; `ui-critic`: `OK` (screenshots in `.sdd-screenshots/`, or `SKIPPED` without a browser tool / Storybook); your `qa` check: `PASS`
+1. In parallel: tests 23/23 passed; `spec-verifier`: all 4 AC met, no drift; your `qa` check: `PASS`
 2. `reviewer`: constitution rules respected, audit skills for the stack pass (e.g. 0 critical findings)
 3. The 4 AC are ticked in `spec.md`; verdict **READY** — you confirm the commit and PR
 4. Commit: `feat(user-can-reset-password-via-email): <Summary of spec.md>`
@@ -707,29 +694,33 @@ spec-driven-development/                    # or your own forked plugin path
 ├── .claude-plugin/
 │   └── marketplace.json                   # marketplace: sdd + sdd-board
 ├── README.md / LICENSE / CHANGELOG.md / CONTRIBUTING.md / .github/
+├── shared/sdd-core/                       # TypeScript used by both plugins: parse.ts, formats.ts, check.ts
+├── scripts/sync-core.sh                   # copies shared/sdd-core into each plugin (a mod imports only its own files)
 └── plugins/
-    ├── sdd-board/                         # Desktop side panel (mod)
+    ├── sdd-board/                         # Desktop side panel (mod), requires sdd
     │   ├── .claude-plugin/plugin.json
-    │   ├── hooks/                         # hooks.json + register.ts (hooks), parse/model/view/svg (pure modules)
+    │   ├── hooks/                         # hooks.json + register.ts (hooks), model/view/svg, core/ (copy of shared)
     │   └── tests/                         # run with `claude plugin test`
     └── sdd/                               # the SDD plugin
         ├── .claude-plugin/plugin.json     # plugin manifest
-        ├── skills/
-        │   └── doctor/                    # LLM-driven skill — no Python helpers
-        │       ├── SKILL.md               # `check` procedure
+        ├── hooks/                         # hooks.json + register.ts (the doctor_check tool), core/ (copy of shared)
+        ├── tests/                         # doctor check rules, run with `claude plugin test`
+        ├── references/                    # shared by the skills: feature-diff, capabilities, status-lifecycle, sibling-repos, formats
+        ├── skills/                        # 10 skills, each `/sdd:<name>`
+        │   ├── constitution/ spec/ clarify/ plan/ tasks/
+        │   ├── implement/ review/ retro/ analyze/    # SKILL.md each
+        │   └── doctor/
+        │       ├── SKILL.md               # `check` (tool + fallback)
         │       ├── references/
         │       │   └── init.md            # `init` procedure (loaded only for init)
         │       └── templates/             # bundled seed files read by `init`
         │           ├── constitution.md.template   # long-form project constitution
         │           ├── capabilities.md.template   # auto-generated + user-override hybrid
         │           └── specs/template.md          # base for new feature specs
-        ├── commands/                      # 8 slash commands (auto-discovered)
-        │   ├── constitution.md / spec.md / clarify.md / plan.md
-        │   └── tasks.md / implement.md / review.md / analyze.md
-        └── agents/                        # 3 verification sub-agents
+        └── agents/                        # 3 sub-agents
             ├── spec-verifier.md
             ├── reviewer.md
-            └── ui-critic.md               # optional — needs a browser tool
+            └── codebase-surveyor.md
 ```
 
 
@@ -746,7 +737,7 @@ Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro,
 5. **🔒 Run `/sdd:plan` in Plan Mode.** Plan Mode (Shift+Tab) keeps Claude from modifying files while it explores; approving the plan saves it. Not for `/sdd:clarify` — it writes the answers into `spec.md`, which Plan Mode blocks.
 6. **👤 Human-in-the-loop on `plan.md`.** Always read the generated plan before `/sdd:tasks`. This is the cheapest moment to correct course.
 7. **🌿 One branch per feature.** `/sdd:spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
-8. **🤝 Use sub-agents for large reads.** Don't grep 50 files in the main session — invoke a `Task` tool sub-agent and receive only a summary.
+8. **🤝 Use sub-agents for large reads.** Don't grep 50 files in the main session — invoke a sub-agent (Agent tool) and receive only a summary.
 9. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/sdd:analyze` to detect drift periodically.
 10. **💬 Fresh chat per task — and `/clear` between phases.** Open a new Claude session when switching to a new task, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
 11. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
@@ -786,7 +777,7 @@ The single biggest cost lever is **which model runs which phase**. A slash comma
 
 Two supporting mechanisms:
 
-- **Per-agent tier.** The verification sub-agents carry their own `model:` frontmatter — `reviewer` on Opus (last line of defense), `spec-verifier` / `ui-critic` on Sonnet — so they run at their own tier regardless of the session model.
+- **Per-agent tier.** The verification sub-agents carry their own `model:` frontmatter — `reviewer` on Opus (last line of defense), `spec-verifier` on Sonnet, `codebase-surveyor` on Haiku — so they run at their own tier regardless of the session model.
 
 Keep large and generated output **out of the main loop**: verification agents exclude the `Generated / out-of-band paths` globs from every diff, `/sdd:plan` extracts reference sources (mockups, API specs, ADRs) **once** inside a sub-agent and caches what matters in `plan.md`, and large codebase scans return only a summary via a sub-agent.
 
@@ -799,7 +790,7 @@ Why this framework looks the way it does:
 | Decision | Rationale |
 |----------|-----------|
 | **Per-project, not global** | Different projects have different stacks, commands and implementation flows. A global framework would force homogeneity. |
-| **Only 3 new agents** | Implementation is yours (a skill, agent or command you already have); the framework only verifies. Duplicating implementers would be wasted effort and version drift. |
+| **Only 3 agents** | Implementation is yours (a skill, agent or command you already have); the framework verifies and surveys. Duplicating implementers would be wasted effort and version drift. |
 | **Self-contained tasks** | A task carries scope, acceptance criteria and dependencies, so any implementer — or a person — can pick it up as a ticket. |
 | **Conventional Commits in `/sdd:spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
 | **Plan = decisions, tasks = tickets** | The plan holds architectural and technical decisions and the scope; tasks refer to it instead of copying it. |
@@ -831,8 +822,8 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 In short:
 
 1. Fork the repository and create a feature branch (`git checkout -b feat/new-skill`)
-2. Make changes inside the plugin (`plugins/sdd/commands/`, `plugins/sdd/agents/`, `plugins/sdd/skills/`, `plugins/sdd/skills/doctor/templates/`, `plugins/sdd/skills/doctor/references/`)
-3. Exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
+2. Make changes inside the plugin (`plugins/sdd/skills/`, `plugins/sdd/agents/`, `plugins/sdd/references/`, `plugins/sdd/skills/doctor/templates/`); shared TypeScript lives in `shared/sdd-core/` (run `scripts/sync-core.sh` afterwards)
+3. Run `claude plugin test` in both plugins, then exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and bump the version (`plugin.json`, `marketplace.json`, README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request
 

@@ -17,5 +17,8 @@
     "mod",
     "panel",
     "dashboard"
+  ],
+  "dependencies": [
+    "sdd"
   ]
 }

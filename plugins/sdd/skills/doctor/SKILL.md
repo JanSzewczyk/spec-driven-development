@@ -1,8 +1,9 @@
 ---
 name: doctor
 description: Audit (`check`) or set up (`init`) a project for the SDD framework — constitution, spec template, capabilities. Use when the user asks "is my project SDD-ready", wants to set up SDD, or `/sdd:spec` fails for a missing file.
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__sdd__doctor_check
 argument-hint: "check | init"
+disable-model-invocation: true
 ---
 
 # SDD Doctor
@@ -22,41 +23,33 @@ Mode comes from the user message: `check` (default; "audit", "is ready") reports
 
 ## `check`
 
-Read-only. Batch the shell probes (git, gh, tool lookups) into one or two Bash calls. Status per
-check: `pass` ✅ / `warn` ⚠️ / `fail` ❌.
+Read-only. Call the `mcp__sdd__doctor_check` tool (add `offline: true` when the user says there is
+no network): it returns JSON `{status, passed, total, projects, checks: [{id, name, status, summary,
+findings: [{level, text}]}]}` for the 7 checks of [references/formats.md](${CLAUDE_PLUGIN_ROOT}/references/formats.md).
+Render it as the report below.
 
-1. **`specs/constitution.md`** — exists with sections Tech stack, Run/build, Conventions, WHAT NOT
-   TO DO. Missing → fail; sections missing → warn. A project in the §2 table without a `test`
-   command → warn, naming it (fix via `/sdd:constitution`). A legacy §2 `Command | Purpose` list
-   counts as project `root`.
-2. **`specs/template.md`** — exists with Summary, User stories, Acceptance criteria, Edge cases,
-   Non-goals, Open questions. Missing → fail; partial → warn.
-3. **`specs/capabilities.md`** — exists with `Projects` (legacy `Stack profile`), `Implementation`,
-   `Actions`, `Review` and `Generated / out-of-band paths`. Missing → fail; a section missing → warn, suggest `init`.
-   A project in `Projects` but not in constitution §2 (or reverse) → warn.
-4. **Git + gh** — `.git` exists; `git status --porcelain` clean; `gh` on PATH and
-   `gh auth status` ok. Dirty tree or no gh → warn.
-5. **Tooling** — per project in `Projects`: its path exists and the executables of its §2
-   commands resolve (e.g. `node_modules` present, `uv`/`ruff`/`pytest` reachable). Missing → warn.
+Tool not available (mods are off: `--safe-mode`, `disableAllHooks`, WSL, Claude Code older than
+2.1.287) → run the same 7 checks yourself from that reference, batching the shell probes (git, gh,
+`which`) into one or two Bash calls, and say in the report that the check ran without the tool.
 
 ### Report
 
 ```markdown
 # SDD Readiness Report
 
-**Status:** ⚠️ PARTIAL (4/5 passed)
+**Status:** ⚠️ PARTIAL (6/7 passed)
 **Projects:** web — Next.js 15, TS, Vitest (pnpm) · api — FastAPI (uv)
 
 | # | Check | Status | Detail |
 |---|-------|--------|--------|
 | 5 | Tooling | ⚠️ | api: `uv` not found |
 
-✅ 4 passed: 1, 2, 3, 4
+✅ 6 passed: 1, 2, 3, 4, 6, 7
 
 ## Next steps
 - <one bullet per fix>
 ```
 
-List only non-✅ rows plus a one-line summary of the passed ones.
-Overall: `READY` (no warn/fail) / `PARTIAL` (warns or 1–2 fails) / `NOT_READY` (3+ fails).
+List only non-✅ rows (one line per finding in Detail) plus a one-line summary of the passed ones.
+Overall status is the tool's `status`.
 Next step: READY → `/sdd:spec feat <description>`; otherwise `/sdd:doctor init`.
