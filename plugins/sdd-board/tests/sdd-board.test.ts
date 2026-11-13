@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/parse.ts'
+import { parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/core/parse.ts'
 import { blockedBy, currentSlug, derive, gate } from '../hooks/model.ts'
 import type { Feature } from '../hooks/model.ts'
 

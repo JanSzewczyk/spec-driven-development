@@ -2,7 +2,7 @@
 
 A side panel for **Claude Code Desktop** that shows where each [Spec-Driven Development](../../README.md) feature stands. It is a Claude Code *mod* and a companion to the `sdd` plugin: it only reads the `specs/` folder of your project and never writes to it.
 
-Needs Claude Code 2.1.287 or later (tested with 2.1.309).
+Needs Claude Code 2.1.287 or later (tested with 2.1.309) and the `sdd` plugin, which is installed with it (`dependencies` in `plugin.json`). The spec parsers in `hooks/core/` are a copy of `shared/sdd-core/`, shared with `sdd`'s doctor check: edit them there and run `scripts/sync-core.sh`.
 
 ## What you get
 

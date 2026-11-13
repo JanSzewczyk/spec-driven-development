@@ -4,9 +4,9 @@ Claude Code plugin that carries a feature through a fixed pipeline: `/sdd:spec` 
 
 | Part | What |
 | --- | --- |
-| Commands | `/sdd:constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `analyze` |
-| Agents | `spec-verifier`, `reviewer`, `ui-critic` |
-| Skill | `doctor` — `/sdd:doctor check` / `init` (project readiness audit and setup) |
+| Skills (slash commands) | `/sdd:constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `retro`, `analyze`, `doctor` (`check` / `init`: readiness audit and setup) |
+| Agents | `spec-verifier`, `reviewer`, `codebase-surveyor` |
+| Mod | registers the `doctor_check` tool behind `/sdd:doctor check` (needs Claude Code 2.1.287+; without it the skill falls back to a manual check) |
 
 ## Install
 

@@ -1,8 +1,12 @@
 ---
+name: tasks
 description: Split the plan into self-contained, Jira-like tasks (SDD step 4)
-argument-hint: "(optional path to plan.md)"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git branch:*)
+argument-hint: "(optional path to plan.md)"
+disable-model-invocation: true
 ---
+
+# SDD Tasks
 
 The **Tasks** phase of SDD. Turn `plan.md` into a list of **tasks you could hand to an
 implementer as they are**: each says what to build, where, and which acceptance criteria it must

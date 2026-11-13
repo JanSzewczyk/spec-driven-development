@@ -1,8 +1,12 @@
 ---
+name: constitution
 description: Edit the project constitution at specs/constitution.md (full long-form rules with rationale)
-argument-hint: "(none — opens specs/constitution.md for editing)"
 allowed-tools: Read, Edit, Bash, Glob
+argument-hint: "(none — opens specs/constitution.md for editing)"
+disable-model-invocation: true
 ---
+
+# SDD Constitution
 
 Edit `specs/constitution.md` — the source-of-truth constitution for this project. This is the long-form
 document where every rule carries its *Why*. This command operates only on `specs/constitution.md`.
@@ -37,7 +41,7 @@ Help the user fill in or update the canonical sections:
 
 1. **Tech stack** — runtime versions, framework, DB, tests, lint. Include the *Why this stack* paragraph.
 2. **Run/build commands** — one row per project: `test`, `coverage`, `typecheck`, `lint`,
-   `dev / ui-preview`; document non-obvious flags.
+   `dev`; document non-obvious flags.
 3. **Architecture** — one paragraph + Mermaid diagram. The *Boundaries we maintain* list is the high-value piece.
 4. **Code conventions** — short list + concrete good/bad code examples from the repo.
 5. **WHAT NOT TO DO ⛔** — every entry MUST include a `**Why:**` line and (when available) `**Incident:**` reference. If the user gives a rule without a reason, ask for the rationale instead of guessing.

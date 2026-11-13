@@ -26,9 +26,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# SDD framework artifacts (generated during /review in target projects, never in this repo)
-.sdd-screenshots/
-
 # Claude Code local-only settings (do NOT commit secrets)
 .claude/settings.local.json
 

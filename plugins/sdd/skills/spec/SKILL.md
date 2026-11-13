@@ -1,8 +1,12 @@
 ---
+name: spec
 description: Create a feature spec, branch, and skeleton files (SDD step 1)
+allowed-tools: Read, Write, Edit, Bash, Skill, Agent
 argument-hint: "<type> <short description>  # type: feat|fix|chore|refactor|docs"
-allowed-tools: Read, Write, Bash, Skill, Agent
+disable-model-invocation: true
 ---
+
+# SDD Spec
 
 Invoke the **Specify** phase of Spec-Driven Development. Execute the steps in order. Write only the
 business specification: no implementation code, no frameworks or libraries.

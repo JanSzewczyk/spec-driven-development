@@ -1,8 +1,12 @@
 ---
+name: implement
 description: Hand a task to the implementation flow (SDD step 5)
-argument-hint: "<task-id | all>  # e.g. T2, or all"
 allowed-tools: "*"
+argument-hint: "<task-id | all>  # e.g. T2, or all"
+disable-model-invocation: true
 ---
+
+# SDD Implement
 
 The **Implement** phase of SDD. This command **manages** the implementation: it builds the brief
 for a task and hands it to the project's implementation flow. It does not verify the result on its
@@ -22,14 +26,8 @@ background; otherwise one after another.
 ### 2. Pick the flow
 
 Read the `## Implementation` section of `specs/capabilities.md`. The line for the task's project
-wins over `default`; values:
-
-| Value | Hand-over |
-|---|---|
-| `skill:<name>` | invoke it with the Skill tool, brief as the argument |
-| `agent:<name>` | Agent tool with that `subagent_type`, brief as the prompt |
-| `command:<shell>` | run it with Bash, brief on stdin |
-| `in-session` | implement it yourself, step 4 |
+wins over `default`; the values and how each is handed over are in
+[capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md) (`in-session` → step 4).
 
 No section, no matching line → `in-session`.
 
@@ -46,14 +44,12 @@ The task is self-contained only by reference, so inline what it points to:
 - definition of done: every listed AC is met and has a test, the project's checks pass, only the
   task's files changed; **return** the changed files, the test result and any unmet AC
 
-**Lifecycle.** Set the task `status: in-progress` before the hand-over (first task of the feature:
+**Lifecycle** ([status-lifecycle.md](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md)). Set the task `status: in-progress` before the hand-over (first task of the feature:
 `spec.md` and `plan.md` `**Status:**` → `in-progress`); `review` when the implementer reports done,
 otherwise leave it and show what is missing.
 
-**Sibling repositories.** Before the first edit in one, make sure it is on the feature branch
-with exactly the spec's `**Branch:**` name; create it from its default branch with
-`git -C <repo> checkout -b <branch>` if missing (not the `branch` action — it may pick another
-name), and stop and ask when its tree is dirty (`git -C <repo> status --porcelain`).
+**Sibling repositories.** For a project marked `(repo)` follow
+[sibling-repos.md](${CLAUDE_PLUGIN_ROOT}/references/sibling-repos.md) before the first edit there.
 
 ### 4. In-session implementation
 

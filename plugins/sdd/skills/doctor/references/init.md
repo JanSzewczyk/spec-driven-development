@@ -40,7 +40,7 @@ linter). Confirm it is runnable (on `$PATH`, via the package manager, or a repo-
 - `mkdir -p specs`. Copy with `cp`, not Read + Write; use Edit for the fill-in.
 - `specs/constitution.md` absent → `cp` [constitution.md.template](../templates/constitution.md.template), then Edit the §2 table:
   one row per project (`Project`, `Path`, `test`, `coverage`, `typecheck`, `lint`,
-  `dev / ui-preview` if declared), each command runnable from this repo's root (`cd apps/api && uv
+  `dev` (starts the app locally) if declared), each command runnable from this repo's root (`cd apps/api && uv
   run pytest`); remove the example rows; empty cell when nothing found. Present → leave untouched.
 - `specs/template.md` absent → `cp` [specs/template.md](../templates/specs/template.md) verbatim. Present → skip.
 - Legacy renames, only when the new path is absent: `specs/_constitution.md` →
@@ -77,4 +77,4 @@ otherwise do not touch `.claude/settings.json`. Make the one edit:
 4. Write with 2-space indent and a trailing newline.
 
 ## 5. Re-check
-Run `check` and show the report.
+Run `check` (the `mcp__sdd__doctor_check` tool, or the fallback in SKILL.md) and show the report.

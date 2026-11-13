@@ -23,6 +23,6 @@
   "agents": [
     "./agents/spec-verifier.md",
     "./agents/reviewer.md",
-    "./agents/ui-critic.md"
+    "./agents/codebase-surveyor.md"
   ]
 }
