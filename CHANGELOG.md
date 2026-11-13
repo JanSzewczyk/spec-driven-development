@@ -16,7 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/sdd:review` is the single verification gate.** Tests, `spec-verifier`, `ui-critic` and the configured extra checks (e.g. a QA agent) run in parallel; the `reviewer` also checks the constitution's WHAT NOT TO DO rules. Met acceptance criteria are ticked in `spec.md`, tasks with unmet ones go back to `in-progress`, and commit/PR use the `commit` / `pr` actions or git and `gh`.
 - **`capabilities.md` holds `## Projects` (auto) plus `## Implementation`, `## Actions` (`branch`, `commit`, `pr`), `## Review` and the generated paths (yours).** Agent and skill lists and the routing table are gone.
 - **`/sdd:plan`** records decisions and scope (optional diagrams, `AskUserQuestion` for real forks, "Reference sources" instead of Figma-specific wording); **`/sdd:clarify`** is a single run with proposed answers written to the spec; **`/sdd:spec`** creates the branch through the `branch` action and fills the template with `sed`; **`/sdd:analyze`** delegates to `spec-verifier`.
-- **Doctor** is a skill only (`/sdd:doctor check|init`): `SKILL.md` 25 KB → 3 KB, `init` in `reference/init.md`, 5 checks, templates trimmed.
+- **Doctor** is a skill only (`/sdd:doctor check|init`): `SKILL.md` 25 KB → 3 KB, `init` in `references/init.md`, 5 checks, templates trimmed; `init` adds every missing `capabilities.md` section.
+- **Every command finds the feature by the `**Branch:**` line of `spec.md`**, so the `branch` action may name branches its own way. `/sdd:clarify` replaces template placeholders and never renumbers acceptance criteria; a `/sdd:tasks` re-run updates `tasks.md` and keeps task ids and statuses.
+- **Accepting blockers in `/sdd:review`.** When every blocker is acceptable (out-of-scope change, constitution rule, `ui-critic` issue, non-critical audit finding) the user can accept them with a reason; they go under `## Accepted` in `review.md` and are not raised again.
+- **`ui-critic` works on any web UI**: it opens the affected route or a component preview (Storybook when present) from the `dev / ui-preview` command and checks the states the acceptance criteria name.
+- **Spec template:** *Testing guidelines* moved out of the business spec into an optional *Testing* section of `plan.md`; doctor now requires *Non-goals* instead.
 - **`sdd-board`** reads the new task format and shows a flat task list; its implement gate checks acceptance criteria and dependencies.
 
 ### Added

@@ -47,11 +47,12 @@ plugin and exercise the real skill against a target project, then verify the art
    gains no duplicate paths, and any user keys are preserved. Point it at a malformed
    `settings.json` and confirm it refuses to touch the file.
 
-5. Sanity-check stale references after any rename:
+5. Sanity-check stale references after any rename or removal (extend the list with the names you
+   removed):
 
    ```bash
-   grep -rnE '(?<!sdd-)\b(spec-verifier|reviewer|ui-critic)\b' \
-     --perl-regexp plugins/sdd/commands/ plugins/sdd/agents/ plugins/sdd/skills/ README.md
+   grep -rnE 'spec-guard|drift-detector|settings-merge|templates/hooks|doctor/reference/' \
+     plugins/sdd/ README.md CLAUDE.md
    # Expected: empty output.
    ```
 
@@ -59,8 +60,8 @@ plugin and exercise the real skill against a target project, then verify the art
 
 - **All framework files are English-only.** The audit grep used during review catches Polish diacritics.
 - **No new generic agents without strong justification.** The framework intentionally only adds 3 (`spec-verifier`, `reviewer`, `ui-critic`). Implementation is the user's own flow, configured under `## Implementation` in `capabilities.md`.
-- **Slash commands** should declare `allowed-tools` explicitly. Avoid `"*"` unless the command genuinely needs every tool.
-- **Skills (`SKILL.md`)** must have a clear `description` frontmatter — that is what Claude uses to decide whether to auto-trigger. Include `version`, `lastUpdated`, `tags`, `author` for marketplace consistency.
+- **Slash commands** should declare `allowed-tools` explicitly. Avoid `"*"` unless the command genuinely needs every tool (`/sdd:implement` and `/sdd:review` hand work to flows and agents the user picks).
+- **Skills (`SKILL.md`)** must have a clear `description` frontmatter saying what it does and when to use it — that is what Claude uses to decide whether to trigger it. The version lives in `plugin.json`, not in the skill.
 - Conventional Commits for commit messages (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 
 ## What goes where
@@ -77,11 +78,11 @@ plugin and exercise the real skill against a target project, then verify the art
 
 ## Pull request checklist
 
-- [ ] All affected `.md` / `.sh` files reviewed for stale references via the grep above.
+- [ ] Affected files checked for stale references with the grep above.
 - [ ] Doctor exercised against a fresh project: `/sdd:doctor check` → `init` → `check`, artifacts verified by hand and idempotency confirmed.
-- [ ] If a new command / agent / hook was added, the README's File Structure and reference sections reflect it.
+- [ ] If a command or agent was added or removed, the README's File Structure and reference sections reflect it.
 - [ ] `CHANGELOG.md` section added for the new version.
-- [ ] `.claude-plugin/plugin.json` `version` bumped (same value in `marketplace.json` and the README badge).
+- [ ] `plugins/<name>/.claude-plugin/plugin.json` `version` bumped (same value in `.claude-plugin/marketplace.json`; for `sdd` also the README badge).
 
 ## Reporting issues
 

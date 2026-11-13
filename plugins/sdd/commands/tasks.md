@@ -1,7 +1,7 @@
 ---
 description: Split the plan into self-contained, Jira-like tasks (SDD step 4)
 argument-hint: "(optional path to plan.md)"
-allowed-tools: Read, Write, Glob, Grep
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git branch:*)
 ---
 
 The **Tasks** phase of SDD. Turn `plan.md` into a list of **tasks you could hand to an
@@ -13,8 +13,11 @@ satisfy. You plan and describe; you do not implement and you do not choose agent
 
 ### 1. Load context
 
-- `specs/<current>/plan.md` (current branch, or `$ARGUMENTS`) and `spec.md` (the AC ids)
+- the feature folder `specs/<current>/`: from `$ARGUMENTS`, else the spec whose `**Branch:**`
+  equals `git branch --show-current` (none → list the specs and ask); read its `plan.md` and
+  `spec.md` (the AC ids)
 - `specs/capabilities.md`, only the `## Projects` section
+- `tasks.md`, when it already exists (a re-run after the plan or the spec changed)
 
 ### 2. Decompose
 
@@ -58,8 +61,13 @@ notes: <optional — a constraint or constitution rule that applies here>
 ````
 
 `scope` is the list of actions, specific enough to start from (behaviours, states, edge cases from
-the AC). `acceptance` is measurable via the spec's AC ids. Omit `notes` and an empty
-`depends_on` only when nothing applies.
+the AC). `acceptance` is measurable via the spec's AC ids. Write `depends_on: []` when the task
+waits for nothing; omit `notes` when nothing applies.
+
+**Re-run** (a `tasks.md` exists): update it, do not start over. Keep each existing task's id and
+`status`; a task that is `in-progress`, `review` or `done` keeps its `scope` unless the change
+touches it — then set it back to `draft` and say so. New tasks take the next unused id; a task no
+longer needed is removed only while `draft`, otherwise report it and leave it.
 
 Add one line at the end: `Order: T1 → T2 ∥ T3 → T4` (what can run once its dependencies are done).
 
@@ -68,7 +76,7 @@ Add one line at the end: `Order: T1 → T2 ∥ T3 → T4` (what can run once its
 Fail and fix on: an AC with no task, a task with no AC, a cycle, a dependency on a missing task, two
 independent tasks with overlapping `files`.
 
-Set `plan.md` `**Status:**` → `tasks-ready` (unless already later). Report the task count, projects
+Set `plan.md` `**Status:**` → `tasks-ready` with Edit (unless already later). Report the task count, projects
 and the `Order:` line. Next: `/sdd:implement T1` (one task) or `/sdd:implement all`; best after
 `/clear` — it re-reads `tasks.md` from disk.
 

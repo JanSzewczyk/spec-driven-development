@@ -23,7 +23,7 @@
 
 ## Acceptance criteria
 
-<!-- Concrete, measurable. Each AC maps to one test. -->
+<!-- Concrete, measurable. Each AC maps to one test. Ids are stable: never renumber or reuse one. -->
 
 - [ ] AC1: given input X → produces output Y
 - [ ] AC2: ...
@@ -45,17 +45,6 @@
 <!-- The /sdd:clarify phase fills these in. The owner answers them BEFORE /plan. -->
 
 - ?
-
-## Testing guidelines
-
-<!-- Test framework, test file locations, what to test at each layer -->
-
-- **TDD:** test-first by default; contract-first only for a unit whose deliverable is itself a public interface (see constitution §6).
-<!-- Several projects (web / backend / mobile …)? Repeat these lines per project, e.g. "**api** — Unit: pytest …". -->
-- Unit:
-- Integration:
-- E2E:
-- A11y (if UI — web or mobile):
 
 ## Dependencies & prerequisites
 

@@ -19,7 +19,7 @@
 
 Vibe coding (loose prompt → AI guesses → iterate by trial and error) works for demos but produces spaghetti in production: every fix breaks something else, security gaps multiply, the codebase becomes unmaintainable.
 
-SDD fixes this by enforcing **canonical phases**: `constitution → spec → clarify → plan → tasks → implement → review`. AI is forced to read and confirm a plan before writing a single line of code. Verification agents make the feedback loop tight enough that the model **cannot skip** validation steps.
+SDD fixes this by enforcing **canonical phases**: `constitution → spec → clarify → plan → tasks → implement → review`. AI reads and confirms a plan before a single line of code is written, and a final review checks the result against the acceptance criteria before anything is committed.
 
 > SDD inverts traditional AI-assisted coding. Instead of "vibe coding" (vague prompt → AI guesses → fix loop), the **specification is the source of truth** and code is its mechanical consequence.
 
@@ -57,9 +57,11 @@ The unique contribution of this framework: it **manages the thinking and the ver
 - [📦 Plugins](#-plugins)
 - [🔄 The SDD Flow](#-the-sdd-flow)
 - [🏗️ Architecture](#-architecture)
-  - [🧱 Three-tier agent hierarchy](#-three-tier-agent-hierarchy)
+  - [🧱 How the pieces fit](#-how-the-pieces-fit)
   - [🏷️ Tasks and the implementation hand-off](#-tasks-and-the-implementation-hand-off)
+  - [🔁 Status lifecycle](#-status-lifecycle)
   - [🧠 Context management](#-context-management)
+  - [🧱 Monorepos, several repositories, any kind of app](#-monorepos-several-repositories-any-kind-of-app)
   - [📇 Capabilities registry — hybrid mode](#-capabilities-registry--hybrid-mode)
 - [⌨️ Slash Commands Reference](#-slash-commands-reference)
 - [🤖 Sub-agents Reference](#-sub-agents-reference)
@@ -67,6 +69,7 @@ The unique contribution of this framework: it **manages the thinking and the ver
 - [📁 File Structure](#-file-structure)
 - [⭐ Best Practices](#-best-practices)
 - [🚫 Anti-patterns](#-anti-patterns)
+- [💰 Cost & model tiering](#-cost--model-tiering)
 - [🧩 Design Decisions](#-design-decisions)
 - [🔧 Troubleshooting](#-troubleshooting)
 - [🤝 Contributing](#-contributing)
@@ -113,7 +116,7 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@0.7.0`. Once installed, the plugin's 8 slash commands, 3 verification sub-agents, and the `doctor` skill (`/sdd:doctor`) are available in **every** project — no per-project copy required.
+You should see `sdd@1.0.0`. Once installed, the plugin's 8 slash commands, 3 verification sub-agents, and the `doctor` skill (`/sdd:doctor`) are available in **every** project — no per-project copy required.
 
 ### 2. Initialize a project
 
@@ -208,12 +211,12 @@ flowchart TD
 | Phase | Command | What happens |
 |-------|---------|--------------|
 | **Constitution** | `/sdd:constitution` | Edit `specs/constitution.md` — the long-form source of truth (tech stack, conventions, **WHAT NOT TO DO** with rationale, testing philosophy, out-of-scope). No token limit. The only file this command touches. |
-| **Specify** | `/sdd:spec <type> <description>` | Validate clean git, create branch `<type>/<slug>`, generate `specs/<slug>/spec.md` (business only — no code) |
+| **Specify** | `/sdd:spec <type> <description>` | Create the feature branch (the `branch` action, a branch skill or `git checkout -b <type>/<slug>`), generate `specs/<slug>/spec.md` (business only — no code) |
 | **Clarify** | `/sdd:clarify` | AI finds the gaps in spec.md, asks up to 5 questions (with proposed answers) and writes the answers into the spec in one run |
-| **Plan** | `/sdd:plan` | Generate `plan.md` with Mermaid diagrams, data model, API surface, file-by-file change list. **Run in Plan Mode.** |
+| **Plan** | `/sdd:plan` | Generate `plan.md`: decisions, contracts, file-by-file change list, risks (diagrams, data model, API surface only when they help). **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Split the plan into self-contained, Jira-like tasks (project, scope, acceptance criteria, dependencies) under one Epic |
 | **Implement** | `/sdd:implement <task-id or all>` | Build a brief from the task and hand it to the flow configured in `capabilities.md` (or implement in the session). Does not verify on its own |
-| **Review** | `/sdd:review` | Tests once, `spec-verifier` + `reviewer` + your extra checks in parallel → verdict READY/NOT READY → AC ticked in the spec → commit + PR |
+| **Review** | `/sdd:review` | Tests, `spec-verifier`, `ui-critic` and your extra checks in parallel, then `reviewer` → verdict READY/NOT READY → AC ticked in the spec → commit + PR |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
 
 ---
@@ -281,13 +284,28 @@ The file keeps references (AC ids, plan sections) instead of copies. When you ru
 
 Verification is a separate step: `/sdd:review` judges the outcome against the spec.
 
+Every command finds the feature by the `**Branch:**` line of its `spec.md`, so the branch may be named by any branch skill. Acceptance criteria ids (`AC1`, `AC2` …) never change once written: tasks, `spec-verifier` and the board refer to them. Re-running `/sdd:tasks` after the plan changes updates `tasks.md` and keeps each task's id and status.
+
+### 🔁 Status lifecycle
+
+| File | Status | Set by |
+|---|---|---|
+| `spec.md` | `draft` | `/sdd:spec` |
+| | `clarified` | `/sdd:clarify` |
+| | `planned` | `/sdd:plan` |
+| | `in-progress` | `/sdd:implement` (first task) |
+| | `done` | `/sdd:review` (READY) |
+| `plan.md` | `draft` → `tasks-ready` → `in-progress` → `done` | `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` → `/sdd:review` |
+| task in `tasks.md` | `draft` → `in-progress` → `review` → `done` | `/sdd:tasks` → `/sdd:implement` (hand-over, then implementer done) → `/sdd:review` (READY) |
+
+`/sdd:review` moves a task with unmet acceptance criteria back to `in-progress`; statuses never move backwards otherwise.
 
 ### 🧠 Context management
 
 Three techniques prevent context bloat:
 
 1. **Per-task briefs** — the implementer receives only its task, the acceptance criteria and plan sections it names, never the whole feature
-2. **Skills on-demand** — `Use skill: X` only loads when needed
+2. **Sub-agents for large reads** — the codebase survey, reference sources and verification run in sub-agents and return summaries
 3. **Fresh chat per task** — open a new Claude session between tasks; `tasks.md` status is the handover document
 
 ### 🧱 Monorepos, several repositories, any kind of app
@@ -313,7 +331,7 @@ The SDD framework itself does not read, write, or enforce any structure on these
 `specs/capabilities.md` has two kinds of sections:
 
 - **`<!-- auto-generated -->`** — `## Projects`, rewritten by `/sdd:doctor init` on every run
-- **`<!-- user-override -->`** — `## Implementation` and `## Generated / out-of-band paths`, preserved untouched
+- **`<!-- user-override -->`** — `## Implementation`, `## Actions`, `## Review` and `## Generated / out-of-band paths`, preserved untouched (`init` only adds a missing one)
 
 Example schema:
 
@@ -345,7 +363,7 @@ api: agent:python-developer
 Preflight audit and auto-setup. **5 checks**: specs/constitution.md, specs/template.md, specs/capabilities.md valid, git + gh, tooling per project.
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
-- `init` — bootstrap missing files (constitution, template, capabilities) and auto-detect the session's agents/skills + project stack. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. Never touches the project-root `CLAUDE.md`.
+- `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. Never touches the project-root `CLAUDE.md`.
 
 ### 📜 `/sdd:constitution`
 
@@ -353,14 +371,13 @@ Edit `specs/constitution.md` — the long-form project constitution (no token li
 
 ### 🌿 `/sdd:spec <type> <description>`
 
-Phase 1 — Specify. Requires `<type>` ∈ {`feat`, `fix`, `chore`, `refactor`, `docs`} (Conventional Commits).
+Phase 1 — Specify. `<type>` ∈ {`feat`, `fix`, `chore`, `refactor`, `docs`} (Conventional Commits; `feat` when omitted).
 
 Steps:
 
-1. Verify clean git tree (`git status --porcelain`) — STOP if dirty
-2. Parse `<type>` and generate `feature_slug` (kebab-case) and `feature_title` (Title Case)
-3. Create branch `<type>/<feature_slug>`
-4. Generate `specs/<feature_slug>/spec.md` from `specs/template.md`
+1. Create the branch with the `branch` action from `## Actions` (a skill, agent or command), else a branch skill the session has, else `git checkout -b <type>/<slug>`
+2. Read the real branch name; `feature_slug` is the part after the first `/`
+3. Generate `specs/<feature_slug>/spec.md` from `specs/template.md` with the real name in `**Branch:**`; only the Summary is filled
 
 ⛔ The spec file is **business-only** — no code, no tech stack details.
 
@@ -406,9 +423,10 @@ Phase 6 — the only verification gate, judging the result against the acceptanc
 
 1. In parallel: the test suite once (`test`/`coverage` from `specs/constitution.md` §2), `spec-verifier` over the whole feature diff (committed, uncommitted and untracked, against the merge base), `ui-critic` when web UI files changed, and every extra check you configured (see below)
 2. `reviewer` gets all results, checks the diff against each **WHAT NOT TO DO** rule of the constitution, runs the domain audits and writes `specs/<slug>/review.md` with the verdict READY / NOT READY
-3. Whatever the verdict: acceptance criteria are ticked `[x]` / unticked in `spec.md`, and tasks with unmet criteria go back to `in-progress`
-4. READY: shows the commit title, PR title and file list and asks (`publish: ask`); then commits and opens the PR with the `commit` / `pr` actions from `capabilities.md`, or with git and `gh` when none is set
-5. NOT READY: concrete blockers, each unmet criterion with the task to re-run (`/sdd:implement T3`)
+3. When every blocker is one you may accept (an out-of-scope change, a constitution rule, a `ui-critic` issue, a non-critical audit finding), you are asked once: fix them, or accept them with a reason — accepted items go under `## Accepted` in `review.md` and are not raised again. Failing tests, unmet acceptance criteria, non-goal violations and failed checks cannot be accepted
+4. Whatever the verdict: acceptance criteria are ticked `[x]` / unticked in `spec.md`, and tasks with unmet criteria go back to `in-progress`
+5. READY: shows the commit title, PR title and file list and asks (`publish: ask`); then commits and opens the PR with the `commit` / `pr` actions from `capabilities.md`, or with git and `gh` when none is set
+6. NOT READY: concrete blockers, each unmet criterion with the task to re-run (`/sdd:implement T3`)
 
 Configure it in `specs/capabilities.md`:
 
@@ -484,32 +502,27 @@ Pipeline:
 
 ### 🎨 `ui-critic`
 
-**Purpose:** Visual review of changed UI components — captures Storybook screenshots via a browser MCP and evaluates them for design-system adherence, layout regressions, and rendering issues.
+**Purpose:** Visual review of the changed UI — opens the affected screens (or their component previews, e.g. Storybook stories, when the project has them) in a browser tool, takes desktop and mobile screenshots and checks layout, the states the acceptance criteria name, visual consistency with the design system and obvious visual accessibility problems.
 
-**Called by:** `/sdd:review` when the diff contains UI component files (e.g. `.tsx`/`.stories.tsx`). Storybook URL and start command come from the `ui-preview` row of `specs/constitution.md` §2.
+**Called by:** `/sdd:review` when the diff contains UI files. The preview URL and start command come from the `dev / ui-preview` cell of the project's row in `specs/constitution.md` §2.
 
-**Requirements:** a browser tool (an MCP server, a built-in browser pane, Playwright …) plus a running Storybook (default `http://localhost:6006`). If either is missing, the agent returns verdict `SKIPPED` and `/sdd:review` carries on.
+**Requirements:** a browser tool (an MCP server, a built-in browser pane, Playwright …) and a reachable dev or preview server; mobile/desktop UI also needs a screenshot tool for that platform. If something is missing, the agent returns `SKIPPED` and `/sdd:review` carries on.
 
 **Output:** JSON
 
 ```json
 {
   "verdict": "OK" | "WARNINGS" | "ISSUES" | "SKIPPED",
-  "skip_reason": "no_mcp | storybook_unreachable | null",
-  "components_reviewed": ["LoginForm", "Header"],
+  "skip_reason": "no_browser_tool | no_screenshot_tool | preview_unreachable | null",
+  "reviewed": ["/reset-password"],
   "findings": [
-    {
-      "component": "LoginForm",
-      "severity": "issue",
-      "category": "design-system",
-      "detail": "Submit button uses raw #3B82F6 — should use --color-primary-500",
-      "screenshot": "./.sdd-screenshots/LoginForm.png"
-    }
+    {"target": "/reset-password", "severity": "issue", "category": "layout",
+     "detail": "Submit button cut off at 375px", "screenshot": "./.sdd-screenshots/reset-mobile.png"}
   ]
 }
 ```
 
-Severity classification: `issue` (visible bug, blocks a READY verdict), `warning` (suboptimal but functional), `info` (observation). `SKIPPED` never blocks `/sdd:review` — it surfaces an infrastructure note instead.
+Severity classification: `issue` (visible bug; blocks READY unless you accept it), `warning` (suboptimal but functional), `info` (observation). `SKIPPED` never blocks `/sdd:review` — it surfaces an infrastructure note instead.
 
 Screenshots are saved under `./.sdd-screenshots/` — add this path to `.gitignore`.
 
@@ -530,8 +543,8 @@ cd ~/Projects/my-app && git init
 In Claude Code:
 
 ```text
-/sdd:doctor init       # auto-detects Next.js 15 + TS + Vitest + Storybook
-/sdd:doctor check      # ✅ READY (6/6)
+/sdd:doctor init       # detects the projects (api, web, mobile) and their commands
+/sdd:doctor check      # ✅ READY (5/5)
 /sdd:constitution      # fill specs/constitution.md: Tech stack, Run/build, WHAT NOT TO DO with rationale
 ```
 
@@ -543,7 +556,6 @@ In Claude Code:
 
 Effects:
 
-- ✅ Clean git verified
 - ✅ Branch `feat/user-can-reset-password-via-email` created
 - ✅ `specs/user-can-reset-password-via-email/spec.md` generated
 
@@ -598,25 +610,27 @@ Generates one Epic with self-contained tasks across three projects — the share
 ## Epic: Password reset
 
 ### T1: Reset API (contract + endpoints)
-project: api · status: draft · depends_on: [] · acceptance: AC1, AC2, AC3
-scope: request/confirm schemas exposed in OpenAPI; endpoints, token storage, expiry (30 min), same response for unknown e-mails
+project: api
+status: draft
+depends_on: []
+acceptance: AC1, AC2, AC3
+plan: Contracts › reset API; File-by-file › api
+scope:
+- request/confirm schemas exposed in OpenAPI
+- endpoints, token storage, expiry (30 min), same response for unknown e-mails
 files: apps/api/app/auth/*
 
 ### T2: Reset password screen (web)
-project: web · status: draft · depends_on: [T1] · acceptance: AC1, AC4
-scope: both forms with inline validation, generated client, loading/network/expired-token states
-files: apps/web/src/features/reset/*
-
-### T3: Reset password screen (mobile)
-project: mobile · status: draft · depends_on: [T1] · acceptance: AC1, AC4
-files: ../mobile-app/lib/features/reset/*
-
-### T4: Reset flow end to end
-project: e2e · status: draft · depends_on: [T1, T2] · acceptance: AC1
-files: apps/web-e2e/src/reset.spec.ts
+project: web
+status: draft
+depends_on: [T1]
+acceptance: AC1, AC4
+…
 
 Order: T1 → T2 ∥ T3 → T4
 ```
+
+(Abridged: T2–T4 carry the same fields as T1. T3 is the mobile screen in `../mobile-app`, T4 the end-to-end test that depends on T1 and T2.)
 
 ### Implement
 
@@ -642,8 +656,8 @@ Pipeline executes:
 1. In parallel: tests 23/23 passed; `spec-verifier`: all 4 AC met, no drift; `ui-critic`: `OK` (screenshots in `.sdd-screenshots/`, or `SKIPPED` without a browser tool / Storybook); your `qa` check: `PASS`
 2. `reviewer`: constitution rules respected, audit skills for the stack pass (e.g. 0 critical findings)
 3. The 4 AC are ticked in `spec.md`; verdict **READY** — you confirm the commit and PR
-7. Commit: `feat(reset-password): add email-based reset flow`
-8. PR opened with body referencing `specs/user-can-reset-password-via-email/spec.md`
+4. Commit: `feat(user-can-reset-password-via-email): <Summary of spec.md>`
+5. PR opened with body referencing `specs/user-can-reset-password-via-email/spec.md`
 
 ### Typical timeline
 
@@ -729,14 +743,14 @@ Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro,
 2. **📜 The constitution is the WHY.** Every "WHAT NOT TO DO" rule in `specs/constitution.md` should have a `**Why:**` line (and an incident reference when applicable). After every Claude mistake, append the lesson — with its rationale — to the constitution. Without rationale, rules become folklore and get re-broken. If you also maintain a Claude Code session loader (`CLAUDE.md`), use it to surface the most-broken rules and point at the constitution for detail — but that file is yours to shape, not the framework's.
 3. **✂️ Shard large specs.** Never hand a giant PRD to an implementer. Break it into Epic → Task; each implementer receives only its task's brief.
 4. **📁 Separate `CLAUDE.md` per module.** Root for cross-cutting, `apps/web/CLAUDE.md` for frontend, `apps/api/CLAUDE.md` for backend. Frontend code shouldn't burn tokens reading database rules.
-5. **🔒 Use Plan Mode before edits.** `/sdd:plan` and `/sdd:clarify` ideally run in Plan Mode (Shift+Tab) so Claude cannot accidentally modify files during exploration.
+5. **🔒 Run `/sdd:plan` in Plan Mode.** Plan Mode (Shift+Tab) keeps Claude from modifying files while it explores; approving the plan saves it. Not for `/sdd:clarify` — it writes the answers into `spec.md`, which Plan Mode blocks.
 6. **👤 Human-in-the-loop on `plan.md`.** Always read the generated plan before `/sdd:tasks`. This is the cheapest moment to correct course.
 7. **🌿 One branch per feature.** `/sdd:spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
 8. **🤝 Use sub-agents for large reads.** Don't grep 50 files in the main session — invoke a `Task` tool sub-agent and receive only a summary.
 9. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/sdd:analyze` to detect drift periodically.
 10. **💬 Fresh chat per task — and `/clear` between phases.** Open a new Claude session when switching to a new task, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
 11. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
-12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:tasks`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
+12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:spec`, `/sdd:tasks`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
 13. **📦 Batch human feedback.** Collect visual/QA tweaks and NOT READY fixes into one message per round instead of many small turns — each turn reprocesses the full context and multiplies cost.
 
 ---
@@ -765,8 +779,8 @@ The single biggest cost lever is **which model runs which phase**. A slash comma
 
 | Phase | Recommended model | Why |
 |---|---|---|
-| `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review` | **Opus** | Judgement-heavy — framing, architecture, and the final gate. Cheap to get right here, expensive to get wrong downstream. |
-| `/sdd:tasks` | **Sonnet** | Mechanical decomposition. |
+| `/sdd:constitution`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review` | **Opus** | Judgement-heavy — framing, architecture, and the final gate. Cheap to get right here, expensive to get wrong downstream. |
+| `/sdd:spec`, `/sdd:tasks` | **Sonnet** | Mechanical: a branch and a filled template; decomposition of an approved plan. |
 | `/sdd:analyze` | any | Delegates to `spec-verifier` (Sonnet). |
 | `/sdd:implement` | your flow's choice | The framework only hands over; the flow or agent sets its own model. |
 
@@ -789,8 +803,9 @@ Why this framework looks the way it does:
 | **Self-contained tasks** | A task carries scope, acceptance criteria and dependencies, so any implementer — or a person — can pick it up as a ticket. |
 | **Conventional Commits in `/sdd:spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
 | **Plan = decisions, tasks = tickets** | The plan holds architectural and technical decisions and the scope; tasks refer to it instead of copying it. |
-| **Plan Mode before `/sdd:implement`** | Forces human review and blocks destructive changes before a plan exists. |
-| **Hybrid capabilities.md** | `<!-- auto-generated -->` sections reflect installed plugins. `<!-- user-override -->` sections preserve customizations. Re-running `init` is safe. |
+| **Plan Mode for `/sdd:plan`** | Approving the plan is the human review; nothing is written before it. |
+| **Hybrid capabilities.md** | The `<!-- auto-generated -->` section reflects the detected projects. `<!-- user-override -->` sections (implementation, actions, review, generated paths) preserve your configuration. Re-running `init` is safe. |
+| **The branch is the key** | Commands find the feature by the `**Branch:**` line in `spec.md`, so any branch-naming skill works. |
 | **Constitution lives under `specs/`, not in `CLAUDE.md`** | Two separate concerns. `specs/constitution.md` is the long-form source of truth — no token budget, rationale-rich, edited via `/sdd:constitution`. The project root `CLAUDE.md`, if you keep one, is a Claude Code session loader fully owned by you; the framework never reads, writes, or enforces its structure. |
 | **Framework lives in the plugin, project owns its specs** | Commands, agents and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `specs/` and whatever `CLAUDE.md` you choose to maintain. Plugin updates roll out by reinstalling; project data is never overwritten. |
 
@@ -800,7 +815,8 @@ Why this framework looks the way it does:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `/sdd:spec` fails with "uncommitted changes" | Working tree dirty | `git stash` or commit current changes first |
+| `/sdd:spec` stops with "Run `/sdd:doctor init` first" | `specs/template.md` missing | `/sdd:doctor init` |
+| A command cannot find the feature | No `spec.md` has your current branch in `**Branch:**` (renamed branch) | Switch to the spec's branch, or fix the `**Branch:**` line |
 | `/sdd:implement` does not use my flow | no `## Implementation` line for the project, so it falls back to `in-session` | Add `<project>: skill:<name>`, `agent:<name>` or `command:<shell>` (or `default:`) under `## Implementation` in `capabilities.md` |
 | `spec-verifier` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
 | Plan Mode disabled but `/sdd:plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |

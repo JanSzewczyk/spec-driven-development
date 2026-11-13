@@ -36,7 +36,8 @@ Read the full file so you have its current state in context.
 Help the user fill in or update the canonical sections:
 
 1. **Tech stack** — runtime versions, framework, DB, tests, lint. Include the *Why this stack* paragraph.
-2. **Run/build commands** — `dev`, `build`, `test`, `typecheck`, `lint`; document non-obvious flags.
+2. **Run/build commands** — one row per project: `test`, `coverage`, `typecheck`, `lint`,
+   `dev / ui-preview`; document non-obvious flags.
 3. **Architecture** — one paragraph + Mermaid diagram. The *Boundaries we maintain* list is the high-value piece.
 4. **Code conventions** — short list + concrete good/bad code examples from the repo.
 5. **WHAT NOT TO DO ⛔** — every entry MUST include a `**Why:**` line and (when available) `**Incident:**` reference. If the user gives a rule without a reason, ask for the rationale instead of guessing.

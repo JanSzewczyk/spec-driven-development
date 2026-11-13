@@ -31,8 +31,8 @@
 
 <!-- Single source for SDD commands and agents. One row per project in specs/capabilities.md
      (`root` for a single app). Each command runs from the spec repo's root, so include the `cd`
-     (`cd apps/api && uv run pytest`). `test` runs the full suite; /sdd:implement appends the
-     task's test files, relative to the directory the command runs in. Empty cell = no command. -->
+     (`cd apps/api && uv run pytest`). `test` runs the full suite, `coverage` the suite with a
+     coverage report (/sdd:review prefers it). Empty cell = no command. -->
 
 | Project | Path | test | coverage | typecheck | lint | dev / ui-preview |
 |---------|------|------|----------|-----------|------|------------------|

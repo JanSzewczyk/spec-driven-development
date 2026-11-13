@@ -11,7 +11,8 @@ mid-feature, after changing the spec, or before `/sdd:review`. It edits nothing 
 
 ### 1. Verify
 
-Resolve the feature (`specs/<slug>/` from the current branch). Invoke `spec-verifier` once (Task
+Resolve the feature: the `specs/*/spec.md` whose `**Branch:**` equals `git branch --show-current`
+(none → list the specs and ask). Invoke `spec-verifier` once (Task
 tool) with the feature folder and the **feature diff**: a base commit (`git merge-base HEAD
 <default-branch>`), the changes `git diff <base>` plus the untracked files
 (`git ls-files --others --exclude-standard`) — in each sibling repository on the feature branch too
