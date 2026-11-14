@@ -25,28 +25,26 @@ export const STEP_LABELS: [string, string][] = [
   ['review', 'Review'],
 ]
 
-// One color per status, shared by chips, steppers and bars. Chosen to read on light and dark.
-export const PALETTE: Record<string, string> = {
-  draft: '#8b93a1',
-  clarified: '#4c8dff',
-  planned: '#9b6bff',
-  'tasks-ready': '#9b6bff',
-  'in-progress': '#e8a317',
-  review: '#1fb5c9',
-  done: '#2fb170',
-  bad: '#e5484d',
+// Colors follow Claude Code: each status maps to a CDS role (the drawings use its colors) and to the
+// theme key Claude Code maps to the same role (terminal and Desktop text). Theme keys follow the user's
+// light or dark theme; ANSI names such as 'yellow' would not.
+export type Role = 'success' | 'pro' | 'accent' | 'warning' | 'danger' | 'neutral'
+
+export const STATUS_ROLE: Record<string, Role> = {
+  draft: 'neutral',
+  clarified: 'accent',
+  planned: 'pro',
+  'tasks-ready': 'pro',
+  'in-progress': 'warning',
+  review: 'accent',
+  done: 'success',
+  bad: 'danger',
 }
 
-export const TEXT_COLOR: Record<string, string> = {
-  draft: 'gray',
-  clarified: 'blue',
-  planned: 'magenta',
-  'tasks-ready': 'magenta',
-  'in-progress': 'yellow',
-  review: 'cyan',
-  done: 'green',
-  bad: 'red',
-}
+// 'permission' and 'merged' are Claude Code's accent (blue) and purple keys in both the terminal theme and Desktop.
+export const ROLE_KEY: Record<Role, string> = { success: 'success', pro: 'merged', accent: 'permission', warning: 'warning', danger: 'error', neutral: 'inactive' }
+
+export const TEXT_COLOR: Record<string, string> = Object.fromEntries(Object.entries(STATUS_ROLE).map(([status, role]) => [status, ROLE_KEY[role]]))
 
 export function taskCounts(tasks: Task[] | null) {
   const c = { total: 0, draft: 0, 'in-progress': 0, review: 0, done: 0 } as Record<string, number>
