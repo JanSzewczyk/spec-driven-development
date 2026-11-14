@@ -93,3 +93,16 @@ export function checkSvg(ok: boolean): string {
     : '<circle cx="8" cy="8" r="6.2" fill="' + PALETTE['in-progress'] + '" fill-opacity="0.14" stroke="' + PALETTE['in-progress'] + '" stroke-width="1.6"/>'
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">' + body + '</svg>'
 }
+
+// One short bar per command (test, coverage, typecheck, lint, dev): green when set, amber when the
+// mandatory test command is missing, grey when optional and empty.
+export function pipsSvg(present: boolean[]): { source: string; width: number; height: number } {
+  const height = 8
+  const width = present.length * 17 - 3
+  let body = ''
+  present.forEach((ok, i) => {
+    const color = ok ? PALETTE.done : i === 0 ? PALETTE['in-progress'] : MUTED
+    body += '<rect x="' + i * 17 + '" y="2" width="14" height="4" rx="2" fill="' + color + '"' + (ok || i === 0 ? '' : ' fill-opacity="0.4"') + '/>'
+  })
+  return { source: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' + body + '</svg>', width, height }
+}

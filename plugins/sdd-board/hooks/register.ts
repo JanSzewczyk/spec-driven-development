@@ -20,6 +20,7 @@ let pinned: string | null = null
 let filter = 'all'
 let running: string | null = null
 let config: Config | null = null
+let cmdOpen: string[] | null = null
 let docView: { slug: string; kind: string } | null = null
 let isClosedByUser = false
 
@@ -210,10 +211,17 @@ export function register(on) {
       return renderDoc(el, { slug: view ? view.slug : '', kind: view ? view.kind : '', text })
     }
     if (e.requestId === CONFIG_PANE) {
+      if (cmdOpen === null) cmdOpen = config && config.commands.length ? [config.commands[0].project] : []
       return renderConfig($.ui.resolve(e), {
         surface: e.surface,
         config,
+        open: cmdOpen,
         actions: {
+          toggle: (project) => {
+            const cur = cmdOpen ?? []
+            cmdOpen = cur.includes(project) ? cur.filter((p) => p !== project) : [...cur, project]
+            $.ui.invalidate('ui.render')
+          },
           run: (command, args) => {
             runCommand($, command, args)
           },
