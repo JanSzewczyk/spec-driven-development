@@ -211,11 +211,12 @@ export function register(on) {
       return renderDoc(el, { slug: view ? view.slug : '', kind: view ? view.kind : '', text })
     }
     if (e.requestId === CONFIG_PANE) {
-      if (cmdOpen === null) cmdOpen = config && config.commands.length ? [config.commands[0].project] : []
+      if (cmdOpen === null && config && config.commands.length) cmdOpen = [config.commands[0].project]
       return renderConfig($.ui.resolve(e), {
         surface: e.surface,
+        cols: e.props.bodyColumns ?? 64,
         config,
-        open: cmdOpen,
+        open: cmdOpen ?? [],
         actions: {
           toggle: (project) => {
             const cur = cmdOpen ?? []

@@ -94,15 +94,67 @@ export function checkSvg(ok: boolean): string {
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">' + body + '</svg>'
 }
 
+// Claude Code's own colors (the CDS tokens Desktop maps its theme keys to), light and dark. Svg is
+// drawn in its own frame without the app's CSS variables, so the drawings carry both values and switch
+// with prefers-color-scheme. The attribute on each shape is the fallback when a style is not applied.
+export type Role = 'success' | 'pro' | 'accent' | 'warning'
+type Pair = [light: string, dark: string]
+const CDS: { text: Record<Role, Pair>; bg: Record<Role, Pair>; border: Pair; borderStrong: Pair; muted: Pair } = {
+  text: { success: ['#006300', '#0ca30c'], pro: ['#4a3aa7', '#a096eb'], accent: ['#184f95', '#6da7ec'], warning: ['#734500', '#db9300'] },
+  bg: { success: ['#caeac7', '#11260f'], pro: ['#dfdbfd', '#1d1649'], accent: ['#cde2fb', '#032042'], warning: ['#f9dca4', '#311a00'] },
+  border: ['rgba(11,11,11,0.1)', 'rgba(255,255,255,0.1)'],
+  borderStrong: ['rgba(11,11,11,0.2)', 'rgba(255,255,255,0.2)'],
+  muted: ['#898781', '#6d6b67'],
+}
+const FILL_SUCCESS = '#009300' // --fill-success, same in both themes
+const FILL_WARNING = '#eda100' // --fill-warning
+
+// rules: [selector, property, [light, dark]]
+function themed(rules: [string, string, Pair][]): string {
+  const light = rules.map(([sel, prop, [l]]) => sel + '{' + prop + ':' + l + '}').join('')
+  const dark = rules.map(([sel, prop, [, d]]) => sel + '{' + prop + ':' + d + '}').join('')
+  return '<style>' + light + '@media (prefers-color-scheme: dark){' + dark + '}</style>'
+}
+
+function svgDoc(width: number, height: number, body: string): string {
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' + body + '</svg>'
+}
+
 // One short bar per command (test, coverage, typecheck, lint, dev): green when set, amber when the
 // mandatory test command is missing, grey when optional and empty.
 export function pipsSvg(present: boolean[]): { source: string; width: number; height: number } {
   const height = 8
   const width = present.length * 17 - 3
-  let body = ''
+  let body = themed([['.n', 'fill', CDS.borderStrong]])
   present.forEach((ok, i) => {
-    const color = ok ? PALETTE.done : i === 0 ? PALETTE['in-progress'] : MUTED
-    body += '<rect x="' + i * 17 + '" y="2" width="14" height="4" rx="2" fill="' + color + '"' + (ok || i === 0 ? '' : ' fill-opacity="0.4"') + '/>'
+    const attrs = ok ? 'fill="' + FILL_SUCCESS + '"' : i === 0 ? 'fill="' + FILL_WARNING + '"' : 'class="n" fill="' + MUTED + '" fill-opacity="0.4"'
+    body += '<rect x="' + i * 17 + '" y="2" width="14" height="4" rx="2" ' + attrs + '/>'
   })
-  return { source: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' + body + '</svg>', width, height }
+  return { source: svgDoc(width, height, body), width, height }
+}
+
+// Hairline between the rows of a card (--border), centred in a band that gives the rows their spacing.
+export function dividerSvg(width: number, height = 15): string {
+  const y = height / 2
+  return svgDoc(width, height, themed([['line', 'stroke', CDS.border]]) + '<line x1="0" y1="' + y + '" x2="' + width + '" y2="' + y + '" stroke="' + MUTED + '" stroke-opacity="0.28"/>')
+}
+
+// Flat tinted pill (bg-<role> fill, text-<role> label), as Claude Code tints a role.
+export function pillSvg(label: string, role: Role): { source: string; width: number; height: number } {
+  const height = 18
+  const width = Math.round(label.length * 6.2 + 16)
+  const [, dark] = CDS.text[role]
+  const body =
+    themed([['rect', 'fill', CDS.bg[role]], ['rect', 'fill-opacity', ['1', '1']], ['text', 'fill', CDS.text[role]]]) +
+    '<rect x="0" y="0" width="' + width + '" height="' + height + '" rx="9" fill="' + dark + '" fill-opacity="0.2"/>' +
+    '<text x="' + width / 2 + '" y="12.5" text-anchor="middle" font-size="11" font-weight="500" fill="' + dark + '" font-family="system-ui,sans-serif">' + esc(label) + '</text>'
+  return { source: svgDoc(width, height, body), width, height }
+}
+
+// Small marker for a configuration value: filled (--fill-success) when set by the user, hollow (--text-muted) when default.
+export function dotSvg(isSet: boolean): string {
+  const body = isSet
+    ? '<circle cx="4" cy="4" r="3" fill="' + FILL_SUCCESS + '"/>'
+    : themed([['circle', 'stroke', CDS.muted]]) + '<circle cx="4" cy="4" r="2.6" fill="none" stroke="' + MUTED + '" stroke-width="1"/>'
+  return svgDoc(8, 8, body)
 }

@@ -2,7 +2,8 @@
 import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
 import type { Config } from './core/check.ts'
-import { badgeSvg, checkSvg, dotsSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
+import { badgeSvg, checkSvg, dividerSvg, dotSvg, dotsSvg, pillSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
+import type { Role } from './svg.ts'
 
 export type Actions = {
   tab: (t: 'current' | 'all') => void
@@ -340,6 +341,7 @@ export { PALETTE }
 
 export type ConfigCtx = {
   surface: string
+  cols: number
   config: Config | null
   open: string[]
   actions: { run: (command: string, args: string) => void; toggle: (project: string) => void }
@@ -347,50 +349,78 @@ export type ConfigCtx = {
 
 const COMMAND_LABELS = ['test', 'coverage', 'typecheck', 'lint', 'dev']
 const FLOW = /^(agent|skill|command):(.+)$/
-const FLOW_COLOR: Record<string, string> = { agent: PALETTE.planned, skill: PALETTE.done, command: PALETTE['in-progress'] }
-const KIND_COLOR: Record<string, string> = { backend: PALETTE.clarified, web: PALETTE.done, library: PALETTE.planned }
+// Colors follow Claude Code: a skill is tinted pro (purple) as Claude Code tints skills, an agent accent (blue).
+// On Desktop/VS Code the pills are drawings in the CDS role colors; in the terminal the text uses the
+// theme key that Claude Code maps to the same role ('merged' and 'permission' have no ANSI fixed value).
+const FLOW_ROLE: Record<string, Role> = { agent: 'accent', skill: 'pro', command: 'warning' }
+const KIND_ROLE: Record<string, Role> = { backend: 'accent', web: 'success', library: 'pro' }
+const ROLE_KEY: Record<Role, string> = { accent: 'permission', pro: 'merged', success: 'success', warning: 'warning' }
+// Surface Claude Code uses for its own message bubbles (--surface-1 on Desktop).
+const TILE_BG = 'userMessageBackground'
 
 // A tinted pill on Desktop/VS Code, a plain colored label in the terminal.
-function pill(el: any, rich_: boolean, label: string, color: string, textColor: string) {
-  if (!rich_) return el.Text({ color: textColor, weight: 'semibold', children: [label] })
-  const b = badgeSvg(label, color)
+function pill(el: any, isRich: boolean, label: string, role: Role) {
+  if (!isRich) return el.Text({ color: ROLE_KEY[role], weight: 'semibold', children: [label] })
+  const b = pillSvg(label, role)
   return el.Svg({ alt: label, width: b.width, height: b.height, source: b.source })
 }
 
-// "agent:python:python-developer" → pill "agent" + dim namespace + bold name. Anything else is plain text.
+// "agent:python:python-developer" → pill "agent" + dim "python:" + "python-developer". Anything else is plain text.
 function valueNode(el: any, isRich: boolean, e: { key: string; value: string; source: string }) {
   const { Box, Text } = el
   const m = FLOW.exec(e.value)
-  if (!m) return Text({ mono: true, wrap: 'truncate-end', dimColor: e.source === 'default', children: [e.value] })
+  if (!m) return Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, size: 'footnote', wrap: 'truncate-end', dimColor: e.source === 'default', children: [e.value] })] })
   const parts = m[2].split(':')
   const name = parts.pop() as string
   return Box({
-    flexDirection: 'row', columnGap: 1, alignItems: 'center',
+    flexGrow: 1, flexDirection: 'row', columnGap: 1, alignItems: 'center',
     children: [
-      pill(el, isRich, m[1], FLOW_COLOR[m[1]], m[1] === 'agent' ? 'magenta' : m[1] === 'skill' ? 'green' : 'yellow'),
-      parts.length ? Text({ mono: true, dimColor: true, children: [parts.join(':') + ':'] }) : null,
-      Text({ mono: true, weight: 'semibold', wrap: 'truncate-end', children: [name] }),
-    ].filter(Boolean),
+      pill(el, isRich, m[1], FLOW_ROLE[m[1]]),
+      Box({
+        flexDirection: 'row',
+        children: [
+          parts.length ? Text({ mono: true, size: 'footnote', dimColor: true, children: [parts.join(':') + ':'] }) : null,
+          Text({ mono: true, size: 'footnote', weight: 'medium', wrap: 'truncate-end', children: [name] }),
+        ].filter(Boolean),
+      }),
+    ],
   })
 }
 
-function section(el: any, title: string, note: string, rows: any[]) {
-  const { Box, Text } = el
+const heading = (el: any, title: string, note: string) =>
+  el.Box({
+    flexDirection: 'row', justifyContent: 'space-between',
+    children: [el.Text({ dimColor: true, weight: 'medium', size: 'caption', children: [title.toUpperCase()] }), el.Text({ dimColor: true, size: 'caption', children: [note] })],
+  })
+
+// Hairline across a card. The width overshoots the card on purpose: the clipping box cuts it at the edge.
+function divider(el: any, ctx: { cols: number }, key: string) {
+  const width = Math.min(1200, ctx.cols * 12)
+  return wide(el, el.Svg({ key, alt: 'separator', width, height: 15, source: dividerSvg(width, 15) }))
+}
+
+// One card: a heading, then rows in a rounded box. On Desktop/VS Code a hairline with breathing room
+// separates the rows (the terminal has no sub-line spacing, so rows stay tight there).
+function section(el: any, ctx: { cols: number; rich: boolean }, title: string, note: string, rows: any[]) {
+  const { Box } = el
+  const body: any[] = []
+  rows.forEach((row, i) => {
+    if (i > 0 && ctx.rich) body.push(divider(el, ctx, 'div-' + title + '-' + i))
+    body.push(row)
+  })
   return Box({
     flexDirection: 'column', rowGap: 1,
-    children: [
-      Box({ flexDirection: 'row', justifyContent: 'space-between', children: [Text({ dimColor: true, weight: 'semibold', children: [title.toUpperCase()] }), Text({ dimColor: true, children: [note] })] }),
-      Box({ flexDirection: 'column', borderStyle: 'round', paddingX: 1, children: rows }),
-    ],
+    children: [heading(el, title, note), Box({ flexDirection: 'column', borderStyle: 'round', paddingX: 1, children: body })],
   })
 }
 
 // Read-only view of what the SDD commands will use: capabilities.md with defaults filled in, and the
 // per-project commands from constitution section 2. Editing goes through /sdd:capabilities.
 export function renderConfig(el: any, ctx: ConfigCtx) {
-  const { Box, Text, Button } = el
+  const { Box, Text, Button, Svg } = el
   const { config } = ctx
   const isRich = rich(ctx.surface)
+  const sctx = { cols: ctx.cols, rich: isRich }
   if (!config) {
     return Box({
       flexDirection: 'column', rowGap: 1, padding: 'sm',
@@ -405,13 +435,13 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
 
   kids.push(
     Box({
-      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', columnGap: 2,
       children: [
-        Box({ flexDirection: 'column', children: [Text({ weight: 'semibold', children: ['SDD configuration'] }), Text({ mono: true, dimColor: true, children: ['specs/capabilities.md'] })] }),
+        Box({ flexDirection: 'column', children: [Text({ weight: 'medium', size: 'heading', children: ['SDD configuration'] }), Text({ mono: true, dimColor: true, size: 'caption', children: ['specs/capabilities.md'] })] }),
         Box({
-          flexDirection: 'row', columnGap: 2,
+          flexDirection: 'row', columnGap: 1, alignItems: 'center',
           children: [
-            Button({ key: 'cfg-run', label: 'Configure…', hotkey: 'c', ...(config.configured ? { plain: true } : { variant: 'primary' }), onPress: () => ctx.actions.run('sdd:capabilities', '') }),
+            Button({ key: 'cfg-run', label: 'Configure…', hotkey: 'c', variant: config.configured ? 'secondary' : 'primary', onPress: () => ctx.actions.run('sdd:capabilities', '') }),
             Button({ key: 'cfg-doctor', label: 'Run doctor check', plain: true, onPress: () => ctx.actions.run('sdd:doctor', 'check') }),
           ],
         }),
@@ -421,29 +451,37 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
 
   const rows = config.commands.filter((r) => r.project)
   const entries = config.sections.flatMap((s) => s.entries)
-  const stat = (key: string, n: number, of: number | null, label: string) =>
-    Box({
-      key, flexDirection: 'column', flexGrow: 1, borderStyle: 'round', paddingX: 1,
-      children: [Text({ weight: 'semibold', children: [of === null ? String(n) : n + ' / ' + of] }), Text({ dimColor: true, children: [label] })],
-    })
+  const tiles: [string, number, number | null, string][] = [
+    ['stat-projects', config.projects.length, null, 'projects'],
+    ['stat-custom', entries.filter((e) => e.source === 'set').length, entries.length, 'customised'],
+    ['stat-commands', rows.reduce((n, r) => n + COMMAND_LABELS.filter((c) => r.commands[c]).length, 0), rows.length * COMMAND_LABELS.length, 'commands set'],
+  ]
   kids.push(
     Box({
       flexDirection: 'row', columnGap: 1,
-      children: [
-        stat('stat-projects', config.projects.length, null, 'projects'),
-        stat('stat-custom', entries.filter((e) => e.source === 'set').length, entries.length, 'customised'),
-        stat('stat-commands', rows.reduce((n, r) => n + COMMAND_LABELS.filter((c) => r.commands[c]).length, 0), rows.length * COMMAND_LABELS.length, 'commands set'),
-      ],
+      children: tiles.map(([key, n, of, label]) =>
+        Box({
+          key, flexDirection: 'column', flexGrow: 1, borderStyle: 'round', paddingX: 1,
+          ...(isRich ? { borderColor: TILE_BG, backgroundColor: TILE_BG } : {}),
+          children: [
+            Box({
+              flexDirection: 'row', alignItems: 'flex-end',
+              children: [Text({ weight: 'medium', size: 'heading', tabular: true, children: [String(n)] }), of === null ? null : Text({ dimColor: true, size: 'footnote', tabular: true, children: [' / ' + of] })].filter(Boolean),
+            }),
+            Text({ dimColor: true, size: 'caption', children: [label] }),
+          ],
+        }),
+      ),
     }),
   )
 
   if (!config.configured) {
     kids.push(
       Box({
-        borderStyle: 'round', borderColor: 'yellow', padding: 'md', flexDirection: 'column', rowGap: 1,
+        borderStyle: 'round', borderColor: 'warning', padding: 'md', flexDirection: 'column', rowGap: 1,
         children: [
-          Text({ color: 'yellow', weight: 'semibold', children: ['Everything is at its default'] }),
-          Text({ dimColor: true, wrap: 'wrap', children: ['Tasks are implemented in the session, git actions use git and gh, review picks audits by stack. /sdd:capabilities scans your installed skills and agents and proposes better values.'] }),
+          Text({ color: 'warning', weight: 'semibold', children: ['Everything is at its default'] }),
+          Text({ dimColor: true, wrap: 'wrap', size: 'footnote', children: ['Tasks are implemented in the session, git actions use git and gh, review picks audits by stack. /sdd:capabilities scans your installed skills and agents and proposes better values.'] }),
         ],
       }),
     )
@@ -451,35 +489,43 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
 
   kids.push(
     section(
-      el, 'Projects', String(config.projects.length),
+      el, sctx, 'Projects', String(config.projects.length),
       config.projects.length
         ? config.projects.map((p) =>
             Box({
               key: 'prj-' + p.name, flexDirection: 'column',
               children: [
-                Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ mono: true, weight: 'semibold', wrap: 'truncate-end', children: [p.name] }), p.kind ? pill(el, isRich, p.kind, KIND_COLOR[p.kind] ?? PALETTE.draft, 'cyan') : null].filter(Boolean) }),
-                Text({ dimColor: true, wrap: 'truncate-end', children: [[p.path + (p.repo ? ' (repo)' : ''), p.stack].filter(Boolean).join(' · ')] }),
+                Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ mono: true, weight: 'medium', wrap: 'truncate-end', children: [p.name] }), p.kind ? pill(el, isRich, p.kind, KIND_ROLE[p.kind] ?? 'accent') : null].filter(Boolean) }),
+                Box({
+                  flexDirection: 'row',
+                  children: [
+                    Text({ mono: true, dimColor: true, size: 'footnote', children: [p.path + (p.repo ? ' (repo)' : '')] }),
+                    p.stack ? Text({ dimColor: true, size: 'footnote', wrap: 'truncate-end', children: ['\u00a0·\u00a0' + p.stack] }) : null,
+                  ].filter(Boolean),
+                }),
               ],
             }),
           )
-        : [Text({ color: 'yellow', children: ['No project listed: run /sdd:doctor init'] })],
+        : [Text({ color: 'warning', children: ['No project listed: run /sdd:doctor init'] })],
     ),
   )
 
   for (const sec of config.sections) {
     const set = sec.entries.filter((e) => e.source === 'set').length
-    const width = Math.min(22, Math.max(...sec.entries.map((e) => e.key.length)))
+    const width = Math.min(18, Math.max(...sec.entries.map((e) => e.key.length)))
     kids.push(
       section(
-        el, sec.title, set ? set + ' set' : 'all default',
+        el, sctx, sec.title, set ? set + ' set' : 'all default',
         sec.entries.map((e) =>
           Box({
             key: sec.title + '-' + e.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
             children: [
-              Text({ color: e.source === 'set' ? 'green' : undefined, dimColor: e.source !== 'set', children: [e.source === 'set' ? '●' : '○'] }),
-              Text({ mono: true, dimColor: true, children: [e.key.padEnd(width)] }),
+              isRich
+                ? Svg({ alt: e.source === 'set' ? 'set' : 'default', width: 8, height: 8, source: dotSvg(e.source === 'set') })
+                : Text({ color: e.source === 'set' ? 'success' : undefined, dimColor: e.source !== 'set', children: [e.source === 'set' ? '●' : '○'] }),
+              Box({ width: width + 1, children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [e.key] })] }),
               valueNode(el, isRich, e),
-              e.source === 'default' ? Text({ dimColor: true, children: ['default'] }) : null,
+              e.source === 'default' ? Text({ dimColor: true, size: 'caption', children: ['default'] }) : null,
             ].filter(Boolean),
           }),
         ),
@@ -489,7 +535,7 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
 
   kids.push(
     section(
-      el, 'Commands', 'constitution §2',
+      el, sctx, 'Commands', 'constitution §2',
       rows.length
         ? rows.map((r) => {
             const isOpen = ctx.open.includes(r.project)
@@ -497,35 +543,62 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
             const present = COMMAND_LABELS.map((c) => Boolean(r.commands[c]))
             const pips = isRich
               ? (() => { const p = pipsSvg(present); return el.Svg({ alt: have + ' of ' + COMMAND_LABELS.length + ' commands set', width: p.width, height: p.height, source: p.source }) })()
-              : Text({ color: r.commands.test ? 'green' : 'yellow', children: [present.map((x) => (x ? '●' : '○')).join('')] })
+              : Text({ color: r.commands.test ? 'success' : 'warning', children: [present.map((x) => (x ? '●' : '○')).join('')] })
             return Box({
               key: 'cmd-' + r.project, flexDirection: 'column',
               children: [
                 Box({
                   flexDirection: 'row', columnGap: 1, alignItems: 'center',
-                  children: [Button({ key: 'cmd-toggle-' + r.project, label: (isOpen ? '▾ ' : '▸ ') + r.project, plain: true, onPress: () => ctx.actions.toggle(r.project) }), pips, Text({ dimColor: true, children: [have + '/' + COMMAND_LABELS.length] })],
+                  children: [
+                    Box({
+                      flexGrow: 1, flexDirection: 'row',
+                      children: [Button({ key: 'cmd-toggle-' + r.project, plain: true, onPress: () => ctx.actions.toggle(r.project), children: [Text({ dimColor: true, children: [isOpen ? '▾ ' : '▸ '] }), Text({ mono: true, weight: 'medium', children: [r.project] })] })],
+                    }),
+                    pips,
+                    Text({ dimColor: true, size: 'caption', tabular: true, children: [have + '/' + COMMAND_LABELS.length] }),
+                  ],
                 }),
                 ...(isOpen
-                  ? COMMAND_LABELS.map((c) =>
+                  ? [
+                      ...(isRich ? [divider(el, sctx, 'div-cmd-' + r.project)] : []),
                       Box({
-                        key: 'cmd-' + r.project + '-' + c, flexDirection: 'row', columnGap: 1, paddingLeft: 2,
-                        children: [Text({ mono: true, dimColor: true, children: [c.padEnd(9)] }), r.commands[c] ? Text({ mono: true, wrap: 'truncate-end', children: [r.commands[c]] }) : Text({ dimColor: c !== 'test', color: c === 'test' ? 'yellow' : undefined, children: [c === 'test' ? 'missing' : 'none'] })],
+                        key: 'cmd-' + r.project + '-list', flexDirection: 'column', paddingLeft: 2,
+                        children: COMMAND_LABELS.map((c) =>
+                          Box({
+                            key: 'cmd-' + r.project + '-' + c, flexDirection: 'row', columnGap: 1,
+                            children: [
+                              Text({ mono: true, size: 'footnote', dimColor: true, children: [c.padEnd(9)] }),
+                              r.commands[c]
+                                ? Text({ mono: true, size: 'footnote', wrap: 'truncate-end', children: [r.commands[c]] })
+                                : Text({ size: 'footnote', dimColor: c !== 'test', color: c === 'test' ? 'warning' : undefined, children: [c === 'test' ? 'missing' : 'none'] }),
+                            ],
+                          }),
+                        ),
                       }),
-                    )
+                    ]
                   : []),
               ],
             })
           })
-        : [Text({ color: 'yellow', children: ['No commands table: run /sdd:doctor init'] })],
+        : [Text({ color: 'warning', children: ['No commands table: run /sdd:doctor init'] })],
     ),
   )
 
   kids.push(
     Box({
-      flexDirection: 'row', justifyContent: 'space-between',
+      flexDirection: 'row', justifyContent: 'space-between', columnGap: 2,
       children: [
-        Text({ dimColor: true, children: [config.generated + ' generated / out-of-band path pattern' + (config.generated === 1 ? '' : 's')] }),
-        Text({ dimColor: true, children: ['● set  ○ default'] }),
+        Text({ dimColor: true, size: 'caption', wrap: 'truncate-end', children: [config.generated + ' generated / out-of-band path pattern' + (config.generated === 1 ? '' : 's')] }),
+        isRich
+          ? Box({
+              flexDirection: 'row', columnGap: 1, alignItems: 'center',
+              children: [
+                Svg({ alt: 'set', width: 8, height: 8, source: dotSvg(true) }), Text({ dimColor: true, size: 'caption', children: ['set'] }),
+                Text({ children: [' '] }),
+                Svg({ alt: 'default', width: 8, height: 8, source: dotSvg(false) }), Text({ dimColor: true, size: 'caption', children: ['default'] }),
+              ],
+            })
+          : Text({ dimColor: true, children: ['● set  ○ default'] }),
       ],
     }),
   )

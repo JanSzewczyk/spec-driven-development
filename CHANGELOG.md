@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`sdd-board` Config pane redesign**: counters (projects, customised values, commands set), project kind pills, `agent:` / `skill:` values split into type, namespace and name, a filled dot for set values and an empty one for defaults, and collapsible per-project commands with a bar per command.
+- **`sdd-board` Config pane redesign**: counters (projects, customised values, commands set), project kind pills, `agent:` / `skill:` values split into type, namespace and name, a filled dot for set values and an empty one for defaults, collapsible per-project commands with a bar per command, and row separators. Colors follow Claude Code: theme keys (`success`, `warning`, `userMessageBackground`) for text and surfaces, and the CDS role colors with a light and a dark variant in the drawings.
 
 ## [0.6.0 sdd-board] — 2026-11-14
 
