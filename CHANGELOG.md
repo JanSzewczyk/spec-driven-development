@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1 sdd-board] — 2026-11-14
+
+`sdd-board` goes to 0.6.1.
+
+### Changed
+
+- **`sdd-board` Config pane redesign**: counters (projects, customised values, commands set), project kind pills, `agent:` / `skill:` values split into type, namespace and name, a filled dot for set values and an empty one for defaults, and collapsible per-project commands with a bar per command.
+
 ## [0.6.0 sdd-board] — 2026-11-14
 
 `sdd-board` goes to 0.6.0.

@@ -2,7 +2,7 @@
 import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
 import type { Config } from './core/check.ts'
-import { badgeSvg, checkSvg, dotsSvg, progressSvg, stepperSvg } from './svg.ts'
+import { badgeSvg, checkSvg, dotsSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
 
 export type Actions = {
   tab: (t: 'current' | 'all') => void
@@ -338,15 +338,59 @@ export function renderPane(el: any, ctx: Ctx) {
 
 export { PALETTE }
 
-export type ConfigCtx = { surface: string; config: Config | null; actions: { run: (command: string, args: string) => void } }
+export type ConfigCtx = {
+  surface: string
+  config: Config | null
+  open: string[]
+  actions: { run: (command: string, args: string) => void; toggle: (project: string) => void }
+}
 
 const COMMAND_LABELS = ['test', 'coverage', 'typecheck', 'lint', 'dev']
+const FLOW = /^(agent|skill|command):(.+)$/
+const FLOW_COLOR: Record<string, string> = { agent: PALETTE.planned, skill: PALETTE.done, command: PALETTE['in-progress'] }
+const KIND_COLOR: Record<string, string> = { backend: PALETTE.clarified, web: PALETTE.done, library: PALETTE.planned }
+
+// A tinted pill on Desktop/VS Code, a plain colored label in the terminal.
+function pill(el: any, rich_: boolean, label: string, color: string, textColor: string) {
+  if (!rich_) return el.Text({ color: textColor, weight: 'semibold', children: [label] })
+  const b = badgeSvg(label, color)
+  return el.Svg({ alt: label, width: b.width, height: b.height, source: b.source })
+}
+
+// "agent:python:python-developer" → pill "agent" + dim namespace + bold name. Anything else is plain text.
+function valueNode(el: any, isRich: boolean, e: { key: string; value: string; source: string }) {
+  const { Box, Text } = el
+  const m = FLOW.exec(e.value)
+  if (!m) return Text({ mono: true, wrap: 'truncate-end', dimColor: e.source === 'default', children: [e.value] })
+  const parts = m[2].split(':')
+  const name = parts.pop() as string
+  return Box({
+    flexDirection: 'row', columnGap: 1, alignItems: 'center',
+    children: [
+      pill(el, isRich, m[1], FLOW_COLOR[m[1]], m[1] === 'agent' ? 'magenta' : m[1] === 'skill' ? 'green' : 'yellow'),
+      parts.length ? Text({ mono: true, dimColor: true, children: [parts.join(':') + ':'] }) : null,
+      Text({ mono: true, weight: 'semibold', wrap: 'truncate-end', children: [name] }),
+    ].filter(Boolean),
+  })
+}
+
+function section(el: any, title: string, note: string, rows: any[]) {
+  const { Box, Text } = el
+  return Box({
+    flexDirection: 'column', rowGap: 1,
+    children: [
+      Box({ flexDirection: 'row', justifyContent: 'space-between', children: [Text({ dimColor: true, weight: 'semibold', children: [title.toUpperCase()] }), Text({ dimColor: true, children: [note] })] }),
+      Box({ flexDirection: 'column', borderStyle: 'round', paddingX: 1, children: rows }),
+    ],
+  })
+}
 
 // Read-only view of what the SDD commands will use: capabilities.md with defaults filled in, and the
 // per-project commands from constitution section 2. Editing goes through /sdd:capabilities.
 export function renderConfig(el: any, ctx: ConfigCtx) {
   const { Box, Text, Button } = el
   const { config } = ctx
+  const isRich = rich(ctx.surface)
   if (!config) {
     return Box({
       flexDirection: 'column', rowGap: 1, padding: 'sm',
@@ -357,8 +401,42 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
       ],
     })
   }
-  const heading = (t: string) => Text({ dimColor: true, weight: 'semibold', children: [t.toUpperCase()] })
   const kids: any[] = []
+
+  kids.push(
+    Box({
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+      children: [
+        Box({ flexDirection: 'column', children: [Text({ weight: 'semibold', children: ['SDD configuration'] }), Text({ mono: true, dimColor: true, children: ['specs/capabilities.md'] })] }),
+        Box({
+          flexDirection: 'row', columnGap: 2,
+          children: [
+            Button({ key: 'cfg-run', label: 'Configure…', hotkey: 'c', ...(config.configured ? { plain: true } : { variant: 'primary' }), onPress: () => ctx.actions.run('sdd:capabilities', '') }),
+            Button({ key: 'cfg-doctor', label: 'Run doctor check', plain: true, onPress: () => ctx.actions.run('sdd:doctor', 'check') }),
+          ],
+        }),
+      ],
+    }),
+  )
+
+  const rows = config.commands.filter((r) => r.project)
+  const entries = config.sections.flatMap((s) => s.entries)
+  const stat = (key: string, n: number, of: number | null, label: string) =>
+    Box({
+      key, flexDirection: 'column', flexGrow: 1, borderStyle: 'round', paddingX: 1,
+      children: [Text({ weight: 'semibold', children: [of === null ? String(n) : n + ' / ' + of] }), Text({ dimColor: true, children: [label] })],
+    })
+  kids.push(
+    Box({
+      flexDirection: 'row', columnGap: 1,
+      children: [
+        stat('stat-projects', config.projects.length, null, 'projects'),
+        stat('stat-custom', entries.filter((e) => e.source === 'set').length, entries.length, 'customised'),
+        stat('stat-commands', rows.reduce((n, r) => n + COMMAND_LABELS.filter((c) => r.commands[c]).length, 0), rows.length * COMMAND_LABELS.length, 'commands set'),
+      ],
+    }),
+  )
+
   if (!config.configured) {
     kids.push(
       Box({
@@ -370,65 +448,86 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
       }),
     )
   }
+
   kids.push(
-    Box({
-      flexDirection: 'row', columnGap: 2,
-      children: [
-        Button({ key: 'cfg-run', label: 'Configure…', hotkey: 'c', ...(config.configured ? { plain: true } : { variant: 'primary' }), onPress: () => ctx.actions.run('sdd:capabilities', '') }),
-        Button({ key: 'cfg-doctor', label: 'Run doctor check', plain: true, onPress: () => ctx.actions.run('sdd:doctor', 'check') }),
-      ],
-    }),
-  )
-  kids.push(
-    Box({
-      flexDirection: 'column',
-      children: [
-        heading('Projects'),
-        ...(config.projects.length
-          ? config.projects.map((p) => Box({ key: 'prj-' + p.name, flexDirection: 'row', columnGap: 1, children: [Text({ mono: true, weight: 'semibold', children: [p.name] }), Text({ dimColor: true, wrap: 'truncate-end', children: [[p.kind, p.path + (p.repo ? ' (repo)' : ''), p.stack].filter(Boolean).join(' · ')] })] }))
-          : [Text({ color: 'yellow', children: ['No project listed: run /sdd:doctor init'] })]),
-      ],
-    }),
-  )
-  for (const sec of config.sections) {
-    kids.push(
-      Box({
-        flexDirection: 'column',
-        children: [
-          heading(sec.title),
-          ...sec.entries.map((e) =>
+    section(
+      el, 'Projects', String(config.projects.length),
+      config.projects.length
+        ? config.projects.map((p) =>
             Box({
-              key: sec.title + '-' + e.key, flexDirection: 'row', columnGap: 1,
+              key: 'prj-' + p.name, flexDirection: 'column',
               children: [
-                Text({ mono: true, dimColor: true, children: [e.key + ':'] }),
-                Text({ mono: true, wrap: 'truncate-end', dimColor: e.source === 'default', color: e.source === 'set' ? 'green' : undefined, children: [e.value] }),
-                e.source === 'default' ? Text({ dimColor: true, children: ['default'] }) : null,
-              ].filter(Boolean),
+                Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ mono: true, weight: 'semibold', wrap: 'truncate-end', children: [p.name] }), p.kind ? pill(el, isRich, p.kind, KIND_COLOR[p.kind] ?? PALETTE.draft, 'cyan') : null].filter(Boolean) }),
+                Text({ dimColor: true, wrap: 'truncate-end', children: [[p.path + (p.repo ? ' (repo)' : ''), p.stack].filter(Boolean).join(' · ')] }),
+              ],
             }),
-          ),
-        ],
-      }),
+          )
+        : [Text({ color: 'yellow', children: ['No project listed: run /sdd:doctor init'] })],
+    ),
+  )
+
+  for (const sec of config.sections) {
+    const set = sec.entries.filter((e) => e.source === 'set').length
+    const width = Math.min(22, Math.max(...sec.entries.map((e) => e.key.length)))
+    kids.push(
+      section(
+        el, sec.title, set ? set + ' set' : 'all default',
+        sec.entries.map((e) =>
+          Box({
+            key: sec.title + '-' + e.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
+            children: [
+              Text({ color: e.source === 'set' ? 'green' : undefined, dimColor: e.source !== 'set', children: [e.source === 'set' ? '●' : '○'] }),
+              Text({ mono: true, dimColor: true, children: [e.key.padEnd(width)] }),
+              valueNode(el, isRich, e),
+              e.source === 'default' ? Text({ dimColor: true, children: ['default'] }) : null,
+            ].filter(Boolean),
+          }),
+        ),
+      ),
     )
   }
+
+  kids.push(
+    section(
+      el, 'Commands', 'constitution §2',
+      rows.length
+        ? rows.map((r) => {
+            const isOpen = ctx.open.includes(r.project)
+            const have = COMMAND_LABELS.filter((c) => r.commands[c]).length
+            const present = COMMAND_LABELS.map((c) => Boolean(r.commands[c]))
+            const pips = isRich
+              ? (() => { const p = pipsSvg(present); return el.Svg({ alt: have + ' of ' + COMMAND_LABELS.length + ' commands set', width: p.width, height: p.height, source: p.source }) })()
+              : Text({ color: r.commands.test ? 'green' : 'yellow', children: [present.map((x) => (x ? '●' : '○')).join('')] })
+            return Box({
+              key: 'cmd-' + r.project, flexDirection: 'column',
+              children: [
+                Box({
+                  flexDirection: 'row', columnGap: 1, alignItems: 'center',
+                  children: [Button({ key: 'cmd-toggle-' + r.project, label: (isOpen ? '▾ ' : '▸ ') + r.project, plain: true, onPress: () => ctx.actions.toggle(r.project) }), pips, Text({ dimColor: true, children: [have + '/' + COMMAND_LABELS.length] })],
+                }),
+                ...(isOpen
+                  ? COMMAND_LABELS.map((c) =>
+                      Box({
+                        key: 'cmd-' + r.project + '-' + c, flexDirection: 'row', columnGap: 1, paddingLeft: 2,
+                        children: [Text({ mono: true, dimColor: true, children: [c.padEnd(9)] }), r.commands[c] ? Text({ mono: true, wrap: 'truncate-end', children: [r.commands[c]] }) : Text({ dimColor: c !== 'test', color: c === 'test' ? 'yellow' : undefined, children: [c === 'test' ? 'missing' : 'none'] })],
+                      }),
+                    )
+                  : []),
+              ],
+            })
+          })
+        : [Text({ color: 'yellow', children: ['No commands table: run /sdd:doctor init'] })],
+    ),
+  )
+
   kids.push(
     Box({
-      flexDirection: 'column',
+      flexDirection: 'row', justifyContent: 'space-between',
       children: [
-        heading('Commands (constitution §2)'),
-        ...(config.commands.length
-          ? config.commands.filter((r) => r.project).map((r) =>
-              Box({
-                key: 'cmd-' + r.project, flexDirection: 'column',
-                children: [
-                  Text({ mono: true, weight: 'semibold', children: [r.project] }),
-                  ...COMMAND_LABELS.map((c) => Box({ key: 'cmd-' + r.project + '-' + c, flexDirection: 'row', columnGap: 1, children: [Text({ mono: true, dimColor: true, children: [c.padEnd(9)] }), r.commands[c] ? Text({ mono: true, wrap: 'truncate-end', children: [r.commands[c]] }) : Text({ dimColor: true, color: c === 'test' ? 'yellow' : undefined, children: [c === 'test' ? '— missing' : '—'] })] })),
-                ],
-              }),
-            )
-          : [Text({ color: 'yellow', children: ['No commands table: run /sdd:doctor init'] })]),
+        Text({ dimColor: true, children: [config.generated + ' generated / out-of-band path pattern' + (config.generated === 1 ? '' : 's')] }),
+        Text({ dimColor: true, children: ['● set  ○ default'] }),
       ],
     }),
   )
-  kids.push(Text({ dimColor: true, children: [config.generated + ' generated / out-of-band path pattern' + (config.generated === 1 ? '' : 's')] }))
   return Box({ flexDirection: 'column', rowGap: 2, padding: 'sm', children: kids })
 }
