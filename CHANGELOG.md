@@ -5,11 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0 sdd-board] — 2026-11-14
+
+`sdd-board` goes to 0.6.0.
 
 ### Added
 
-- **`sdd-board` Config pane** (`⚙ Config`, top right): read-only view of the effective `capabilities.md` values (set vs default), projects and the §2 commands, with buttons for `/sdd:capabilities` and `/sdd:doctor check`. Needs a version bump of `sdd-board` before release.
+- **`sdd-board` Config pane** (`⚙ Config`, top right): read-only view of the effective `capabilities.md` values (set vs default), projects and the §2 commands, with buttons for `/sdd:capabilities` and `/sdd:doctor check`.
 
 ## [1.2.0] — 2026-11-14
 
