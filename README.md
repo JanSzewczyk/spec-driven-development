@@ -167,7 +167,7 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@1.1.0`. Once installed, the plugin's 10 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
+You should see `sdd@1.1.0`. Once installed, the plugin's 11 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
 
 ### 📊 Install sdd-board (optional)
 
@@ -201,6 +201,7 @@ Open the target project in Claude Code and run:
 ```text
 /sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md
 /sdd:doctor check     # confirms 7/7 — files present and valid, git, tooling, feature specs
+/sdd:capabilities     # optional: pick implementer, git actions and review checks from your installed skills/agents
 /sdd:constitution     # edit specs/constitution.md (long-form, no token limit)
 ```
 
@@ -288,7 +289,7 @@ flowchart TD
 
 This framework adds:
 
-- 10 skills, each a slash command: `/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`, `/sdd:retro` (none is started by Claude on its own)
+- 11 skills, each a slash command: `/sdd:doctor`, `/sdd:capabilities`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`, `/sdd:retro` (none is started by Claude on its own)
 - 3 agents: `spec-verifier` and `reviewer` verify, `codebase-surveyor` maps the code for `/sdd:plan`
 - a small mod that registers the `doctor_check` tool behind `/sdd:doctor check`
 
@@ -368,7 +369,7 @@ A Claude Code session loader (`CLAUDE.md`, root or per-module) stays yours: the 
 `specs/capabilities.md` has two kinds of sections:
 
 - **`<!-- auto-generated -->`** — `## Projects`, rewritten by `/sdd:doctor init` on every run
-- **`<!-- user-override -->`** — `## Implementation`, `## Actions`, `## Review` and `## Generated / out-of-band paths`, preserved untouched (`init` only adds a missing one)
+- **`<!-- user-override -->`** — `## Implementation`, `## Actions`, `## Review` and `## Generated / out-of-band paths`, preserved untouched (`init` only adds a missing one); `/sdd:capabilities` fills them from what you have installed, after you confirm
 
 Example schema:
 
@@ -485,6 +486,10 @@ pr: skill:create-pull-request
 ### 🔁 `/sdd:retro`
 
 Optional, after `/sdd:review`. Reads `review.md` (blockers, violated rules, accepted items, drift) and proposes **WHAT NOT TO DO** entries for the constitution — only repeatable mistakes, only ones §5 does not already cover. Each entry needs a `**Why:**` that comes from the review or from you; it asks instead of inventing one. Writes only constitution §5.
+
+### ⚙️ `/sdd:capabilities`
+
+Optional, after `/sdd:doctor init`. Scans the session's skills and agents, installed plugins (also ones not enabled), `~/.claude` and `.claude` files, and repo signals (`gh`, CI, e2e setup). Drafts `## Implementation`, `## Actions` and `## Review` per project with a reason for each value, then asks you to confirm and to settle choices and gaps. Writes only those values; keeps existing decisions unless you change them; re-run after installing plugins.
 
 ### 📊 `/sdd:analyze`
 
@@ -740,9 +745,9 @@ spec-driven-development/                    # or your own forked plugin path
         ├── hooks/                         # hooks.json + register.ts (the doctor_check tool), core/ (copy of shared)
         ├── tests/                         # doctor check rules, run with `claude plugin test`
         ├── references/                    # shared by the skills: feature-diff, capabilities, status-lifecycle, sibling-repos, formats
-        ├── skills/                        # 10 skills, each `/sdd:<name>`
+        ├── skills/                        # 11 skills, each `/sdd:<name>`
         │   ├── constitution/ spec/ clarify/ plan/ tasks/
-        │   ├── implement/ review/ retro/ analyze/    # SKILL.md each
+        │   ├── implement/ review/ retro/ analyze/ capabilities/    # SKILL.md each
         │   └── doctor/
         │       ├── SKILL.md               # `check` (tool + fallback)
         │       ├── references/
