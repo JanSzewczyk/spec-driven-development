@@ -1,9 +1,9 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
-import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
+import { ROLE_KEY, STATUS_ROLE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
 import type { Config } from './core/check.ts'
-import { badgeSvg, checkSvg, dividerSvg, dotSvg, dotsSvg, pillSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
-import type { Role } from './svg.ts'
+import { checkSvg, dividerSvg, dotSvg, dotsSvg, pillSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
+import type { Role } from './model.ts'
 
 export type Actions = {
   tab: (t: 'current' | 'all') => void
@@ -57,8 +57,8 @@ function chip(el: any, status: string, label?: string) {
 // Status badge: a small tinted pill on Desktop/VS Code, a plain colored label in the terminal.
 function badge(el: any, ctx: Ctx, status: string) {
   if (!rich(ctx.surface)) return chip(el, status)
-  const key = status in PALETTE ? status : 'draft'
-  const b = badgeSvg(status, PALETTE[key])
+  const key = status in STATUS_ROLE ? status : 'draft'
+  const b = pillSvg(status, STATUS_ROLE[key])
   return el.Svg({ alt: 'Status: ' + status, width: b.width, height: b.height, source: b.source })
 }
 
@@ -112,8 +112,8 @@ function checklist(el: any, ctx: Ctx, f: Feature) {
       children: [
         rich(ctx.surface)
           ? Svg({ alt: c.ok ? 'done' : 'open', width: 16, height: 16, source: checkSvg(c.ok) })
-          : Text({ color: c.ok ? 'green' : 'yellow', children: [c.ok ? '✓' : '○'] }),
-        Text({ wrap: 'truncate-end', color: c.ok ? undefined : 'yellow', dimColor: c.ok, children: [c.label] }),
+          : Text({ color: c.ok ? 'success' : 'warning', children: [c.ok ? '✓' : '○'] }),
+        Text({ wrap: 'truncate-end', color: c.ok ? undefined : 'warning', dimColor: c.ok, children: [c.label] }),
         c.hint ? Text({ dimColor: true, wrap: 'truncate-end', children: ['· ' + c.hint] }) : null,
       ].filter(Boolean),
     }),
@@ -136,10 +136,10 @@ function nextCard(el: any, ctx: Ctx, f: Feature) {
   const cmd = d.next.command
   const blocked = open > 0
   return Box({
-    marginTop: rich(ctx.surface) ? 1 : 0, borderStyle: 'round', borderColor: blocked ? 'yellow' : 'green', padding: 'md', flexDirection: 'column', rowGap: 1,
+    marginTop: rich(ctx.surface) ? 1 : 0, borderStyle: 'round', borderColor: blocked ? 'warning' : 'success', padding: 'md', flexDirection: 'column', rowGap: 1,
     children: [
       Text({ dimColor: true, children: [(blocked ? 'NEXT STEP · waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'NEXT STEP · ready') + ' · model: ' + d.next.model] }),
-      Text({ mono: true, weight: 'semibold', color: blocked ? 'yellow' : 'green', children: [cmd] }),
+      Text({ mono: true, weight: 'semibold', color: blocked ? 'warning' : 'success', children: [cmd] }),
       Text({ dimColor: true, wrap: 'wrap', children: [blocked ? 'Finish the open checks above first, then run this. ' + d.next.why : d.next.why] }),
       Button({ key: 'fill-next', label: 'Put in prompt', hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),
     ],
@@ -156,7 +156,7 @@ function progress(el: any, ctx: Ctx, f: Feature) {
     rows.push(
       rich(ctx.surface)
         ? wide(el, Svg({ alt: done + ' of ' + c.total + ' tasks implemented', width: fullWidth(ctx), height: 8, source: progressSvg(c, fullWidth(ctx)) }))
-        : Text({ color: 'green', children: [bar(done, c.total, ctx.cols - 12)] }),
+        : Text({ color: 'success', children: [bar(done, c.total, ctx.cols - 12)] }),
     )
   }
   return Box({ flexDirection: 'column', rowGap: 1, children: rows })
@@ -173,7 +173,7 @@ function taskList(el: any, ctx: Ctx, f: Feature) {
         key: 'task-' + t.id,
         flexDirection: 'row', columnGap: 1,
         children: [
-          Text({ color: TEXT_COLOR[t.status] ?? 'gray', children: [GLYPH[t.status] ?? '○'] }),
+          Text({ color: TEXT_COLOR[t.status] ?? 'inactive', children: [GLYPH[t.status] ?? '○'] }),
           Text({ mono: true, dimColor: true, children: [t.id] }),
           Text({ wrap: 'truncate-end', children: [t.title] }),
           Text({ dimColor: true, wrap: 'truncate-end', children: [t.project] }),
@@ -227,9 +227,9 @@ function emptyState(el: any, ctx: Ctx) {
 function doneCard(el: any, ctx: Ctx) {
   const { Box, Text, Button } = el
   return Box({
-    borderStyle: 'round', borderColor: 'green', padding: 'md', flexDirection: 'column', rowGap: 1,
+    borderStyle: 'round', borderColor: 'success', padding: 'md', flexDirection: 'column', rowGap: 1,
     children: [
-      Text({ color: 'green', weight: 'semibold', children: ['✓ Feature done'] }),
+      Text({ color: 'success', weight: 'semibold', children: ['✓ Feature done'] }),
       Text({ dimColor: true, wrap: 'wrap', children: ['Review passed. Open the pull request when you are ready, or start the next feature.'] }),
       Button({ key: 'fill-empty', label: 'Start a new spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
     ],
@@ -258,7 +258,7 @@ export function renderCurrent(el: any, ctx: Ctx) {
       ],
     }),
   ]
-  if (ctx.running) kids.push(Text({ color: 'yellow', children: ['⟳ ' + ctx.running + ' running…'] }))
+  if (ctx.running) kids.push(Text({ color: 'warning', children: ['⟳ ' + ctx.running + ' running…'] }))
   if (done) kids.push(doneCard(el, ctx))
   kids.push(stepper(el, ctx, f))
   const working = d.phase === 'implement' || d.phase === 'review'
@@ -272,8 +272,8 @@ export function renderCurrent(el: any, ctx: Ctx) {
     if (tl) kids.push(tl)
   }
   if (!done) kids.push(nextCard(el, ctx, f))
-  if (!done && f.review) kids.push(Text({ color: f.review === 'READY' ? 'green' : 'red', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
-  for (const w of warn) kids.push(Text({ color: 'red', wrap: 'wrap', children: ['⚠ ' + w] }))
+  if (!done && f.review) kids.push(Text({ color: f.review === 'READY' ? 'success' : 'error', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
+  for (const w of warn) kids.push(Text({ color: 'error', wrap: 'wrap', children: ['⚠ ' + w] }))
   kids.push(docSwitch(el, ctx, f))
   // Sections get room to breathe on Desktop/VS Code; the terminal keeps one line between them.
   return Box({ flexDirection: 'column', rowGap: rich(ctx.surface) ? 2 : 1, children: kids })
@@ -302,7 +302,7 @@ export function renderAll(el: any, ctx: Ctx) {
     const c = taskCounts(f.tasks)
     const isCurrent = ctx.current?.slug === f.slug
     return Box({
-      borderStyle: 'round', borderColor: isCurrent ? 'blue' : undefined, paddingX: 1, flexDirection: 'column',
+      borderStyle: 'round', borderColor: isCurrent ? 'permission' : undefined, paddingX: 1, flexDirection: 'column',
       children: [
         Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }), badge(el, ctx, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
         Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.slug] }),
@@ -337,7 +337,6 @@ export function renderPane(el: any, ctx: Ctx) {
   })
 }
 
-export { PALETTE }
 
 export type ConfigCtx = {
   surface: string
@@ -354,7 +353,6 @@ const FLOW = /^(agent|skill|command):(.+)$/
 // theme key that Claude Code maps to the same role ('merged' and 'permission' have no ANSI fixed value).
 const FLOW_ROLE: Record<string, Role> = { agent: 'accent', skill: 'pro', command: 'warning' }
 const KIND_ROLE: Record<string, Role> = { backend: 'accent', web: 'success', library: 'pro' }
-const ROLE_KEY: Record<Role, string> = { accent: 'permission', pro: 'merged', success: 'success', warning: 'warning' }
 // Surface Claude Code uses for its own message bubbles (--surface-1 on Desktop).
 const TILE_BG = 'userMessageBackground'
 
