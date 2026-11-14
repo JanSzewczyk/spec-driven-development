@@ -1,7 +1,7 @@
 // Registers the `doctor_check` tool (seen by Claude as mcp__sdd__doctor_check): it gathers the
 // facts about the project in the session's working directory and hands them to the pure rules in
 // core/check.ts. /sdd:doctor check renders the result.
-import { needs, runChecks } from './core/check.ts'
+import { flowRefs, needs, parseCapabilities, runChecks } from './core/check.ts'
 import type { FeatureFiles, Snapshot } from './core/check.ts'
 
 const TOOL = 'mcp__sdd__doctor_check'
@@ -65,6 +65,50 @@ async function toolResolves($: any, exe: string, dir: string | null): Promise<bo
   return false
 }
 
+// Plugins installed for this user: name -> install path, read from ~/.claude/plugins/installed_plugins.json.
+// null when the registry cannot be read (then plugin-provided skills and agents are not judged).
+async function installedPlugins($: any, home: string): Promise<{ name: string; path: string }[] | null> {
+  const text = await readText($, home + '/.claude/plugins/installed_plugins.json')
+  if (text === null) return null
+  const paths: string[] = []
+  const walk = (v: any) => {
+    if (Array.isArray(v)) v.forEach(walk)
+    else if (v && typeof v === 'object') {
+      if (typeof v.installPath === 'string') paths.push(v.installPath)
+      Object.values(v).forEach(walk)
+    }
+  }
+  try {
+    walk(JSON.parse(text))
+  } catch {
+    return null
+  }
+  const out: { name: string; path: string }[] = []
+  for (const path of paths) {
+    const manifest = await readText($, path + '/.claude-plugin/plugin.json')
+    try {
+      const name = manifest ? JSON.parse(manifest).name : null
+      if (typeof name === 'string') out.push({ name, path })
+    } catch {
+      // skip a plugin with a broken manifest
+    }
+  }
+  return out
+}
+
+// Is `skill:<name>` / `agent:<name>` installed? `plugin:name` limits the search to that plugin.
+// null: cannot tell (no home directory, or no plugin registry and the name is not a local file).
+async function flowResolves($: any, kind: 'skill' | 'agent', name: string, home: string, plugins: { name: string; path: string }[] | null): Promise<boolean | null> {
+  if (!home) return null
+  const [prefix, local] = name.includes(':') ? [name.slice(0, name.indexOf(':')), name.slice(name.indexOf(':') + 1)] : [null, name]
+  const file = (base: string) => (kind === 'skill' ? base + '/skills/' + local + '/SKILL.md' : base + '/agents/' + local + '.md')
+  const bases: string[] = []
+  if (prefix === null) bases.push('.claude', home + '/.claude')
+  for (const p of plugins ?? []) if (prefix === null || p.name === prefix) bases.push(p.path)
+  for (const b of bases) if (await exists($, file(b))) return true
+  return plugins === null ? null : false
+}
+
 async function gather($: any, offline: boolean): Promise<Snapshot> {
   const constitution = await readText($, 'specs/constitution.md')
   const template = await readText($, 'specs/template.md')
@@ -95,6 +139,19 @@ async function gather($: any, offline: boolean): Promise<Snapshot> {
   const tools: Record<string, boolean> = {}
   for (const t of wanted.tools) tools[t.key] = await toolResolves($, t.exe, t.dir)
 
+  const flows: Record<string, boolean | null> = {}
+  if (capabilities) {
+    const refs = flowRefs(parseCapabilities(capabilities)).filter((r) => r.kind !== 'command')
+    if (refs.length > 0) {
+      const home = (await run($, ['sh', '-c', 'printf %s "$HOME"']))?.stdout.trim() ?? ''
+      const plugins = home ? await installedPlugins($, home) : null
+      for (const r of refs) {
+        const key = r.kind + ':' + r.name
+        if (!(key in flows)) flows[key] = await flowResolves($, r.kind as 'skill' | 'agent', r.name, home, plugins)
+      }
+    }
+  }
+
   return {
     constitution,
     template,
@@ -105,6 +162,7 @@ async function gather($: any, offline: boolean): Promise<Snapshot> {
     git: { isRepo, clean, gh, ghAuth },
     paths,
     tools,
+    flows,
   }
 }
 

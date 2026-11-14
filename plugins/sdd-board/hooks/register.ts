@@ -1,10 +1,13 @@
+import { effectiveConfig } from './core/check.ts'
+import type { Config } from './core/check.ts'
 import { parsePlan, parseReview, parseSpec, parseTasks } from './core/parse.ts'
 import { currentSlug, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
-import { renderDoc, renderPane } from './view.ts'
+import { renderConfig, renderDoc, renderPane } from './view.ts'
 
 const PANE = 'sdd-board'
 const DOC_PANE = 'sdd-board-doc'
+const CONFIG_PANE = 'sdd-board-config'
 const TITLE = 'Spec-driven Development by Szum-Tech'
 
 // Module state: disposable, rebuilt from disk on every load.
@@ -16,6 +19,7 @@ let tab: 'current' | 'all' = 'current'
 let pinned: string | null = null
 let filter = 'all'
 let running: string | null = null
+let config: Config | null = null
 let docView: { slug: string; kind: string } | null = null
 let isClosedByUser = false
 
@@ -93,12 +97,20 @@ async function scan($: any): Promise<boolean> {
   } catch {
     // not a git repo: keep the branch we had
   }
-  const sig = JSON.stringify([any, next, found])
+  let cfg: Config | null = null
+  try {
+    const caps = await readText($, 'specs/capabilities.md')
+    if (caps !== null) cfg = effectiveConfig(caps, await readText($, 'specs/constitution.md'))
+  } catch {
+    // the panel shows "not found"
+  }
+  const sig = JSON.stringify([any, next, found, cfg])
   const isChanged = sig !== signature
   signature = sig
   hasSpecs = any
   branch = next
   features = found
+  config = cfg
   return isChanged
 }
 
@@ -197,6 +209,17 @@ export function register(on) {
       const text = view ? await readText($, 'specs/' + view.slug + '/' + view.kind + '.md') : null
       return renderDoc(el, { slug: view ? view.slug : '', kind: view ? view.kind : '', text })
     }
+    if (e.requestId === CONFIG_PANE) {
+      return renderConfig($.ui.resolve(e), {
+        surface: e.surface,
+        config,
+        actions: {
+          run: (command, args) => {
+            runCommand($, command, args)
+          },
+        },
+      })
+    }
     if (e.requestId !== PANE) return next(e)
     const el = $.ui.resolve(e)
     const redraw = () => $.ui.invalidate('ui.render')
@@ -230,6 +253,16 @@ export function register(on) {
           // reported below
         }
         if (!placed || !placed.isPlaced) $.ui.toast('No room for the document: widen the window and try again')
+        $.ui.invalidate('ui.render')
+      },
+      config: async () => {
+        let placed: any = null
+        try {
+          placed = await $.ui.open({ id: CONFIG_PANE, title: 'SDD configuration', focus: true, closeOnEscape: true, columns: 64 })
+        } catch {
+          // reported below
+        }
+        if (!placed || !placed.isPlaced) $.ui.toast('No room for the configuration: widen the window and try again')
         $.ui.invalidate('ui.render')
       },
       filter: (v) => {
