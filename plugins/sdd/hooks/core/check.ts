@@ -43,6 +43,7 @@ export type Snapshot = {
   git: GitProbe
   paths: Record<string, boolean> // project and sibling paths -> exists
   tools: Record<string, boolean> // ToolNeed.key -> resolvable
+  flows: Record<string, boolean | null> // `skill:<name>` / `agent:<name>` -> installed; null: could not be probed
 }
 export type Report = { status: Verdict; passed: number; total: number; projects: Project[]; checks: CheckResult[] }
 export type ToolNeed = { key: string; exe: string; dir: string | null; project: string }
@@ -163,13 +164,83 @@ export function parseCapabilities(text: string): Capabilities {
   return { projects, sections, legacyProjects: sections.Projects === undefined && sections[CAPABILITIES_LEGACY_PROJECTS] !== undefined }
 }
 
-function keyValues(lines: string[]): [string, string][] {
+export function keyValues(lines: string[]): [string, string][] {
   const out: [string, string][] = []
   for (const l of stripComments(lines.join('\n')).split('\n')) {
     const m = l.match(/^([A-Za-z0-9_.-]+):\s*(.*)$/)
     if (m) out.push([m[1], m[2].replace(/\s{2,}#.*$/, '').trim()])
   }
   return out
+}
+
+// ---------- effective configuration ----------
+
+export type FlowRef = { kind: 'skill' | 'agent' | 'command'; name: string; where: string }
+export type ConfigEntry = { key: string; value: string; source: 'set' | 'default' }
+export type ConfigSection = { title: string; entries: ConfigEntry[] }
+export type Config = { projects: Project[]; commands: CommandRow[]; sections: ConfigSection[]; generated: number; configured: boolean }
+
+const SESSION_GIT = 'the session (git + gh)'
+
+// Every `skill:` / `agent:` / `command:` value the user set in Implementation, Actions and Review.
+export function flowRefs(caps: Capabilities): FlowRef[] {
+  const out: FlowRef[] = []
+  const add = (value: string, where: string) => {
+    const m = value.trim().match(/^(skill|agent|command):(\S.*)$/)
+    if (m) out.push({ kind: m[1] as FlowRef['kind'], name: m[2].trim(), where })
+  }
+  for (const [k, v] of keyValues(caps.sections.Implementation ?? [])) add(v, 'Implementation ' + k)
+  for (const [k, v] of keyValues(caps.sections.Actions ?? [])) add(v, 'Actions ' + k)
+  for (const [k, v] of keyValues(caps.sections.Review ?? [])) {
+    if (k === 'checks') for (const item of v.split(',')) add(item, 'Review checks')
+    else add(v, 'Review ' + k)
+  }
+  return out
+}
+
+// What `/sdd:implement`, `/sdd:review` and the git actions will really use: the user's value, or the default.
+export function effectiveConfig(capabilities: string, constitution: string | null): Config {
+  const caps = parseCapabilities(capabilities)
+  const get = (section: string) => new Map(keyValues(caps.sections[section] ?? []))
+  const entry = (key: string, value: string | undefined, fallback: string): ConfigEntry => {
+    const set = value !== undefined && value !== '' && value !== fallback
+    return { key, value: value !== undefined && value !== '' ? value : fallback, source: set ? 'set' : 'default' }
+  }
+
+  const impl = get('Implementation')
+  const implDefault = entry('default', impl.get('default'), 'in-session')
+  const implementation: ConfigEntry[] = [implDefault]
+  for (const p of caps.projects) {
+    const own = impl.get(p.name)
+    implementation.push(own ? { key: p.name, value: own, source: own === implDefault.value ? 'default' : 'set' } : { key: p.name, value: implDefault.value, source: 'default' })
+  }
+
+  const act = get('Actions')
+  const actions = ACTION_KEYS.map((k) => ({ key: k, value: act.get(k) || SESSION_GIT, source: (act.get(k) ? 'set' : 'default') as 'set' | 'default' }))
+
+  const rev = get('Review')
+  const revDefault = entry('default', rev.get('default'), 'auto')
+  const review: ConfigEntry[] = [entry('tests', rev.get('tests'), 'run'), entry('publish', rev.get('publish'), 'ask'), revDefault]
+  for (const p of caps.projects) {
+    const own = rev.get(p.name)
+    if (own) review.push({ key: p.name, value: own, source: own === revDefault.value ? 'default' : 'set' })
+  }
+  const checks = (rev.get('checks') ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  review.push({ key: 'checks', value: checks.length ? checks.join(', ') : 'none', source: checks.length ? 'set' : 'default' })
+
+  const generated = stripComments((caps.sections['Generated / out-of-band paths'] ?? []).join('\n')).split('\n').filter((l) => /^\s*-\s+\S/.test(l)).length
+  const sections: ConfigSection[] = [
+    { title: 'Implementation', entries: implementation },
+    { title: 'Actions', entries: actions },
+    { title: 'Review', entries: review },
+  ]
+  return {
+    projects: caps.projects,
+    commands: constitution ? (parseCommandTable(constitution) ?? []) : [],
+    sections,
+    generated,
+    configured: sections.some((sec) => sec.entries.some((e) => e.source === 'set')),
+  }
 }
 
 // ---------- what the doctor has to probe ----------
@@ -190,6 +261,13 @@ export function needs(constitution: string | null, capabilities: string | null):
       const key = r.project + '\u0000' + parsed.exe + '\u0000' + (parsed.dir ?? '')
       tools.set(key, { key, exe: parsed.exe, dir: parsed.dir ?? (base && base !== '.' ? base : null), project: r.project })
     }
+  }
+  for (const r of caps ? flowRefs(caps) : []) {
+    if (r.kind !== 'command') continue
+    const parsed = commandOf(r.name)
+    if (!parsed) continue
+    const key = '(capabilities)\u0000' + parsed.exe + '\u0000' + (parsed.dir ?? '')
+    tools.set(key, { key, exe: parsed.exe, dir: parsed.dir, project: r.where })
   }
   return { paths: [...paths], tools: [...tools.values()] }
 }
@@ -285,6 +363,16 @@ function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult 
     } else {
       f.push(warn(`Review: unknown key "${k}"`))
     }
+  }
+
+  for (const r of flowRefs(caps)) {
+    if (r.kind === 'command') continue
+    if (s.flows[r.kind + ':' + r.name] === false) {
+      f.push(warn(`${r.where}: ${r.kind}:${r.name} is not installed (looked in .claude, ~/.claude and installed plugins; built-in ones are not scanned). Install or enable it, or fix the name with \`/sdd:capabilities\``))
+    }
+  }
+  if (!effectiveConfig(s.capabilities, s.constitution).configured) {
+    f.push(warn('Implementation, Actions and Review are all at their defaults: run `/sdd:capabilities` to pick who implements, who runs git and how review verifies (ignore if the defaults are intended)'))
   }
 
   const rows = s.constitution ? parseCommandTable(s.constitution) : null

@@ -244,7 +244,8 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
   on('store.set', () => ({ value: undefined }))
   on('command.register', () => ({ value: undefined }))
   on('ui.toast', () => ({ value: undefined }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
+  const opened: string[] = []
+  on('ui.open', (_: any, e: any) => { opened.push(e.id); return { value: { isPlaced: true } } })
   const rel = (p: string) => p.replace(/^.*?\/specs/, 'specs')
   on('fs.exists', (_: any, e: any) => ({ value: has() && (rel(e.path) === 'specs' || rel(e.path) in all) }))
   on('fs.list', () => ({ value: [{ name: 'user-login', kind: 'directory', size: 0, isLink: false }] }))
@@ -259,7 +260,7 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
     return {}
   })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
-  return Object.assign(filled, { clock, ran, refuseSubmit: () => { refuse = true } })
+  return Object.assign(filled, { clock, ran, opened, refuseSubmit: () => { refuse = true } })
 }
 
 test('the current tab shows the spec, its next step, and fills the prompt', async ($, on) => {
@@ -409,5 +410,74 @@ test('mid-run, a later task still shows what it waits on', async ($, on) => {
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect(await ui.find({ type: 'Text', text: 'waits on T2' })).toBeDefined()
+  await ui.unmount()
+})
+
+const CAPS = `# Project Capabilities
+
+## Projects
+
+<!-- auto-generated -->
+- **api** — backend · apps/api · Python
+
+## Implementation
+
+<!-- user-override -->
+default: in-session
+api: agent:python-developer
+
+## Actions
+
+<!-- user-override -->
+branch:
+commit:
+pr:
+
+## Review
+
+<!-- user-override -->
+tests: run
+publish: ask
+default: auto
+checks:
+`
+
+const CONSTITUTION = `# Constitution
+
+## 2. Run/build commands
+
+| Project | Path | test | coverage | typecheck | lint | dev |
+|---------|------|------|----------|-----------|------|-----|
+| api | \`apps/api\` | \`uv run pytest\` | | | | |
+`
+
+test('the tab bar has a Config button that opens the configuration pane', async ($, on) => {
+  const stub = stubProject($, on, true, { files: { 'specs/capabilities.md': CAPS, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'open-config' })
+  expect(stub.opened).toContain('sdd-board-config')
+  await ui.unmount()
+})
+
+test('the configuration pane shows set values, defaults and commands', async ($, on) => {
+  const filled = stubProject($, on, true, { files: { 'specs/capabilities.md': CAPS, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'agent:python-developer' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'uv run pytest' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Everything is at its default' })).toBeUndefined()
+  await ui.press({ key: 'cfg-run' })
+  await filled.clock.settle()
+  expect(filled.ran).toEqual(['sdd:capabilities '])
+  await ui.unmount()
+})
+
+test('the configuration pane flags a project that is all defaults', async ($, on) => {
+  const bare = CAPS.replace('api: agent:python-developer\n', '')
+  stubProject($, on, true, { files: { 'specs/capabilities.md': bare, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'Everything is at its default' })).toBeDefined()
   await ui.unmount()
 })

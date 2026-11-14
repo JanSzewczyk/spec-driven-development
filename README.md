@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -108,7 +108,7 @@ The marketplace `spec-driven-development` ([`.claude-plugin/marketplace.json`](.
 
 | Plugin | Description | Skills | Agents | Mod |
 | --- | --- | --- | --- | --- |
-| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec | 10 | 3 | `doctor_check` tool |
+| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec | 11 | 3 | `doctor_check` tool |
 | [**sdd-board**](./plugins/sdd-board/.claude-plugin/plugin.json) | Claude Code Desktop side panel (a mod): current spec with phase, next command and tasks, plus an overview of all specs. Requires `sdd` (installed with it) | | | panel |
 
 See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Reference](#-sub-agents-reference) for each one.
@@ -120,6 +120,7 @@ An optional companion mod (needs Claude Code 2.1.287+; installing it installs `s
 - **Current** tab — the active spec (from the git branch, the one you pinned, or the newest one still in progress): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), a readiness checklist for the next command, the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, the task list, and buttons that open `spec` / `plan` / `tasks` / `review`.
 - **All** tab — every spec with its phase and task progress, filterable; **Show** pins one as current.
 - **+ New spec** in the tab bar puts `/sdd:spec feat ` in the prompt at any time.
+- **⚙ Config** (top right) — opens a read-only configuration panel: projects, the effective `capabilities.md` values for Implementation, Actions and Review (set values vs defaults), the commands from constitution §2 per project, and buttons for `/sdd:capabilities` and `/sdd:doctor check`.
 - **No SDD in the project** — only a setup card; **Init SDD in this project** runs `/sdd:doctor init` in the session (the one button that runs a command).
 - Refreshes by itself: after Claude writes a file under `specs/`, after a branch switch, after each turn, and on a 4 s poll for edits made elsewhere. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
 
@@ -167,7 +168,7 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@1.1.0`. Once installed, the plugin's 10 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
+You should see `sdd@1.2.0`. Once installed, the plugin's 11 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
 
 ### 📊 Install sdd-board (optional)
 
@@ -201,6 +202,7 @@ Open the target project in Claude Code and run:
 ```text
 /sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md
 /sdd:doctor check     # confirms 7/7 — files present and valid, git, tooling, feature specs
+/sdd:capabilities     # optional: pick implementer, git actions and review checks from your installed skills/agents
 /sdd:constitution     # edit specs/constitution.md (long-form, no token limit)
 ```
 
@@ -288,7 +290,7 @@ flowchart TD
 
 This framework adds:
 
-- 10 skills, each a slash command: `/sdd:doctor`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`, `/sdd:retro` (none is started by Claude on its own)
+- 11 skills, each a slash command: `/sdd:doctor`, `/sdd:capabilities`, `/sdd:constitution`, `/sdd:spec`, `/sdd:clarify`, `/sdd:plan`, `/sdd:tasks`, `/sdd:implement`, `/sdd:review`, `/sdd:analyze`, `/sdd:retro` (none is started by Claude on its own)
 - 3 agents: `spec-verifier` and `reviewer` verify, `codebase-surveyor` maps the code for `/sdd:plan`
 - a small mod that registers the `doctor_check` tool behind `/sdd:doctor check`
 
@@ -368,7 +370,7 @@ A Claude Code session loader (`CLAUDE.md`, root or per-module) stays yours: the 
 `specs/capabilities.md` has two kinds of sections:
 
 - **`<!-- auto-generated -->`** — `## Projects`, rewritten by `/sdd:doctor init` on every run
-- **`<!-- user-override -->`** — `## Implementation`, `## Actions`, `## Review` and `## Generated / out-of-band paths`, preserved untouched (`init` only adds a missing one)
+- **`<!-- user-override -->`** — `## Implementation`, `## Actions`, `## Review` and `## Generated / out-of-band paths`, preserved untouched (`init` only adds a missing one); `/sdd:capabilities` fills them from what you have installed, after you confirm
 
 Example schema:
 
@@ -396,7 +398,7 @@ api: agent:python-developer
 
 ### 🏥 `/sdd:doctor [check|init]`
 
-Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.md valid, git + gh, tooling per project, sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
+Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.md valid (values well-formed, `skill:` / `agent:` names installed, not left at the defaults), git + gh, tooling per project (including `command:` values), sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
 - `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. Never touches the project-root `CLAUDE.md`.
@@ -485,6 +487,10 @@ pr: skill:create-pull-request
 ### 🔁 `/sdd:retro`
 
 Optional, after `/sdd:review`. Reads `review.md` (blockers, violated rules, accepted items, drift) and proposes **WHAT NOT TO DO** entries for the constitution — only repeatable mistakes, only ones §5 does not already cover. Each entry needs a `**Why:**` that comes from the review or from you; it asks instead of inventing one. Writes only constitution §5.
+
+### ⚙️ `/sdd:capabilities`
+
+Optional, after `/sdd:doctor init`. Scans the session's skills and agents, installed plugins (also ones not enabled), `~/.claude` and `.claude` files, and repo signals (`gh`, CI, e2e setup). Drafts `## Implementation`, `## Actions` and `## Review` per project with a reason for each value, then asks you to confirm and to settle choices and gaps. Writes only those values; keeps existing decisions unless you change them; re-run after installing plugins.
 
 ### 📊 `/sdd:analyze`
 
@@ -740,9 +746,9 @@ spec-driven-development/                    # or your own forked plugin path
         ├── hooks/                         # hooks.json + register.ts (the doctor_check tool), core/ (copy of shared)
         ├── tests/                         # doctor check rules, run with `claude plugin test`
         ├── references/                    # shared by the skills: feature-diff, capabilities, status-lifecycle, sibling-repos, formats
-        ├── skills/                        # 10 skills, each `/sdd:<name>`
+        ├── skills/                        # 11 skills, each `/sdd:<name>`
         │   ├── constitution/ spec/ clarify/ plan/ tasks/
-        │   ├── implement/ review/ retro/ analyze/    # SKILL.md each
+        │   ├── implement/ review/ retro/ analyze/ capabilities/    # SKILL.md each
         │   └── doctor/
         │       ├── SKILL.md               # `check` (tool + fallback)
         │       ├── references/

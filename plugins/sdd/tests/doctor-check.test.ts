@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { commandOf, needs, parseCapabilities, parseCommandTable, runChecks } from '../hooks/core/check.ts'
+import { commandOf, effectiveConfig, needs, parseCapabilities, parseCommandTable, runChecks } from '../hooks/core/check.ts'
 import type { Snapshot } from '../hooks/core/check.ts'
 
 const CONSTITUTION = `# Project Constitution
@@ -126,6 +126,7 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
     git: { isRepo: true, clean: true, gh: true, ghAuth: true },
     paths: { 'apps/web': true, 'apps/api': true },
     tools: {},
+    flows: {},
     ...over,
   }
 }
@@ -280,4 +281,40 @@ test('three failing checks give NOT_READY, one or two give PARTIAL', () => {
   expect(one.status).toBe('PARTIAL')
   const three = runChecks(allTools(snapshot({ template: null, git: { isRepo: false, clean: null, gh: null, ghAuth: null }, features: [{ slug: 'x', spec: null, plan: null, tasks: TASKS, review: null }] })))
   expect(three.status).toBe('NOT_READY')
+})
+
+test('a skill or agent that is not installed warns; unknown (null) does not', () => {
+  const s = allTools(snapshot({ flows: { 'agent:python-developer': false, 'skill:create-commit': null, 'agent:qa': true } }))
+  const t = texts(runChecks(s), 3).join('\n')
+  expect(t).toContain('Implementation api: agent:python-developer is not installed')
+  expect(t).not.toContain('create-commit')
+  expect(t).not.toContain('agent:qa')
+})
+
+test('a command: value whose executable is missing is a tooling warning', () => {
+  const caps = CAPABILITIES.replace('pr:\n', 'pr: command:gh-pr-bot --draft\n')
+  const s = snapshot({ capabilities: caps })
+  const tools: Record<string, boolean> = {}
+  for (const t of needs(s.constitution, s.capabilities).tools) tools[t.key] = t.exe !== 'gh-pr-bot'
+  const t = texts(runChecks({ ...s, tools }), 5).join('\n')
+  expect(t).toContain('`gh-pr-bot` not found')
+})
+
+test('capabilities at their defaults ask for /sdd:capabilities; a set value does not', () => {
+  const defaults = CAPABILITIES.replace('api: agent:python-developer\n', '').replace('commit: skill:create-commit', 'commit:').replace('checks: agent:qa', 'checks:')
+  expect(texts(runChecks(allTools(snapshot({ capabilities: defaults }))), 3).join('\n')).toContain('/sdd:capabilities')
+  expect(texts(runChecks(allTools(snapshot())), 3).join('\n')).not.toContain('/sdd:capabilities')
+})
+
+test('effectiveConfig shows set values and defaults per project', () => {
+  const c = effectiveConfig(CAPABILITIES, CONSTITUTION)
+  const impl = c.sections[0].entries
+  expect(impl.find((e) => e.key === 'api')).toEqual({ key: 'api', value: 'agent:python-developer', source: 'set' })
+  expect(impl.find((e) => e.key === 'web')).toEqual({ key: 'web', value: 'in-session', source: 'default' })
+  expect(c.sections[1].entries.find((e) => e.key === 'branch')?.source).toBe('default')
+  expect(c.sections[1].entries.find((e) => e.key === 'commit')?.value).toBe('skill:create-commit')
+  expect(c.sections[2].entries.find((e) => e.key === 'checks')?.value).toBe('agent:qa')
+  expect(c.configured).toBe(true)
+  expect(c.generated).toBe(1)
+  expect(c.commands.length).toBe(2)
 })

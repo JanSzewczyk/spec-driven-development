@@ -1,6 +1,7 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
 import { PALETTE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
+import type { Config } from './core/check.ts'
 import { badgeSvg, checkSvg, dotsSvg, progressSvg, stepperSvg } from './svg.ts'
 
 export type Actions = {
@@ -10,6 +11,7 @@ export type Actions = {
   pin: (slug: string) => void
   doc: (kind: string) => void
   filter: (v: string) => void
+  config: () => void
 }
 
 export type Ctx = {
@@ -72,11 +74,18 @@ function tabBar(el: any, ctx: Ctx) {
     })
   return Box({
     flexDirection: 'row',
-    columnGap: 3,
+    justifyContent: 'space-between',
     children: [
-      mk('current', 'Current', '1'),
-      mk('all', 'All (' + ctx.features.length + ')', '2'),
-      Button({ key: 'new-spec', label: '+ New spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
+      Box({
+        flexDirection: 'row',
+        columnGap: 3,
+        children: [
+          mk('current', 'Current', '1'),
+          mk('all', 'All (' + ctx.features.length + ')', '2'),
+          Button({ key: 'new-spec', label: '+ New spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
+        ],
+      }),
+      Button({ key: 'open-config', label: '⚙ Config', hotkey: 'c', plain: true, onPress: () => ctx.actions.config() }),
     ],
   })
 }
@@ -328,3 +337,98 @@ export function renderPane(el: any, ctx: Ctx) {
 }
 
 export { PALETTE }
+
+export type ConfigCtx = { surface: string; config: Config | null; actions: { run: (command: string, args: string) => void } }
+
+const COMMAND_LABELS = ['test', 'coverage', 'typecheck', 'lint', 'dev']
+
+// Read-only view of what the SDD commands will use: capabilities.md with defaults filled in, and the
+// per-project commands from constitution section 2. Editing goes through /sdd:capabilities.
+export function renderConfig(el: any, ctx: ConfigCtx) {
+  const { Box, Text, Button } = el
+  const { config } = ctx
+  if (!config) {
+    return Box({
+      flexDirection: 'column', rowGap: 1, padding: 'sm',
+      children: [
+        Text({ weight: 'semibold', children: ['specs/capabilities.md not found'] }),
+        Text({ dimColor: true, wrap: 'wrap', children: ['Run the setup to create it, then configure it.'] }),
+        Button({ key: 'cfg-init', label: 'Init SDD in this project', variant: 'primary', onPress: () => ctx.actions.run('sdd:doctor', 'init') }),
+      ],
+    })
+  }
+  const heading = (t: string) => Text({ dimColor: true, weight: 'semibold', children: [t.toUpperCase()] })
+  const kids: any[] = []
+  if (!config.configured) {
+    kids.push(
+      Box({
+        borderStyle: 'round', borderColor: 'yellow', padding: 'md', flexDirection: 'column', rowGap: 1,
+        children: [
+          Text({ color: 'yellow', weight: 'semibold', children: ['Everything is at its default'] }),
+          Text({ dimColor: true, wrap: 'wrap', children: ['Tasks are implemented in the session, git actions use git and gh, review picks audits by stack. /sdd:capabilities scans your installed skills and agents and proposes better values.'] }),
+        ],
+      }),
+    )
+  }
+  kids.push(
+    Box({
+      flexDirection: 'row', columnGap: 2,
+      children: [
+        Button({ key: 'cfg-run', label: 'Configure…', hotkey: 'c', ...(config.configured ? { plain: true } : { variant: 'primary' }), onPress: () => ctx.actions.run('sdd:capabilities', '') }),
+        Button({ key: 'cfg-doctor', label: 'Run doctor check', plain: true, onPress: () => ctx.actions.run('sdd:doctor', 'check') }),
+      ],
+    }),
+  )
+  kids.push(
+    Box({
+      flexDirection: 'column',
+      children: [
+        heading('Projects'),
+        ...(config.projects.length
+          ? config.projects.map((p) => Box({ key: 'prj-' + p.name, flexDirection: 'row', columnGap: 1, children: [Text({ mono: true, weight: 'semibold', children: [p.name] }), Text({ dimColor: true, wrap: 'truncate-end', children: [[p.kind, p.path + (p.repo ? ' (repo)' : ''), p.stack].filter(Boolean).join(' · ')] })] }))
+          : [Text({ color: 'yellow', children: ['No project listed: run /sdd:doctor init'] })]),
+      ],
+    }),
+  )
+  for (const sec of config.sections) {
+    kids.push(
+      Box({
+        flexDirection: 'column',
+        children: [
+          heading(sec.title),
+          ...sec.entries.map((e) =>
+            Box({
+              key: sec.title + '-' + e.key, flexDirection: 'row', columnGap: 1,
+              children: [
+                Text({ mono: true, dimColor: true, children: [e.key + ':'] }),
+                Text({ mono: true, wrap: 'truncate-end', dimColor: e.source === 'default', color: e.source === 'set' ? 'green' : undefined, children: [e.value] }),
+                e.source === 'default' ? Text({ dimColor: true, children: ['default'] }) : null,
+              ].filter(Boolean),
+            }),
+          ),
+        ],
+      }),
+    )
+  }
+  kids.push(
+    Box({
+      flexDirection: 'column',
+      children: [
+        heading('Commands (constitution §2)'),
+        ...(config.commands.length
+          ? config.commands.filter((r) => r.project).map((r) =>
+              Box({
+                key: 'cmd-' + r.project, flexDirection: 'column',
+                children: [
+                  Text({ mono: true, weight: 'semibold', children: [r.project] }),
+                  ...COMMAND_LABELS.map((c) => Box({ key: 'cmd-' + r.project + '-' + c, flexDirection: 'row', columnGap: 1, children: [Text({ mono: true, dimColor: true, children: [c.padEnd(9)] }), r.commands[c] ? Text({ mono: true, wrap: 'truncate-end', children: [r.commands[c]] }) : Text({ dimColor: true, color: c === 'test' ? 'yellow' : undefined, children: [c === 'test' ? '— missing' : '—'] })] })),
+                ],
+              }),
+            )
+          : [Text({ color: 'yellow', children: ['No commands table: run /sdd:doctor init'] })]),
+      ],
+    }),
+  )
+  kids.push(Text({ dimColor: true, children: [config.generated + ' generated / out-of-band path pattern' + (config.generated === 1 ? '' : 's')] }))
+  return Box({ flexDirection: 'column', rowGap: 2, padding: 'sm', children: kids })
+}
