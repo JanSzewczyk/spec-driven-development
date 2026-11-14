@@ -120,6 +120,7 @@ An optional companion mod (needs Claude Code 2.1.287+; installing it installs `s
 - **Current** tab — the active spec (from the git branch, the one you pinned, or the newest one still in progress): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), a readiness checklist for the next command, the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, the task list, and buttons that open `spec` / `plan` / `tasks` / `review`.
 - **All** tab — every spec with its phase and task progress, filterable; **Show** pins one as current.
 - **+ New spec** in the tab bar puts `/sdd:spec feat ` in the prompt at any time.
+- **⚙ Config** (top right) — opens a read-only configuration panel: projects, the effective `capabilities.md` values for Implementation, Actions and Review (set values vs defaults), the commands from constitution §2 per project, and buttons for `/sdd:capabilities` and `/sdd:doctor check`.
 - **No SDD in the project** — only a setup card; **Init SDD in this project** runs `/sdd:doctor init` in the session (the one button that runs a command).
 - Refreshes by itself: after Claude writes a file under `specs/`, after a branch switch, after each turn, and on a 4 s poll for edits made elsewhere. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
 
@@ -397,7 +398,7 @@ api: agent:python-developer
 
 ### 🏥 `/sdd:doctor [check|init]`
 
-Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.md valid, git + gh, tooling per project, sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
+Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.md valid (values well-formed, `skill:` / `agent:` names installed, not left at the defaults), git + gh, tooling per project (including `command:` values), sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
 - `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. Never touches the project-root `CLAUDE.md`.
