@@ -487,3 +487,12 @@ test('the configuration pane flags a project that is all defaults', async ($, on
   expect(await ui.find({ type: 'Text', text: 'Everything is at its default' })).toBeDefined()
   await ui.unmount()
 })
+
+test('on Desktop the configuration pane draws tiles and row separators', async ($, on) => {
+  stubProject($, on, true, { files: { 'specs/capabilities.md': CAPS, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: 'customised' })).toBeDefined()
+  expect(await ui.find({ type: 'Svg', alt: 'separator' })).toBeDefined()
+  await ui.unmount()
+})
