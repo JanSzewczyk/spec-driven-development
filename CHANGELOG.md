@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-11-14
+
+`sdd` goes to 1.2.0.
+
+### Added
+
+- **`/sdd:capabilities`** configures `specs/capabilities.md` (`## Implementation`, `## Actions`, `## Review`) from what is available: the session's skills and agents, installed plugins (also disabled ones), `~/.claude` and `.claude` files, and repo signals (`gh`, CI, e2e setup). It drafts a value per project with a reason, asks the user to confirm and to settle choices and gaps, and writes only the value lines. Existing decisions are kept unless the user changes them.
+
 ## [1.1.0] — 2026-11-13
 
 `sdd` goes to 1.1.0 and `sdd-board` to 0.5.0. Breaking for existing installs: `ui-critic` and the `ui:` review key are gone, the `dev / ui-preview` column is `dev`, and `sdd-board` now requires `sdd`. Run `/sdd:doctor check` after updating.
