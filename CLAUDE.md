@@ -20,7 +20,7 @@ The plugin is installed into a *target* project (`/plugin install sdd@spec-drive
 ## Commands
 
 There is no `npm`/`make`. Rules and parsers have tests; the skills are exercised by installing the
-plugin and running them against a target project (see CONTRIBUTING.md "Testing your changes locally"):
+plugin and running them against a target project:
 
 ```
 /sdd:doctor check     # report-only: 7 checks against the target project (the doctor_check tool)
@@ -122,8 +122,7 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 ### After a change to a plugin
 
 1. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure),
-   `plugins/sdd/README.md`, `plugins/sdd-board/README.md`, the Plugins table and Architecture sections of this file, and
-   `CONTRIBUTING.md` when the repo layout changes.
+   `plugins/sdd/README.md`, `plugins/sdd-board/README.md`, and the Plugins table and Architecture sections of this file.
 2. **Run `/marketplace-creator audit`** and fix what it reports before committing. It checks manifests,
    docs and frontmatter against what is on disk.
 

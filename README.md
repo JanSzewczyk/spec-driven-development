@@ -783,7 +783,7 @@ spec-driven-development/                    # or your own forked plugin path
 │   └── release.yml                        # on merge to main: tags a new sdd version and creates GitHub Releases (scripts/release.sh)
 ├── actions/sdd-check/                     # GitHub Action: runs the doctor rules in another repository (action.yml, run.ts)
 ├── tests/fixtures/                        # sdd-ok / sdd-broken projects the action's CI job runs on
-├── README.md / CLAUDE.md / CONTRIBUTING.md / CHANGELOG.md / LICENSE
+├── README.md / CLAUDE.md / CHANGELOG.md / LICENSE
 ├── shared/sdd-core/                       # TypeScript used by both plugins and the action: parse.ts, formats.ts, check.ts, gather.ts
 ├── scripts/sync-core.sh                   # copies shared/sdd-core into each plugin (a mod imports only its own files)
 ├── scripts/release.sh                     # tags an untagged sdd version, creates missing sdd Releases (--dry-run, --notes)
@@ -921,7 +921,7 @@ Why this framework looks the way it does:
 
 ## 🤝 Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the local smoke-test loop, style guidelines, and the PR checklist.
+Contributions are welcome! The development setup, test commands and the map of where to change what are in [CLAUDE.md](CLAUDE.md).
 
 In short:
 
