@@ -35,24 +35,43 @@ Tool not available (mods are off: `--safe-mode`, `disableAllHooks`, WSL, Claude 
 ### Report
 
 ```markdown
-# SDD Readiness Report
+# 🩺 SDD Readiness Report
 
-**Status:** ⚠️ PARTIAL (6/7 passed)
-**Projects:** web — Next.js 15, TS, Vitest (pnpm) · api — FastAPI (uv)
+> **⚠️ PARTIAL** · 5/7 checks passed · `▰▰▰▰▰▱▱`
+> **Projects:** `web` Next.js 15, TS, Vitest (pnpm) · `api` FastAPI (uv)
 
-| # | Check | Status | Detail |
-|---|-------|--------|--------|
-| 5 | Tooling | ⚠️ | api: `uv` not found |
+| # | Check | Status | Result |
+|:-:|-------|:------:|--------|
+| 1 | `specs/constitution.md` | ✅ | sections and commands table present |
+| 2 | `specs/template.md` | ✅ | sections and placeholders present |
+| 3 | `specs/capabilities.md` | ⚠️ | 2 findings |
+| 4 | Git + gh | ✅ | repository present |
+| 5 | Tooling | ⚠️ | 1 finding |
+| 6 | Sibling repositories | ✅ | no sibling repositories |
+| 7 | Feature specs | ✅ | 2 feature(s) valid |
 
-✅ 6 passed: 1, 2, 3, 4, 6, 7
+## Findings
+
+**3 · `specs/capabilities.md`**
+- ⚠️ `<!-- sdd-format: N -->` missing · 🔧 init
+- ⚠️ `ci:` unset · 🔧 init
+
+**5 · Tooling**
+- ⚠️ api: `uv` not found · ✋ manual
 
 ## Next steps
-- <one bullet per fix>
+1. `/sdd:doctor init` repairs: format marker, `ci:` value
+2. Install `uv` for `api`
 ```
 
-A finding with `fix: "init"` is repaired by `/sdd:doctor init`; list those in one bullet
-("`/sdd:doctor init` repairs: …") and the others (the user's own changes) one bullet each.
-
-List only non-✅ rows (one line per finding in Detail) plus a one-line summary of the passed ones.
-Overall status is the tool's `status`.
-Next step: READY → `/sdd:spec feat <description>`; otherwise `/sdd:doctor init`.
+- **Header:** the tool's `status` as ✅ READY / ⚠️ PARTIAL / ❌ NOT READY, `passed/total`, and a bar
+  of `total` cells, `▰` per passed check and `▱` per other.
+- **Table:** all checks, in id order, whatever their status. Status: ✅ pass, ⚠️ warn, ❌ fail.
+  Result: the check's `summary` when it passed, `N finding(s)` otherwise. Use the check's `name`
+  as the tool returns it.
+- **Findings:** only for checks that did not pass, one bold `<id> · <name>` line and one bullet
+  per finding — level icon, text, then `🔧 init` (`fix: "init"`, repaired by `/sdd:doctor init`)
+  or `✋ manual` (the user has to change it). Omit the section when every check passed.
+- **Next steps:** numbered. All `init` fixes in one item ("`/sdd:doctor init` repairs: …"), then
+  one item per manual fix. READY → the only step is `/sdd:spec feat <description>`.
+- Ran without the tool → add `> Ran without the doctor_check tool (<reason>).` under the header.
