@@ -1,0 +1,30 @@
+---
+title: Cost and model tiering
+description: Which model to run for which phase.
+slug: 2.0/guides/cost
+---
+
+import { Aside, Badge } from '@astrojs/starlight/components';
+
+The biggest cost lever is **which model runs which phase**. A slash command cannot switch the session model, so this is operating guidance.
+
+| Phase | Model | Why |
+|---|---|---|
+| `/sdd:constitution`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review` | <Badge text="Opus" variant="danger" /> | Judgement-heavy: framing, architecture and the final gate. Cheap to get right here, expensive to get wrong downstream. |
+| `/sdd:spec`, `/sdd:tasks` | <Badge text="Sonnet" variant="note" /> | Mechanical: a branch and a filled template; decomposition of an approved plan. |
+| `/sdd:analyze` | any | Delegates to `spec-verifier` (Sonnet). |
+| `/sdd:implement` | your flow's choice | The framework only hands over. |
+
+## Agents carry their own tier
+
+| Agent | Model |
+|---|---|
+| `reviewer` | <Badge text="Opus" variant="danger" /> |
+| `spec-verifier` | <Badge text="Sonnet" variant="note" /> |
+| `codebase-surveyor` | <Badge text="Haiku" variant="success" /> |
+
+They run at their own tier regardless of the session model.
+
+<Aside type="tip" title="Keep big output out of the main loop">
+  Verification agents exclude the `generated` globs from every diff. `/sdd:plan` extracts reference sources (mockups, API specs, ADRs) **once** inside a sub-agent and caches what matters in `plan.md`. Large codebase scans return only a summary.
+</Aside>

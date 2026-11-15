@@ -1,0 +1,52 @@
+---
+title: Rozwiązywanie problemów
+description: Objawy, przyczyny i naprawy.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<details>
+<summary><strong>„Run /sdd:doctor init first"</strong> przy uruchamianiu <code>/sdd:spec</code></summary>
+
+Brakuje `specs/template.md`. Uruchom `/sdd:doctor init`.
+</details>
+
+<details>
+<summary><strong>Komenda nie może znaleźć funkcji</strong></summary>
+
+Żaden `spec.md` nie ma bieżącej gałęzi w linii `**Branch:**`, zwykle dlatego, że gałąź została przemianowana. Przełącz się na gałąź specu lub popraw linię `**Branch:**`.
+</details>
+
+<details>
+<summary><strong>/sdd:implement nie używa mojego flow</strong></summary>
+
+Brak wpisu `implementation.projects` dla tego projektu, więc wraca do `default` (`in-session`). Dodaj `<project>: skill:<name>`, `agent:<name>` lub `command:<shell>` w `implementation.projects` albo ustaw `implementation.default`.
+</details>
+
+<details>
+<summary><strong>spec-verifier zwraca satisfied: true dla niepełnego kodu</strong></summary>
+
+Kryteria akceptacji są zbyt mgliste. Przepisz je tak, by były mierzalne (`input X → output Y`).
+</details>
+
+<details>
+<summary><strong>/sdd:plan działa bez Plan Mode</strong></summary>
+
+Plan Mode jest zalecany, nie wymagany. Plan jest zapisywany od razu, a komenda zatrzymuje się, abyś go przeczytał. Włącz Plan Mode (Shift+Tab) dla bezpieczeństwa.
+</details>
+
+<details>
+<summary><strong>Istnieje tylko specs/capabilities.md</strong></summary>
+
+Został zapisany przez SDD sprzed 2.0. `/sdd:doctor init` migruje go do `capabilities.yml`.
+</details>
+
+<details>
+<summary><strong>/sdd:doctor robi sprawdzenie ręczne</strong></summary>
+
+Mody nie działają w WSL ani z `--safe-mode`, więc brakuje narzędzia `doctor_check`, a skill wykonuje sprawdzenia sam. Użyj wspieranego środowiska lub zaakceptuj tryb zastępczy.
+</details>
+
+<Aside type="tip">
+Najpierw uruchom `/sdd:doctor check`. Większość problemów tam widać, a `/sdd:doctor init` naprawia te oznaczone `fix: init`.
+</Aside>

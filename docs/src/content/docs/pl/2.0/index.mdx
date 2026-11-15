@@ -1,0 +1,113 @@
+---
+title: Spec-Driven Development dla Claude Code
+description: Specyfikacja jest źródłem prawdy, kod jest jej konsekwencją.
+  Kanoniczny przepływ od konstytucji do review.
+template: splash
+hero:
+  tagline: Koniec z vibe codingiem. Napisz spec, zatwierdź plan, przekaż
+    samodzielne zadania do własnego flow implementacji, a końcowe review
+    sprawdzi wynik względem kryteriów akceptacji.
+  actions:
+    - text: Zacznij
+      link: /spec-driven-development/pl/2.0/getting-started/installation/
+      icon: rocket
+    - text: Zobacz przepływ
+      link: /spec-driven-development/pl/2.0/concepts/workflow/
+      variant: secondary
+    - text: GitHub
+      link: https://github.com/JanSzewczyk/spec-driven-development
+      variant: minimal
+      icon: github
+slug: pl/2.0
+---
+
+import { CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+import Pipeline from '../../../../components/Pipeline.astro';
+
+<div class="landing-section">
+  ## Jeden przepływ, siedem faz
+
+  <p class="landing-lead">Każda faza to komenda slash, która zapisuje plik w <code>specs/\<feature>/</code> i odczytuje wejście z dysku. Możesz czyścić czat między fazami i nic nie tracisz.</p>
+
+  <Pipeline />
+</div>
+
+<div class="landing-section">
+  ## Dlaczego SDD
+
+  <div class="why">
+    <div>
+      ### Plan przed kodem
+
+      Claude przygotowuje plan w Plan Mode, a Ty go zatwierdzasz, zanim powstanie jakakolwiek linia kodu. To najtańszy moment na poprawienie złego kierunku.
+    </div>
+
+    <div>
+      ### Własny implementator
+
+      `/sdd:implement` przekazuje każde zadanie do skilla, agenta lub komendy, które skonfigurujesz, albo buduje je w sesji. Framework zarządza myśleniem, nie pisaniem.
+    </div>
+
+    <div>
+      ### Weryfikacja względem specu
+
+      Testy, `spec-verifier` i Twoje własne sprawdzenia działają równolegle; `reviewer` zwraca **READY** lub **NOT READY** i odhacza kryteria akceptacji.
+    </div>
+
+    <div>
+      ### Dowolny układ, dowolny stack
+
+      Jedna aplikacja, monorepo lub kilka repozytoriów. Projekty webowe, backendowe i mobilne obok siebie. Bez ustalonej listy stacków.
+    </div>
+  </div>
+</div>
+
+<div class="landing-section">
+  ## Start w dwie minuty
+
+  <Tabs>
+    <TabItem label="Claude Code">
+      ```text
+      /plugin marketplace add JanSzewczyk/spec-driven-development
+      /plugin install sdd@spec-driven-development
+      ```
+    </TabItem>
+
+    <TabItem label="Shell">
+      ```bash
+      claude plugin marketplace add JanSzewczyk/spec-driven-development
+      claude plugin install sdd@spec-driven-development
+      ```
+    </TabItem>
+  </Tabs>
+
+  Następnie w swoim projekcie:
+
+  ```text title="claude"
+  /sdd:doctor init
+  /sdd:spec feat user can reset password via email
+  /sdd:clarify
+  /sdd:plan
+  /sdd:tasks
+  /sdd:implement all
+  /sdd:review
+  ```
+</div>
+
+<div class="landing-section">
+  ## Przeglądaj
+
+  <CardGrid>
+    <LinkCard title="Szybki start" description="Zainicjuj projekt i dostarcz pierwszą funkcję." href="/spec-driven-development/pl/getting-started/quick-start/" />
+
+    <LinkCard title="Koncepcje" description="Zadania, cykl statusów, projekty, izolacja." href="/spec-driven-development/pl/concepts/workflow/" />
+
+    <LinkCard title="Referencja komend" description="Wszystkie 11 komend slash, po jednej stronie na komendę." href="/spec-driven-development/pl/commands/overview/" />
+
+    <LinkCard title="capabilities.yml" description="Każdy klucz, wartość i domyślna wartość." href="/spec-driven-development/pl/configuration/capabilities/" />
+
+    <LinkCard title="Przykład end-to-end" description="Funkcja resetu hasła od init do PR." href="/spec-driven-development/pl/guides/example/" />
+
+    <LinkCard title="sdd-board" description="Panel boczny w aplikacji Desktop pokazujący stan każdego specu." href="/spec-driven-development/pl/board/overview/" />
+  </CardGrid>
+</div>

@@ -1,0 +1,21 @@
+---
+title: /sdd:constitution
+description: Edytuj rozbudowaną konstytucję projektu.
+slug: pl/2.0/commands/constitution
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Edytuje `specs/constitution.md`: rozbudowane **źródło prawdy** (bez limitu tokenów).
+
+| Sekcja | Zawiera |
+|---|---|
+| Tech stack i §2 | Stack i jeden wiersz komend na projekt (`test`, `coverage`, `typecheck`, `lint`, `dev`). |
+| Conventions | Nazewnictwo, struktura, wzorce. |
+| §5 WHAT NOT TO DO | Reguły, każda z `**Why:**`. Zasilane przez [`/sdd:retro`](/spec-driven-development/pl/2.0/commands/retro/). |
+| §6 Testing | Filozofia i cele pokrycia, które sprawdza `reviewer`. |
+| Out of scope | Czego projekt nie będzie robił. |
+
+<Aside type="note">
+  To jedyny plik modyfikowany przez tę komendę. Jeśli go brakuje, uruchom `/sdd:doctor init`, który tworzy go z dołączonego szablonu.
+</Aside>

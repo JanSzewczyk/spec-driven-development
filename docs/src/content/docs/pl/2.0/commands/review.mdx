@@ -1,0 +1,62 @@
+---
+title: /sdd:review
+description: "Bramka weryfikacji: testy, spec-verifier, reviewer, potem commit i PR."
+slug: pl/2.0/commands/review
+---
+
+import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+**Jedyna bramka weryfikacji.** Ocenia wynik względem kryteriów akceptacji i reguł projektu.
+
+```mermaid
+flowchart LR
+    S[/sdd:review/] --> T[Testy]
+    S --> V[spec-verifier]
+    S --> C[Twoje sprawdzenia]
+    T --> R[reviewer]
+    V --> R
+    C --> R
+    R -->|READY| P[Pytanie · commit · PR]
+    R -->|NOT READY| B[Blokery + zadanie do ponowienia]
+```
+
+<Steps>
+  1. **Równolegle:** raz zestaw testów (`test` / `coverage` z konstytucji §2), `spec-verifier` na całym diffie funkcji (commity zadań, zmiany niezacommitowane i nieśledzone, względem merge base) oraz każde skonfigurowane dodatkowe sprawdzenie.
+  2. **`reviewer`** dostaje wszystkie wyniki, sprawdza diff względem każdej reguły **WHAT NOT TO DO**, uruchamia audyty domenowe i zapisuje `specs/<slug>/review.md` z werdyktem.
+  3. **Akceptowanie blokerów.** Gdy każdy bloker jest taki, który wolno zaakceptować (zmiana poza zakresem, reguła konstytucji, niekrytyczne ustalenie audytu), pytany jesteś raz: napraw albo zaakceptuj z uzasadnieniem. Zaakceptowane elementy trafiają do `## Accepted` i nie są podnoszone ponownie.
+  4. **Kryteria akceptacji** są odhaczane `[x]` lub odznaczane w `spec.md`; zadania z niespełnionymi kryteriami wracają do `in-progress`.
+  5. **Publikacja.**
+</Steps>
+
+<Tabs>
+  <TabItem label="READY">
+    Pokazuje tytuł commita, tytuł PR i listę plików, po czym pyta (`publish: ask`). Następnie commituje to, co zostało (statusy, `review.md`) i otwiera PR przez `actions.commit` / `actions.pr`, albo git i `gh`, gdy nic nie ustawiono.
+  </TabItem>
+
+  <TabItem label="NOT READY">
+    Wymienia konkretne blokery i dla każdego niespełnionego kryterium zadanie do ponowienia, na przykład `/sdd:implement T3`.
+  </TabItem>
+</Tabs>
+
+<Aside type="caution" title="Nie można zaakceptować">
+  Niezaliczone testy, niespełnione kryteria akceptacji, naruszenia non-goals i nieudane sprawdzenia zawsze blokują READY.
+</Aside>
+
+## Konfiguracja
+
+```yaml title="specs/capabilities.yml"
+review:
+  tests: run          # run | skip
+  publish: ask        # ask | off
+  default: auto       # auto | skill:<name> | agent:<name>
+  projects:
+    api: agent:python-reviewer
+  checks: [agent:qa]  # przy każdym review, np. QA uruchamiające aplikację
+
+actions:
+  branch: skill:create-branch
+  commit: skill:create-commit
+  pr: skill:create-pull-request
+```
+
+Sprawdzenie zwraca `PASS`, `FAIL` lub `SKIPPED`. `FAIL` blokuje READY; `SKIPPED` nigdy. Wszystkie klucze: [referencja capabilities](/spec-driven-development/pl/2.0/configuration/capabilities/).

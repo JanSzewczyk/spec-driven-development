@@ -1,0 +1,62 @@
+---
+title: The SDD flow
+description: The phases, what each command does and how they connect.
+slug: 2.0/concepts/workflow
+---
+
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import Pipeline from '../../../../components/Pipeline.astro';
+
+<Pipeline />
+
+```mermaid
+flowchart TD
+    A[/sdd:doctor init/] --> B[/sdd:constitution/]
+    B --> C[/sdd:spec feat user login/]
+    C --> D[/sdd:clarify/]
+    D --> E[/sdd:plan in Plan Mode/]
+    E --> F[Human reviews plan.md]
+    F --> G[/sdd:tasks/]
+    G --> H[/sdd:implement T1/]
+    H --> I{flow configured?}
+    I -->|yes| K[Hand the task to<br/>the configured flow]
+    I -->|no| J[Implement in the session]
+    J --> M[/sdd:review/]
+    K --> M
+    M --> P[spec-verifier + reviewer + your checks]
+    P -->|READY| Q[commit + PR]
+    Q --> R[/sdd:retro, optional/]
+    P -->|NOT READY| H
+```
+
+## Phase by phase
+
+| Phase | Command | What happens | Writes |
+|---|---|---|---|
+| **Constitution** | [`/sdd:constitution`](/spec-driven-development/2.0/commands/constitution/) | Stack, conventions, **WHAT NOT TO DO** with rationale, testing philosophy. | `constitution.md` |
+| **Specify** | [`/sdd:spec`](/spec-driven-development/2.0/commands/spec/) | Branch plus a business-only spec. | `spec.md` |
+| **Clarify** | [`/sdd:clarify`](/spec-driven-development/2.0/commands/clarify/) | Finds gaps, asks up to 5 questions with proposed answers. | `spec.md` |
+| **Plan** | [`/sdd:plan`](/spec-driven-development/2.0/commands/plan/) | Decisions, contracts, file-by-file changes, risks. Plan Mode. | `plan.md` |
+| **Tasks** | [`/sdd:tasks`](/spec-driven-development/2.0/commands/tasks/) | Self-contained, Jira-like tasks under one Epic. | `tasks.md` + commit |
+| **Implement** | [`/sdd:implement`](/spec-driven-development/2.0/commands/implement/) | Brief per task, handed to your flow. Does not verify. | task commits |
+| **Review** | [`/sdd:review`](/spec-driven-development/2.0/commands/review/) | Tests, verifier, checks, then READY or NOT READY. | `review.md` + PR |
+| **Retro** | [`/sdd:retro`](/spec-driven-development/2.0/commands/retro/) | Mistakes become constitution rules. | constitution §5 |
+| **Analyze** | [`/sdd:analyze`](/spec-driven-development/2.0/commands/analyze/) | Drift check across spec, plan, tasks and code. | nothing |
+
+<Aside type="tip" title="Three human checkpoints">
+  You decide at **Clarify** (answers), **Plan** (approving the dialog) and **Review** (confirming commit and PR). Everything between is mechanical.
+</Aside>
+
+## How the pieces fit
+
+```mermaid
+flowchart LR
+    subgraph F[The framework: main session]
+      direction TB
+      c[constitution] --> s[spec] --> cl[clarify] --> p[plan] --> t[tasks] --> h[hand-off] --> r[review]
+    end
+    h -- brief per task --> I[Implementation flow<br/>your skill, agent or command<br/>or the session itself]
+    r -- Agent tool --> V[Verification agents<br/>spec-verifier · reviewer<br/>your own checks]
+```
+
+Implementation is deliberately outside the framework: you point `/sdd:implement` at the flow you already use.

@@ -1,0 +1,40 @@
+---
+title: Projekty i monorepo
+description: SDD myśli projektami, a nie jednym stackiem.
+slug: pl/2.0/concepts/projects
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SDD pracuje na **projektach**: jednostkach z własnym stackiem i komendami. `/sdd:doctor init` je znajduje (workspace Nx lub Turborepo, workspace'y pnpm/yarn/uv/Cargo/Go, includes Gradle, luźne manifesty jak `apps/api/pyproject.toml`) i pyta, które sąsiednie repozytoria należą do produktu.
+
+| Układ | Projekty |
+|---|---|
+| Jedna aplikacja | Jeden projekt, `root`. Najprostsza konfiguracja. |
+| Monorepo | Jeden projekt na aplikację lub pakiet, każdy z własnymi komendami i implementatorem. |
+| Kilka repozytoriów | `specs/` w jednym repo ze specami; sąsiednie są projektami z `repo: true`. |
+
+## Co daje projekt
+
+| Gdzie | Co |
+|---|---|
+| `capabilities.yml` → `projects` | Nazwa, rodzaj (web, backend, mobile, library, e2e …), ścieżka i stack. |
+| `implementation.projects.<name>` | Inny implementator dla każdego projektu. |
+| Konstytucja §2 | Jeden wiersz komend na projekt: `test`, `coverage`, `typecheck`, `lint`, `dev`. |
+
+API w Pythonie uruchamia `cd apps/api && uv run pytest`, aplikacja web `pnpm nx run web:test`, aplikacja Flutter `flutter test`.
+
+<Aside type="tip" title="Bez ustalonej listy stacków">
+  `init` czyta zadeklarowane skrypty, CI, konfigurację pre-commit i pliki konfiguracyjne narzędzi, dla dowolnego języka lub narzędzia. Obsługa nowego narzędzia zwykle nie wymaga edytowania niczego.
+</Aside>
+
+## Kilka repozytoriów
+
+* Każdy klonuje sąsiednie repozytoria **obok repo ze specami** pod tymi samymi nazwami (ścieżki względne są w commicie).
+* `/sdd:implement` dba o to, by ta sama gałąź funkcji istniała w każdym sąsiednim repo, zanim flow je zmieni.
+* `/sdd:review` commituje i otwiera **powiązany PR w każdym z nich**.
+* `init` dodaje sąsiednie repozytoria do `permissions.additionalDirectories`.
+
+<Aside type="note">
+  Loader sesji Claude Code (`CLAUDE.md`, w katalogu głównym lub per moduł) pozostaje Twój: framework nigdy go nie czyta, nie zapisuje ani nie wymusza.
+</Aside>

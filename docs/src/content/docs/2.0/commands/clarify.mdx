@@ -1,0 +1,21 @@
+---
+title: /sdd:clarify
+description: Close gaps in the spec before planning.
+slug: 2.0/commands/clarify
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Fills the skeleton `/sdd:spec` created, so manual editing is optional.
+
+Claude reads `spec.md`, finds gaps (empty sections, ambiguous requirements, untestable acceptance criteria) and asks **up to 5 questions**, each with a proposed answer you can simply accept. Answers go straight into the spec. Anything unanswered stays in *Open questions*; run it again if gaps remain.
+
+<Aside type="tip" title="Do not skip it">
+  Open questions almost always surface real gaps that would otherwise burn implementation cycles.
+</Aside>
+
+<Aside type="caution">
+  Do not run it in Plan Mode: it writes into `spec.md`, which Plan Mode blocks.
+</Aside>
+
+**Next:** [`/sdd:plan`](/spec-driven-development/2.0/commands/plan/)

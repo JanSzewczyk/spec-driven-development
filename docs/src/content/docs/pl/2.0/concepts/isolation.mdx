@@ -1,0 +1,48 @@
+---
+title: Izolowane zadania
+description: Opcjonalna izolacja w worktree, jedna sub-sesja na zadanie.
+slug: pl/2.0/concepts/isolation
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Domyślnie (`isolation: none`) sesja sama implementuje i commituje każde zadanie. Włączasz izolację per projekt w `capabilities.yml`:
+
+```yaml title="specs/capabilities.yml"
+implementation:
+  isolation:
+    worktree:
+      merge: pr       # pr (default) | auto
+      parallel: 3
+```
+
+`merge` i `parallel` istnieją tylko pod `worktree`.
+
+Wtedy sesja uruchamiająca `/sdd:implement all` tylko **orkiestruje**. Każde gotowe zadanie działa we własnej sub-sesji (Desktop) lub izolowanym agencie, we własnym worktree, na gałęzi `<spec-branch>--<EPIC>-T<n>` odciętej od gałęzi SDD. Sub-sesje nigdy nie dotykają `specs/`; tylko orkiestrator zapisuje `tasks.md`.
+
+```mermaid
+flowchart TD
+    O[Orkiestrator<br/>/sdd:implement all] --> A[Worktree T1<br/>spec-branch--EPIC-T1]
+    O --> B[Worktree T2<br/>spec-branch--EPIC-T2]
+    A -->|PR lub rebase| M[Gałąź SDD]
+    B -->|PR lub rebase| M
+    M --> N[Odblokowane zadania startują]
+```
+
+## Tryby merge
+
+<Tabs>
+  <TabItem label="merge: pr">
+    **Człowiek w pętli.** Każde zadanie otwiera PR do gałęzi SDD, a orkiestrator czeka (`status: in-progress`, `pr:` w zadaniu; board pokazuje „czeka na merge").
+
+    Ty robisz merge. Ponowne `/sdd:implement all` sprawdza PR-y i startuje zadania, które odblokowały.
+  </TabItem>
+
+  <TabItem label="merge: auto">
+    **Bez udziału człowieka.** Orkiestrator robi rebase gałęzi zadania na gałąź SDD i fast-forward, po czym startuje kolejne zadania, bez ponownego pytania po jednym potwierdzeniu na początku.
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+  Zadania zależne startują dopiero po zmergowaniu ich zależności. Projekty w sąsiednich repozytoriach działają w miejscu.
+</Aside>

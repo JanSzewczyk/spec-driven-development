@@ -1,0 +1,32 @@
+---
+title: /sdd:tasks
+description: Split the plan into self-contained tasks.
+slug: 2.0/commands/tasks
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Splits `plan.md` into **self-contained tasks** under one Epic. Format: [Tasks and the hand-off](/spec-driven-development/2.0/concepts/tasks/).
+
+## Rules it follows
+
+* **One Epic per feature.** A task is a ticket: one project, a coherent slice of behaviour, typically a few hours to a day. Never a layer or a micro-step. Tests belong to the task that delivers the behaviour.
+* **Full coverage.** Every acceptance criterion is covered by a task, and every task serves at least one criterion.
+* **Shared contracts are their own task** (a schema clients are generated from, shared types, a migration). Consumers depend on it.
+* **`depends_on`** only where a task needs another's result or touches the same files.
+* **No copies** of the plan or spec: tasks refer to AC ids and plan sections.
+* **No agents, models or TDD tags** in tasks. Who implements is configuration, not content.
+
+## What it writes
+
+<Steps>
+  1. `**Epic:** <LETTERS>-<4 hex>` in the header, once (kept on re-runs); tasks become `<EPIC>-T<n>`.
+  2. The tasks, ending with an `Order:` line such as `T1 → T2 ∥ T3 → T4`.
+  3. A commit of `specs/<slug>/` as `docs(<slug>): add spec, plan and tasks` with an `Epic:` trailer, so the documentation is in git before any task starts and visible to worktrees.
+</Steps>
+
+<Aside type="note">
+  Re-running after the plan changes keeps each task's id and status. A started task whose scope changed goes back to `draft`.
+</Aside>
+
+**Next:** [`/sdd:implement`](/spec-driven-development/2.0/commands/implement/)

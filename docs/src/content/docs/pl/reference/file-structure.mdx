@@ -1,0 +1,56 @@
+---
+title: Struktura plików
+description: Co SDD tworzy w Twoim projekcie i co jest w repozytorium pluginu.
+---
+
+import { FileTree, Aside } from '@astrojs/starlight/components';
+
+## W Twoim projekcie
+
+Tylko artefakty per projekt. Komendy, agenci i skille weryfikacji żyją w zainstalowanym pluginie.
+
+<FileTree>
+- specs/
+  - constitution.md źródło prawdy, edytowane przez /sdd:constitution
+  - template.md baza dla nowych specyfikacji funkcji
+  - capabilities.yml projects (init) + flows, actions, review, generated (Twoje)
+  - **&lt;feature-slug&gt;/**
+    - spec.md specyfikacja biznesowa
+    - plan.md decyzje, kontrakty, zmiany plik po pliku
+    - tasks.md samodzielne zadania pod jednym Epikiem
+    - review.md zapisywany przez /sdd:review
+- .claude/
+- CLAUDE.md opcjonalny, Twój, nigdy nietykany przez SDD
+</FileTree>
+
+<Aside type="note">
+SDD tworzy lub edytuje tylko `specs/constitution.md`, `specs/template.md`, `specs/capabilities.yml` oraz, przy sąsiednich repozytoriach, `permissions.additionalDirectories` w `.claude/settings.json`. Cała reszta, w tym główny `CLAUDE.md`, jest Twoja.
+</Aside>
+
+## W repozytorium pluginu
+
+<FileTree>
+- .claude-plugin/
+  - marketplace.json marketplace: sdd + sdd-board
+- .github/workflows/
+  - plugin-checks.yml
+  - release.yml
+  - docs.yml
+- actions/sdd-check/ GitHub Action uruchamiająca reguły doctora gdzie indziej
+- docs/ ta strona dokumentacji
+- shared/sdd-core/ TypeScript używany przez oba pluginy i action
+- scripts/ sync-core.sh, release.sh
+- tests/fixtures/ projekty sdd-ok i sdd-broken
+- plugins/
+  - sdd-board/ panel boczny Desktop (mod), wymaga sdd
+  - sdd/
+    - .claude-plugin/plugin.json
+    - hooks/ register.ts (narzędzie doctor_check), core/ (kopia shared)
+    - tests/ reguły doctor check
+    - references/ współdzielone przez skille
+    - skills/ 11 skilli, każdy /sdd:&lt;name&gt;
+    - agents/
+      - spec-verifier.md
+      - reviewer.md
+      - codebase-surveyor.md
+</FileTree>

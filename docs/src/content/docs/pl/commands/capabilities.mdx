@@ -1,0 +1,23 @@
+---
+title: /sdd:capabilities
+description: Wybierz implementatora, akcje git i sprawdzenia review spośród zainstalowanych narzędzi.
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+Opcjonalnie, po `/sdd:doctor init`.
+
+<Steps>
+
+1. **Skanuje** skille i agentów sesji, zainstalowane pluginy (także niewłączone), pliki `~/.claude` i `.claude` oraz sygnały repo (`gh`, CI, konfiguracja e2e).
+2. **Przygotowuje** `implementation`, `actions` i `review` per projekt, z uzasadnieniem każdej wartości.
+3. **Prosi** o potwierdzenie i rozstrzygnięcie wyborów i luk.
+4. **Zapisuje** tylko te wartości i zachowuje istniejące decyzje, chyba że je zmienisz.
+
+</Steps>
+
+<Aside type="tip">
+Uruchom ponownie po instalacji pluginów, aby nowe skille i agenci stały się opcjami.
+</Aside>
+
+Klucze i wartości domyślne: [referencja capabilities](/spec-driven-development/pl/configuration/capabilities/).

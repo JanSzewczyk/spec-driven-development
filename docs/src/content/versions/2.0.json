@@ -1,0 +1,100 @@
+{
+  "sidebar": [
+    {
+      "label": "Getting started",
+      "translations": {
+        "pl": "Pierwsze kroki"
+      },
+      "items": [
+        "getting-started/introduction",
+        "getting-started/installation",
+        "getting-started/quick-start"
+      ]
+    },
+    {
+      "label": "Concepts",
+      "translations": {
+        "pl": "Koncepcje"
+      },
+      "items": [
+        "concepts/workflow",
+        "concepts/tasks",
+        "concepts/status-lifecycle",
+        "concepts/projects",
+        "concepts/isolation",
+        "concepts/context"
+      ]
+    },
+    {
+      "label": "Commands",
+      "translations": {
+        "pl": "Komendy"
+      },
+      "items": [
+        "commands/overview",
+        "commands/doctor",
+        "commands/constitution",
+        "commands/spec",
+        "commands/clarify",
+        "commands/plan",
+        "commands/tasks",
+        "commands/implement",
+        "commands/review",
+        "commands/retro",
+        "commands/capabilities",
+        "commands/analyze"
+      ]
+    },
+    {
+      "label": "Agents",
+      "translations": {
+        "pl": "Agenci"
+      },
+      "items": [
+        "agents/overview"
+      ]
+    },
+    {
+      "label": "Configuration",
+      "translations": {
+        "pl": "Konfiguracja"
+      },
+      "items": [
+        "configuration/capabilities"
+      ]
+    },
+    {
+      "label": "sdd-board",
+      "items": [
+        "board/overview"
+      ]
+    },
+    {
+      "label": "Guides",
+      "translations": {
+        "pl": "Poradniki"
+      },
+      "items": [
+        "guides/example",
+        "guides/cheatsheet",
+        "guides/best-practices",
+        "guides/anti-patterns",
+        "guides/cost",
+        "guides/ci-action",
+        "guides/troubleshooting"
+      ]
+    },
+    {
+      "label": "Reference",
+      "translations": {
+        "pl": "Referencja"
+      },
+      "items": [
+        "reference/file-structure",
+        "reference/design-decisions",
+        "reference/contributing"
+      ]
+    }
+  ],
+  "excluded": []
+}

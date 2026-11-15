@@ -1,0 +1,23 @@
+---
+title: /sdd:analyze
+description: Read-only drift check across spec, plan, tasks and code.
+slug: 2.0/commands/analyze
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Run it anytime. It runs `spec-verifier` once over the feature diff and reports in a few lines:
+
+| Result | Meaning |
+|---|---|
+| **Met** | Acceptance criterion implemented and covered. |
+| **Pending** | Its task is not implemented yet. |
+| **Gap** | Implemented, but not covered by the spec or a task. |
+
+Plus findings with `file:line` and the next command for each.
+
+Useful mid-feature, after changing the spec, and before [`/sdd:review`](/spec-driven-development/2.0/commands/review/).
+
+<Aside type="note">
+  Read-only: it never edits files and runs no tests.
+</Aside>

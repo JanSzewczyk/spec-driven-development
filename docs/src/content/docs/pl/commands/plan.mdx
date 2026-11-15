@@ -1,0 +1,35 @@
+---
+title: /sdd:plan
+description: Generuje plan.md w Plan Mode.
+---
+
+import { Steps, Aside, Badge } from '@astrojs/starlight/components';
+
+<Badge text="Uruchom w Plan Mode (Shift+Tab)" variant="caution" />
+
+<Steps>
+
+1. [`codebase-surveyor`](/spec-driven-development/pl/agents/overview/#codebase-surveyor) mapuje dotknięte projekty, aby plan wykorzystał to, co już istnieje.
+2. Prawdziwe rozwidlenia trafiają do Ciebie jako pytania, każde z rekomendacją.
+3. Claude przygotowuje plan w pliku planu sesji i wywołuje ExitPlanMode.
+4. **Zatwierdzenie tego dialogu jest Twoim review.** Dopiero wtedy plan jest zapisywany do `specs/<slug>/plan.md`.
+
+</Steps>
+
+Bez Plan Mode plan jest zapisywany od razu, a komenda zatrzymuje się, abyś go przeczytał.
+
+## Co zawiera `plan.md`
+
+**Decyzje** i **zakres** zmiany, a nie jej opis:
+
+- podejście wysokopoziomowe: kluczowe decyzje, powody, odrzucone alternatywy
+- kontrakty współdzielone między projektami lub warstwami (jeśli są)
+- lista zmian plik po pliku per projekt, jedna linia na plik, z kodem, który jest wykorzystywany ponownie
+- ryzyka, mitygacje i otwarte pytania
+- tylko gdy pomaga: model danych, diagram komponentów, powierzchnia API, źródła referencyjne
+
+<Aside type="caution" title="Review człowieka jest obowiązkowe">
+Przeczytaj `plan.md` przed `/sdd:tasks`. Claude potrafi zahalucynować architekturę na nietypowych stackach, a to najtańszy moment na korektę kursu.
+</Aside>
+
+**Dalej:** [`/sdd:tasks`](/spec-driven-development/pl/commands/tasks/)

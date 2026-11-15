@@ -1,0 +1,59 @@
+---
+title: Cheat sheet
+description: Commands, artifacts and statuses on one page.
+slug: 2.0/guides/cheatsheet
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Pipeline from '../../../../components/Pipeline.astro';
+
+<Pipeline compact />
+
+## Commands
+
+```text
+/sdd:doctor init            # bootstrap or repair specs/
+/sdd:doctor check           # 7 read-only checks
+/sdd:constitution           # edit the source of truth
+/sdd:capabilities           # pick implementer, actions, checks
+
+/sdd:spec feat <what>       # branch + spec.md
+/sdd:clarify                # up to 5 questions
+/sdd:plan                   # in Plan Mode → plan.md
+/sdd:tasks                  # tasks.md + commit
+/sdd:implement T2 | all     # hand off to your flow
+/sdd:review                 # verdict, commit, PR
+/sdd:retro                  # lessons → constitution §5
+/sdd:analyze                # read-only drift check
+```
+
+## Artifacts
+
+| File | Written by | Holds |
+|---|---|---|
+| `specs/constitution.md` | `init`, `/sdd:constitution`, `/sdd:retro` | Stack, commands, rules |
+| `specs/capabilities.yml` | `init` (projects), `/sdd:capabilities` | Flows, actions, review |
+| `specs/<slug>/spec.md` | `/sdd:spec`, `/sdd:clarify`, `/sdd:review` | What and why, AC |
+| `specs/<slug>/plan.md` | `/sdd:plan` | Decisions, scope |
+| `specs/<slug>/tasks.md` | `/sdd:tasks`, `/sdd:implement` | Epic and tasks |
+| `specs/<slug>/review.md` | `/sdd:review` | Verdict, blockers |
+
+## Statuses
+
+| Spec | Tasks |
+|---|---|
+| `draft → clarified → planned → in-progress → done` | `draft → in-progress → review → done` |
+
+## Values for a step
+
+`skill:<name>` · `agent:<name>` · `command:<shell>` · `in-session`
+
+## Models
+
+| Opus | Sonnet |
+|---|---|
+| constitution, clarify, plan, review | spec, tasks, analyze |
+
+<Aside type="tip">
+  Each phase re-reads its inputs from disk. `/clear` between phases is free.
+</Aside>

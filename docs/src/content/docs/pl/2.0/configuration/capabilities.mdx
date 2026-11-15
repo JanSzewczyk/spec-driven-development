@@ -1,0 +1,86 @@
+---
+title: capabilities.yml
+description: Każdy klucz, wartość i wartość domyślna specs/capabilities.yml.
+slug: pl/2.0/configuration/capabilities
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+`specs/capabilities.yml` to YAML ze schematem JSON, więc edytor waliduje go przez linię `# yaml-language-server: $schema=…`. Brakujący klucz oznacza jego wartość domyślną.
+
+* `/sdd:doctor init` przepisuje **`projects`** przy każdym uruchomieniu.
+* Każdy inny klucz jest **Twój**. [`/sdd:capabilities`](/spec-driven-development/pl/2.0/commands/capabilities/) wypełnia je na podstawie tego, co masz zainstalowane, po Twoim potwierdzeniu.
+
+```yaml title="specs/capabilities.yml"
+format: 3
+projects:
+  - name: web
+    kind: web
+    path: apps/web
+    stack: TypeScript, Next.js 15; pnpm + nx
+implementation:
+  default: in-session
+  projects:
+    api: agent:python-developer
+  isolation: none
+generated:
+  - "**/*.generated.*"
+```
+
+<Aside type="note">
+  `specs/capabilities.md` w formacie 2 jest nadal czytany z ostrzeżeniem o migracji; `/sdd:doctor init` go migruje.
+</Aside>
+
+## Kto wykonuje krok
+
+| Wartość | Przekazanie |
+|---|---|
+| `skill:<name>` | Narzędzie Skill, wejście jako argument |
+| `agent:<name>` | Narzędzie Agent z tym `subagent_type`, wejście jako prompt |
+| `command:<shell>` | Bash, wejście na stdin |
+| `in-session` | Robi to sama sesja |
+
+## Klucze
+
+<Tabs>
+  <TabItem label="Projects">
+    | Klucz | Wartości | Domyślnie | Efekt |
+    |---|---|---|---|
+    | `format` | integer | zapisuje init | Wersja formatu; niższą migruje `/sdd:doctor init`. |
+    | `projects` | lista `name`, `kind`, `path`, `stack`, `repo` | zapisuje init | Projekty; `repo: true` oznacza sąsiednie repozytorium. |
+    | `generated` | lista globów w cudzysłowie | `[]` | Pliki pomijane w każdym diffie i nigdy nieflagowane. |
+  </TabItem>
+
+  <TabItem label="implementation">
+    | Klucz | Wartości | Domyślnie | Efekt |
+    |---|---|---|---|
+    | `implementation.default` | dowolna wartość z góry | `in-session` | Kto implementuje zadanie. |
+    | `implementation.projects.<project>` | dowolna wartość z góry | `implementation.default` | Kto implementuje zadania tego projektu. |
+    | `implementation.isolation` | `none` · `worktree:` | `none` | `none`: ta sesja implementuje i commituje każde zadanie. `worktree:`: każde zadanie we własnej sub-sesji, worktree i gałęzi. |
+    | `…worktree.merge` | `pr` · `auto` | `pr` | `pr`: PR na zadanie, merge robi człowiek. `auto`: rebase i fast-forward. |
+    | `…worktree.parallel` | integer ≥ 1 | `3` | Liczba zadań działających naraz. |
+  </TabItem>
+
+  <TabItem label="actions">
+    | Klucz | Wartości | Domyślnie | Efekt |
+    |---|---|---|---|
+    | `actions.branch` | `skill:` · `agent:` · `command:` | `null` | Kto tworzy gałąź; `null`: sesja z gitem. |
+    | `actions.commit` | `skill:` · `agent:` · `command:` | `null` | Kto commituje; `null`: sesja z gitem. |
+    | `actions.pr` | `skill:` · `agent:` · `command:` | `null` | Kto otwiera PR; `null`: sesja z `gh`. |
+  </TabItem>
+
+  <TabItem label="review">
+    | Klucz | Wartości | Domyślnie | Efekt |
+    |---|---|---|---|
+    | `review.tests` | `run` · `skip` | `run` | Uruchamia zestaw testów w `/sdd:review`. |
+    | `review.publish` | `ask` · `off` | `ask` | Po READY: potwierdzenie, potem commit i otwarcie PR; `off`: ani jedno, ani drugie. |
+    | `review.default` | `auto` · `skill:<name>` · `agent:<name>` | `auto` | Flow audytu; `auto` wybiera skille sesji według stacku. |
+    | `review.projects.<project>` | `skill:<name>` · `agent:<name>` | `review.default` | Flow audytu dla tego projektu. |
+    | `review.checks` | lista `skill:<name>` / `agent:<name>` | `[]` | Uruchamiane przy każdym review; `FAIL` blokuje READY. |
+    | `review.ci` | `on` · `off` | nieustawione: init pyta | Czy potrzebny jest `.github/workflows/sdd-check.yml`. |
+  </TabItem>
+</Tabs>
+
+<Aside type="caution">
+  `merge` i `parallel` istnieją tylko pod `worktree`. Nie ma przełącznika `commit`: commity zadań zawsze się odbywają, w tej sesji (`none`) lub w każdej sub-sesji (`worktree`).
+</Aside>

@@ -1,0 +1,124 @@
+---
+title: Przykład end-to-end
+description: Funkcja resetu hasła, od init do PR.
+slug: pl/2.0/guides/example
+---
+
+import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Funkcja: **„Użytkownik może zresetować hasło przez e-mail"**, w API, aplikacji web i aplikacji mobilnej.
+
+<Steps>
+  1. **Inicjalizacja**
+
+     ```text
+     /sdd:doctor init       # wykrywa projekty i komendy
+     /sdd:doctor check      # ✅ READY (7/7)
+     /sdd:constitution      # stack, komendy, reguły z uzasadnieniem
+     ```
+
+  2. **Specify**
+
+     ```text
+     /sdd:spec feat user can reset password via email
+     ```
+
+     Tworzy gałąź `feat/user-can-reset-password-via-email` i `specs/user-can-reset-password-via-email/spec.md`. Uzupełniasz user stories, kryteria akceptacji (AC1: token ważny 30 min, AC2: limit 3 prób …) i przypadki brzegowe (nieznany e-mail: ciche powodzenie).
+
+  3. **Clarify**
+
+     ```text
+     /sdd:clarify
+     ```
+
+     Claude pyta: czy wygasłe tokeny mają zwracać 410 czy 401? Czy limit jest per IP, per e-mail, czy oba? Co gdy wysyłka SMTP się nie powiedzie, ponowić czy zgłosić błąd? Odpowiadasz; spec zostaje zaktualizowany.
+
+  4. **Plan** (Shift+Tab dla Plan Mode)
+
+     ```text
+     /sdd:plan
+     ```
+
+     `plan.md` dostaje model danych (`User`, `PasswordResetToken`), diagram komponentów, powierzchnię API (`POST /actions/resetPassword`), listę zmian w 8 plikach i kod do ponownego użycia. **Przeczytaj go i popraw wszystko, co jest błędne.**
+
+  5. **Tasks**
+
+     ```text
+     /sdd:tasks
+     ```
+
+     Jeden Epic: najpierw wspólny kontrakt, potem API, web i mobile.
+
+     <Tabs>
+       <TabItem label="T1 · api">
+         ```markdown
+         ### T1: Reset API (contract + endpoints)
+         project: api
+         status: draft
+         depends_on: []
+         acceptance: AC1, AC2, AC3
+         plan: Contracts › reset API; File-by-file › api
+         scope:
+         - request/confirm schemas exposed in OpenAPI
+         - endpoints, token storage, expiry (30 min), same response for unknown e-mails
+         files: apps/api/app/auth/*
+         ```
+       </TabItem>
+
+       <TabItem label="T2 · web">
+         ```markdown
+         ### T2: Reset password screen (web)
+         project: web
+         status: draft
+         depends_on: [T1]
+         acceptance: AC1, AC4
+         …
+         ```
+       </TabItem>
+
+       <TabItem label="Kolejność">
+         ```text
+         Order: T1 → T2 ∥ T3 → T4
+         ```
+
+         `T3` to ekran mobilny w `../mobile-app`; `T4` to test end-to-end zależny od `T1` i `T2`.
+       </TabItem>
+     </Tabs>
+
+  6. **Implement**
+
+     ```text
+     /sdd:implement all
+     ```
+
+     * `T1` trafia do flow skonfigurowanego dla `api` (tu `agent:python-developer`).
+     * `T2` i `T3` startują po zakończeniu `T1`: `web` używa `skill:my-web-flow`, `mobile` wraca do `in-session`.
+     * `T4` następuje, gdy `T1` i `T2` są gotowe.
+
+     Każde zadanie przechodzi w `review`, gdy implementator zgłosi gotowość, a jego pliki są commitowane z trailerem `Task:`. Nic nie jest jeszcze zweryfikowane.
+
+  7. **Review**
+
+     ```text
+     /sdd:review
+     ```
+
+     * Równolegle: testy 23/23; `spec-verifier`: wszystkie 4 AC spełnione, brak rozjazdów; Twoje sprawdzenie `qa`: `PASS`.
+     * `reviewer`: reguły konstytucji zachowane, audyty stacku przechodzą.
+     * 4 AC odhaczone w `spec.md`; werdykt **READY**; potwierdzasz.
+     * Commit `feat(user-can-reset-password-via-email): <Summary of spec.md>`; PR otwarty z odwołaniem do specu.
+</Steps>
+
+## Typowy harmonogram
+
+| Krok | Czas |
+|---|---|
+| `/sdd:doctor init` | 30 s |
+| `/sdd:spec` | 1 min plus Twoje edycje |
+| `/sdd:clarify` | 5 min |
+| `/sdd:plan` | 3 min |
+| Review `plan.md` przez człowieka | 5–10 min |
+| `/sdd:tasks` | 1 min |
+| `/sdd:implement` | zależy od Twojego flow |
+| `/sdd:review` | 5 min |
+| **Razem** | **~2–4 h** dla średniej funkcji |

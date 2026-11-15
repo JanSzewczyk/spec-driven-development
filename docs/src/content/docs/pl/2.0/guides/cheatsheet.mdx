@@ -1,0 +1,59 @@
+---
+title: Ściąga
+description: Komendy, artefakty i statusy na jednej stronie.
+slug: pl/2.0/guides/cheatsheet
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Pipeline from '../../../../../components/Pipeline.astro';
+
+<Pipeline compact />
+
+## Komendy
+
+```text
+/sdd:doctor init            # utwórz lub napraw specs/
+/sdd:doctor check           # 7 sprawdzeń tylko do odczytu
+/sdd:constitution           # edytuj źródło prawdy
+/sdd:capabilities           # wybierz implementatora, akcje, sprawdzenia
+
+/sdd:spec feat <what>       # gałąź + spec.md
+/sdd:clarify                # do 5 pytań
+/sdd:plan                   # w Plan Mode → plan.md
+/sdd:tasks                  # tasks.md + commit
+/sdd:implement T2 | all     # przekaż do swojego flow
+/sdd:review                 # werdykt, commit, PR
+/sdd:retro                  # wnioski → konstytucja §5
+/sdd:analyze                # kontrola rozjazdu, tylko do odczytu
+```
+
+## Artefakty
+
+| Plik | Zapisuje | Zawiera |
+|---|---|---|
+| `specs/constitution.md` | `init`, `/sdd:constitution`, `/sdd:retro` | Stack, komendy, reguły |
+| `specs/capabilities.yml` | `init` (projects), `/sdd:capabilities` | Flow, akcje, review |
+| `specs/<slug>/spec.md` | `/sdd:spec`, `/sdd:clarify`, `/sdd:review` | Co i dlaczego, AC |
+| `specs/<slug>/plan.md` | `/sdd:plan` | Decyzje, zakres |
+| `specs/<slug>/tasks.md` | `/sdd:tasks`, `/sdd:implement` | Epic i zadania |
+| `specs/<slug>/review.md` | `/sdd:review` | Werdykt, blokery |
+
+## Statusy
+
+| Spec | Zadania |
+|---|---|
+| `draft → clarified → planned → in-progress → done` | `draft → in-progress → review → done` |
+
+## Wartości dla kroku
+
+`skill:<name>` · `agent:<name>` · `command:<shell>` · `in-session`
+
+## Modele
+
+| Opus | Sonnet |
+|---|---|
+| constitution, clarify, plan, review | spec, tasks, analyze |
+
+<Aside type="tip">
+  Każda faza odczytuje wejście z dysku. `/clear` między fazami jest darmowe.
+</Aside>

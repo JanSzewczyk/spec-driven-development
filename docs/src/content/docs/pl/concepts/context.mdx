@@ -1,0 +1,16 @@
+---
+title: Zarządzanie kontekstem
+description: Jak SDD utrzymuje małe i tanie sesje.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+1. **Briefy per zadanie.** Implementator dostaje tylko swoje zadanie, kryteria akceptacji i wskazane sekcje planu, nigdy całą funkcję.
+2. **Sub-agenci do dużych odczytów.** Przegląd kodu, źródła referencyjne i weryfikacja działają w sub-agentach i zwracają podsumowania.
+3. **Nowy czat na zadanie.** Otwieraj nową sesję między zadaniami; status w `tasks.md` jest dokumentem przekazania.
+
+Każda komenda fazy odczytuje wejście z dysku (`spec.md`, `plan.md`, `tasks.md`, `capabilities.yml`), więc `/clear` między `plan → tasks → implement → review` niczego nie traci.
+
+<Aside type="caution" title="Trzymaj wygenerowane pliki z daleka">
+Regenerowane klienty, mocki i schematy rozdymają kontekst i wywołują fałszywe zgłoszenia „poza zakresem". Zadeklaruj je w `generated` w [`capabilities.yml`](/spec-driven-development/pl/configuration/capabilities/), a zostaną pominięte w każdym diffie.
+</Aside>

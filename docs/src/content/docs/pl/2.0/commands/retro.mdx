@@ -1,0 +1,18 @@
+---
+title: /sdd:retro
+description: Zamienia wnioski z review w reguły konstytucji.
+slug: pl/2.0/commands/retro
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Opcjonalnie, po [`/sdd:review`](/spec-driven-development/pl/2.0/commands/review/). Czyta `review.md` (blokery, naruszone reguły, zaakceptowane elementy, rozjazdy) i proponuje wpisy **WHAT NOT TO DO** do konstytucji.
+
+* Tylko **powtarzalne** błędy.
+* Tylko takie, których konstytucja §5 jeszcze nie pokrywa.
+* Każdy wpis wymaga `**Why:**` pochodzącego z review lub od Ciebie. Pyta, zamiast wymyślać.
+* Zapisuje tylko konstytucję §5.
+
+<Aside type="tip">
+  Tak projekt mądrzeje: błąd wyłapany raz staje się regułą, którą `reviewer` sprawdza przy każdym kolejnym review.
+</Aside>

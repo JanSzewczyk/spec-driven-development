@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import mermaid from "astro-mermaid";
+import starlightVersions from "starlight-versions";
 
 export default defineConfig({
   site: "https://janszewczyk.github.io",
@@ -36,15 +37,27 @@ export default defineConfig({
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/JanSzewczyk/spec-driven-development" }],
       editLink: { baseUrl: "https://github.com/JanSzewczyk/spec-driven-development/edit/main/docs/" },
       lastUpdated: true,
+      defaultLocale: "root",
+      locales: {
+        root: { label: "English", lang: "en" },
+        pl: { label: "Polski", lang: "pl" },
+      },
+      plugins: [
+        // `current` is the docs on main; each archived release is a folder src/content/docs/<slug>/.
+        // To archive the next release, add { slug: "3.0" } to `versions` and start the dev server.
+        starlightVersions({ current: { label: "Latest" }, versions: [{ slug: "2.0", label: "v2.0" }] }),
+      ],
       components: { SiteTitle: "./src/components/SiteTitle.astro", Footer: "./src/components/Footer.astro" },
       customCss: ["./src/styles/custom.css"],
       sidebar: [
         {
           label: "Getting started",
+          translations: { pl: "Pierwsze kroki" },
           items: ["getting-started/introduction", "getting-started/installation", "getting-started/quick-start"],
         },
         {
           label: "Concepts",
+          translations: { pl: "Koncepcje" },
           items: [
             "concepts/workflow",
             "concepts/tasks",
@@ -56,6 +69,7 @@ export default defineConfig({
         },
         {
           label: "Commands",
+          translations: { pl: "Komendy" },
           items: [
             "commands/overview",
             "commands/doctor",
@@ -71,11 +85,14 @@ export default defineConfig({
             "commands/analyze",
           ],
         },
-        { label: "Agents", items: ["agents/overview"] },
-        { label: "Configuration", items: ["configuration/capabilities"] },
+        { label: "Agents",
+          translations: { pl: "Agenci" }, items: ["agents/overview"] },
+        { label: "Configuration",
+          translations: { pl: "Konfiguracja" }, items: ["configuration/capabilities"] },
         { label: "sdd-board", items: ["board/overview"] },
         {
           label: "Guides",
+          translations: { pl: "Poradniki" },
           items: [
             "guides/example",
             "guides/cheatsheet",
@@ -88,6 +105,7 @@ export default defineConfig({
         },
         {
           label: "Reference",
+          translations: { pl: "Referencja" },
           items: ["reference/file-structure", "reference/design-decisions", "reference/contributing"],
         },
       ],

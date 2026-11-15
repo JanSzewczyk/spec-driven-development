@@ -1,0 +1,21 @@
+---
+title: /sdd:constitution
+description: Edit the long-form project constitution.
+slug: 2.0/commands/constitution
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Edits `specs/constitution.md`: the long-form **source of truth** (no token limit).
+
+| Section | Holds |
+|---|---|
+| Tech stack and §2 | The stack and one command row per project (`test`, `coverage`, `typecheck`, `lint`, `dev`). |
+| Conventions | Naming, structure, patterns. |
+| §5 WHAT NOT TO DO | Rules, each with a `**Why:**`. Fed by [`/sdd:retro`](/spec-driven-development/2.0/commands/retro/). |
+| §6 Testing | Philosophy and coverage targets `reviewer` checks. |
+| Out of scope | What the project will not do. |
+
+<Aside type="note">
+  It is the only file this command modifies. If it is missing, run `/sdd:doctor init`, which bootstraps it from the bundled template.
+</Aside>

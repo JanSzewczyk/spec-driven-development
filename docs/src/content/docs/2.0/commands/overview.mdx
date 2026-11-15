@@ -1,0 +1,61 @@
+---
+title: Commands overview
+description: All 11 slash commands at a glance.
+sidebar:
+  label: Overview
+slug: 2.0/commands/overview
+---
+
+import Pipeline from '../../../../components/Pipeline.astro';
+
+None of the commands is started by Claude on its own; you run them.
+
+<Pipeline />
+
+## Setup
+
+Once per project.
+
+| Command | Purpose |
+|---|---|
+| [`/sdd:doctor`](/spec-driven-development/2.0/commands/doctor/) | Audit readiness (`check`) and bootstrap or repair artifacts (`init`). |
+| [`/sdd:constitution`](/spec-driven-development/2.0/commands/constitution/) | Edit the long-form source of truth. |
+| [`/sdd:capabilities`](/spec-driven-development/2.0/commands/capabilities/) | Pick implementer, git actions and review checks. |
+
+## The flow
+
+Per feature, in order.
+
+| Command | Purpose |
+|---|---|
+| [`/sdd:spec`](/spec-driven-development/2.0/commands/spec/) | Create the branch and the business spec. |
+| [`/sdd:clarify`](/spec-driven-development/2.0/commands/clarify/) | Close gaps with up to 5 questions. |
+| [`/sdd:plan`](/spec-driven-development/2.0/commands/plan/) | Decisions and scope, in Plan Mode. |
+| [`/sdd:tasks`](/spec-driven-development/2.0/commands/tasks/) | Split the plan into self-contained tasks. |
+| [`/sdd:implement`](/spec-driven-development/2.0/commands/implement/) | Hand tasks to your implementation flow. |
+| [`/sdd:review`](/spec-driven-development/2.0/commands/review/) | Verify, verdict, commit and PR. |
+
+## Anytime
+
+Optional.
+
+| Command | Purpose |
+|---|---|
+| [`/sdd:retro`](/spec-driven-development/2.0/commands/retro/) | Turn review lessons into constitution rules. |
+| [`/sdd:analyze`](/spec-driven-development/2.0/commands/analyze/) | Read-only drift check. |
+
+## Summary
+
+| Command | Writes | Plan Mode |
+|---|---|---|
+| `/sdd:doctor [check\|init]` | `specs/` base files (init only) | no |
+| `/sdd:constitution` | `specs/constitution.md` | no |
+| `/sdd:spec <type> <description>` | branch, `spec.md` | no |
+| `/sdd:clarify` | `spec.md` | **never** (it writes) |
+| `/sdd:plan` | `plan.md` | **recommended** |
+| `/sdd:tasks` | `tasks.md`, commit | no |
+| `/sdd:implement <task-id \| all>` | task commits, statuses | no |
+| `/sdd:review` | `review.md`, commit, PR | no |
+| `/sdd:retro` | constitution §5 | no |
+| `/sdd:capabilities` | `capabilities.yml` | no |
+| `/sdd:analyze` | nothing | no |

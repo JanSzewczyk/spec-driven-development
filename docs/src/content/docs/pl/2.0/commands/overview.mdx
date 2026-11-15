@@ -1,0 +1,61 @@
+---
+title: Przegląd komend
+description: Wszystkie 11 komend slash w skrócie.
+sidebar:
+  label: Przegląd
+slug: pl/2.0/commands/overview
+---
+
+import Pipeline from '../../../../../components/Pipeline.astro';
+
+Żadna z komend nie jest uruchamiana przez Claude samodzielnie; uruchamiasz je Ty.
+
+<Pipeline />
+
+## Konfiguracja
+
+Raz na projekt.
+
+| Komenda | Cel |
+|---|---|
+| [`/sdd:doctor`](/spec-driven-development/pl/2.0/commands/doctor/) | Audyt gotowości (`check`) oraz tworzenie lub naprawa artefaktów (`init`). |
+| [`/sdd:constitution`](/spec-driven-development/pl/2.0/commands/constitution/) | Edycja rozbudowanego źródła prawdy. |
+| [`/sdd:capabilities`](/spec-driven-development/pl/2.0/commands/capabilities/) | Wybór implementatora, akcji git i sprawdzeń review. |
+
+## Przepływ
+
+Na każdą funkcję, po kolei.
+
+| Komenda | Cel |
+|---|---|
+| [`/sdd:spec`](/spec-driven-development/pl/2.0/commands/spec/) | Tworzy gałąź i spec biznesowy. |
+| [`/sdd:clarify`](/spec-driven-development/pl/2.0/commands/clarify/) | Domyka luki do 5 pytaniami. |
+| [`/sdd:plan`](/spec-driven-development/pl/2.0/commands/plan/) | Decyzje i zakres, w Plan Mode. |
+| [`/sdd:tasks`](/spec-driven-development/pl/2.0/commands/tasks/) | Dzieli plan na samodzielne zadania. |
+| [`/sdd:implement`](/spec-driven-development/pl/2.0/commands/implement/) | Przekazuje zadania do Twojego flow implementacji. |
+| [`/sdd:review`](/spec-driven-development/pl/2.0/commands/review/) | Weryfikacja, werdykt, commit i PR. |
+
+## W dowolnym momencie
+
+Opcjonalnie.
+
+| Komenda | Cel |
+|---|---|
+| [`/sdd:retro`](/spec-driven-development/pl/2.0/commands/retro/) | Zamienia wnioski z review w reguły konstytucji. |
+| [`/sdd:analyze`](/spec-driven-development/pl/2.0/commands/analyze/) | Kontrola rozjazdu, tylko do odczytu. |
+
+## Podsumowanie
+
+| Komenda | Zapisuje | Plan Mode |
+|---|---|---|
+| `/sdd:doctor [check\|init]` | pliki bazowe `specs/` (tylko init) | nie |
+| `/sdd:constitution` | `specs/constitution.md` | nie |
+| `/sdd:spec <type> <description>` | gałąź, `spec.md` | nie |
+| `/sdd:clarify` | `spec.md` | **nigdy** (zapisuje) |
+| `/sdd:plan` | `plan.md` | **zalecany** |
+| `/sdd:tasks` | `tasks.md`, commit | nie |
+| `/sdd:implement <task-id \| all>` | commity zadań, statusy | nie |
+| `/sdd:review` | `review.md`, commit, PR | nie |
+| `/sdd:retro` | konstytucja §5 | nie |
+| `/sdd:capabilities` | `capabilities.yml` | nie |
+| `/sdd:analyze` | nic | nie |

@@ -1,0 +1,17 @@
+---
+title: Decyzje projektowe
+description: Dlaczego framework wygląda tak, jak wygląda.
+---
+
+| Decyzja | Uzasadnienie |
+|---|---|
+| **Per projekt, nie globalnie** | Projekty różnią się stackiem, komendami i flow implementacji. Globalny framework wymuszałby jednolitość. |
+| **Tylko 3 agenci** | Implementacja jest Twoja; framework weryfikuje i bada kod. Duplikowanie implementatorów byłoby zmarnowanym wysiłkiem i rozjazdem wersji. |
+| **Samodzielne zadania** | Zadanie niesie zakres, kryteria akceptacji i zależności, więc każdy implementator lub osoba może je podjąć jak ticket. |
+| **Conventional Commits w `/sdd:spec`** | Nazwy gałęzi i commity zgodne ze standardem branżowym; kompatybilne z semantic-release i changesets. |
+| **Plan = decyzje, zadania = tickety** | Plan zawiera decyzje i zakres; zadania się do niego odwołują zamiast go kopiować. |
+| **Plan Mode dla `/sdd:plan`** | Zatwierdzenie planu jest review człowieka; nic nie jest zapisywane wcześniej. |
+| **Konfiguracja w YAML** | `capabilities.yml` to dane, nie proza: schemat waliduje go w edytorze i w doctorze. `init` przepisuje tylko `projects`; ponowne uruchomienie jest bezpieczne. |
+| **Kluczem jest gałąź** | Komendy znajdują funkcję po `**Branch:**` w `spec.md`, więc działa dowolny skill do nazywania gałęzi. |
+| **Konstytucja w `specs/`, nie w `CLAUDE.md`** | Dwie odrębne sprawy. `specs/constitution.md` to rozbudowane źródło prawdy z uzasadnieniami i bez budżetu tokenów. Główny `CLAUDE.md` to loader sesji, który należy do Ciebie. |
+| **Framework w pluginie, specy w projekcie** | Komendy i agenci jadą z pluginem (instalowanym raz na maszynę). Projekt trzyma tylko `specs/`. Aktualizacje wdraża się przez reinstalację; dane projektu nigdy nie są nadpisywane. |

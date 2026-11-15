@@ -1,0 +1,38 @@
+---
+title: /sdd:doctor
+description: Audyt gotowości i konfiguracja projektu.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+```text
+/sdd:doctor [check|init]
+```
+
+<Tabs>
+  <TabItem label="check">
+    Domyślny tryb. **Tylko raport**, z ✅ / ⚠️ / ❌ dla każdego sprawdzenia. Uruchamia go narzędzie `doctor_check`; bez modów skill wykonuje sprawdzenia sam.
+
+    | # | Sprawdzenie |
+    |---|---|
+    | 1 | `specs/constitution.md` istnieje i jest poprawny |
+    | 2 | `specs/template.md` istnieje |
+    | 3 | `specs/capabilities.yml` poprawny: YAML i wartości w dobrym formacie, nazwy `skill:` / `agent:` zainstalowane, nie zostawione na domyślnych |
+    | 4 | git i `gh` |
+    | 5 | Narzędzia per projekt, w tym wartości `command:` |
+    | 6 | Sąsiednie repozytoria |
+    | 7 | Każda funkcja w `specs/`: statusy, unikalne gałęzie i id AC, pola zadań, zależności bez cykli, istniejące id kryteriów akceptacji |
+  </TabItem>
+  <TabItem label="init">
+    **Tworzy i naprawia.** Tworzy brakujące pliki (konstytucję, szablon, capabilities), wykrywa projekty i ich komendy `test`, `coverage`, `typecheck` i `lint`.
+
+    - **Idempotentny:** ponowne uruchomienie przepisuje tylko `projects` w `capabilities.yml`.
+    - **Ścieżka aktualizacji:** najpierw czyta wyniki `check` i naprawia każdy oznaczony `fix: init` (migracja `capabilities.md` w formacie 2 do YAML, źle umieszczone klucze, `format`, id epików w starych `tasks.md`, nieaktualny workflow), po czym sprawdza ponownie.
+    - Pyta, czy dodać [workflow `sdd-check`](/spec-driven-development/pl/guides/ci-action/).
+    - Nigdy nie dotyka `CLAUDE.md` w katalogu głównym projektu.
+  </TabItem>
+</Tabs>
+
+<Aside type="tip">
+Uruchamiaj `check` po każdej aktualizacji pluginu. Nowy klucz `capabilities.yml` lub pole `tasks.md` pojawia się jako ustalenie, które naprawia `init`.
+</Aside>
