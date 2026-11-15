@@ -6,7 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "format": { "description": "Artifact format version; /sdd:doctor init migrates a lower one.", "type": "integer", "minimum": 1 },
+    "format": { "description": "Artifact format version; /sdd:doctor init migrates a lower one. The value is the current format.", "type": "integer", "const": 3 },
     "projects": {
       "description": "Rewritten by /sdd:doctor init. One entry per project.",
       "type": "array",
@@ -27,7 +27,7 @@
       "type": ["object", "null"],
       "additionalProperties": false,
       "properties": {
-        "default": { "description": "Who implements a task when no project line matches.", "$ref": "#/$defs/flow" },
+        "default": { "description": "Who implements a task when no project line matches.", "$ref": "#/$defs/flow", "default": "in-session" },
         "projects": { "description": "Who implements a task, per project.", "type": ["object", "null"], "additionalProperties": { "$ref": "#/$defs/flow" } },
         "isolation": {
           "description": "none: this session implements and commits every task. worktree: each task in its own sub-session, worktree and branch.",
@@ -43,8 +43,8 @@
                   "type": ["object", "null"],
                   "additionalProperties": false,
                   "properties": {
-                    "merge": { "description": "pr: a PR per task, a human merges. auto: rebase + fast-forward.", "enum": ["pr", "auto"] },
-                    "parallel": { "description": "Tasks running at once.", "type": ["integer", "string"], "pattern": "^[1-9]\\d*$", "minimum": 1 }
+                    "merge": { "description": "pr: a PR per task, a human merges. auto: rebase + fast-forward.", "enum": ["pr", "auto"], "default": "pr" },
+                    "parallel": { "description": "Tasks running at once.", "type": ["integer", "string"], "pattern": "^[1-9]\\d*$", "minimum": 1, "default": 3 }
                   }
                 }
               }
@@ -67,9 +67,9 @@
       "type": ["object", "null"],
       "additionalProperties": false,
       "properties": {
-        "tests": { "description": "Run the test suite in /sdd:review.", "enum": ["run", "skip", null] },
-        "publish": { "description": "ask: confirm the commit and PR after READY. off: neither.", "enum": ["ask", "off", null] },
-        "default": { "description": "Audit flow: auto picks skills by stack.", "type": ["string", "null"], "pattern": "^(?:auto|(?:skill|agent):\\S.*)$" },
+        "tests": { "description": "Run the test suite in /sdd:review.", "enum": ["run", "skip", null], "default": "run" },
+        "publish": { "description": "ask: confirm the commit and PR after READY. off: neither.", "enum": ["ask", "off", null], "default": "ask" },
+        "default": { "description": "Audit flow: auto picks skills by stack.", "type": ["string", "null"], "pattern": "^(?:auto|(?:skill|agent):\\S.*)$", "default": "auto" },
         "projects": { "description": "Audit flow per project.", "type": ["object", "null"], "additionalProperties": { "$ref": "#/$defs/skillOrAgent" } },
         "checks": { "description": "Run on every review; an agent returns PASS | FAIL | SKIPPED.", "type": ["array", "null"], "items": { "$ref": "#/$defs/skillOrAgent" } },
         "ci": { "description": "Whether .github/workflows/sdd-check.yml is wanted.", "enum": ["on", "off", null] }

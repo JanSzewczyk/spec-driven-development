@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1 sdd-board] — 2026-11-15
+
+`sdd-board` goes to 0.9.1.
+
+### Changed
+
+- The generated copy of `shared/sdd-core` now reads keys, values and defaults of `capabilities.yml` from the JSON Schema.
+
+## [2.0.1] — 2026-11-15
+
+`sdd` goes to 2.0.1.
+
+### Changed
+
+- `capabilities.schema.json` is the single source of the `capabilities.yml` keys, allowed values, defaults and patterns. `formats.ts` reads them from it instead of repeating them; `format` is a `const` in the schema, so an editor flags a file written for an older format. The schema is edited in `shared/sdd-core/` and `scripts/sync-core.sh` copies it to `plugins/sdd/schemas/` (same published URL).
+
 ## [0.9.0 sdd-board] — 2026-11-15
 
 `sdd-board` goes to 0.9.0.

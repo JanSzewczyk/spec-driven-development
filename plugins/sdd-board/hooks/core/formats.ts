@@ -1,6 +1,8 @@
 // Constants shared by the doctor checks and the board: what the SDD artifacts must contain.
 // The prose version of the same list is plugins/sdd/references/formats.md.
 
+import schema from './capabilities.schema.ts'
+
 export type Level = 'pass' | 'warn' | 'fail'
 
 // Sections of specs/constitution.md. Matched on the heading text, ignoring numbering and emoji.
@@ -20,41 +22,49 @@ export const SPEC_TEMPLATE_PLACEHOLDERS = ['{{feature_title}}', '{{feature_slug}
 // file `/sdd:doctor init` migrates; it is still read until the next major version.
 export const CAPABILITIES_PATH = 'specs/capabilities.yml'
 export const LEGACY_CAPABILITIES_PATH = 'specs/capabilities.md'
-export const CAPABILITIES_KEYS = ['format', 'projects', 'implementation', 'actions', 'review', 'generated']
-export const PROJECT_KEYS = ['name', 'kind', 'path', 'stack', 'repo']
 // `## ` sections of the legacy capabilities.md; `Projects` was `Stack profile` before that.
 export const LEGACY_SECTIONS = { projects: 'Projects', oldProjects: 'Stack profile', implementation: 'Implementation', actions: 'Actions', review: 'Review', generated: 'Generated / out-of-band paths' }
 
-// Allowed values, each listed once: the regexes below and schemas/capabilities.schema.json use them.
-export const ISOLATION_VALUES = ['none', 'worktree']
-export const MERGE_VALUES = ['pr', 'auto']
-export const TESTS_VALUES = ['run', 'skip']
-export const PUBLISH_VALUES = ['ask', 'off']
-export const CI_VALUES = ['on', 'off']
+// The shape of capabilities.yml (keys, allowed values, defaults, patterns) is defined once, in
+// capabilities.schema.json (capabilities.schema.ts is its generated copy). Everything below is read from it; edit the schema, not these lines.
+const props = schema.properties
+const iso = props.implementation.properties.isolation.oneOf
+const worktree = iso[2].properties.worktree.properties
+const review = props.review.properties
+const strings = (xs: (string | null)[]) => xs.filter((x): x is string => x !== null)
 const oneOf = (values: string[]) => new RegExp('^(?:' + values.join('|') + ')$')
 
+export const CAPABILITIES_KEYS = Object.keys(props)
+export const PROJECT_KEYS = Object.keys(props.projects.items.properties)
+export const IMPLEMENTATION_KEYS = Object.keys(props.implementation.properties)
+export const ACTION_KEYS = Object.keys(props.actions.properties)
+
+// Allowed values: the regexes below are built from them.
+export const ISOLATION_VALUES: string[] = [...iso[1].enum, ...iso[2].required]
+export const MERGE_VALUES: string[] = worktree.merge.enum
+export const TESTS_VALUES = strings(review.tests.enum)
+export const PUBLISH_VALUES = strings(review.publish.enum)
+export const CI_VALUES = strings(review.ci.enum)
+
 // Who does a step: skill:<name> | agent:<name> | command:<shell> | in-session.
-export const FLOW_VALUE = /^(?:(?:skill|agent|command):\S.*|in-session)$/
-// `implementation:` keys. `isolation` is `none` or `{ worktree: { merge, parallel } }`.
-export const IMPLEMENTATION_KEYS = ['default', 'projects', 'isolation']
-export const IMPLEMENTATION_DEFAULT = 'in-session'
+export const FLOW_VALUE = new RegExp(schema.$defs.flow.pattern)
+export const IMPLEMENTATION_DEFAULT: string = props.implementation.properties.default.default
 // Keys under `isolation.worktree`, with the values they accept and their defaults.
 export const WORKTREE_KEYS: Record<string, RegExp> = {
   merge: oneOf(MERGE_VALUES), // who merges a task branch: a human through a PR, or the session
-  parallel: /^[1-9]\d*$/, // tasks running at once
+  parallel: new RegExp(worktree.parallel.pattern), // tasks running at once
 }
-export const WORKTREE_DEFAULTS: Record<string, string> = { merge: 'pr', parallel: '3' }
+export const WORKTREE_DEFAULTS: Record<string, string> = { merge: worktree.merge.default, parallel: String(worktree.parallel.default) }
 // Format-2 keys of `## Implementation` that format 3 dropped or moved under `isolation`.
 export const LEGACY_IMPLEMENTATION_KEYS = ['commit', 'isolation', 'merge', 'parallel']
-export const ACTION_KEYS = ['branch', 'commit', 'pr']
 // `review:` keys with one value; `projects` and `checks` are checked apart.
 export const REVIEW_KEYS: Record<string, RegExp> = {
   tests: oneOf(TESTS_VALUES),
   publish: oneOf(PUBLISH_VALUES),
-  default: /^(?:auto|(?:skill|agent):\S.*)$/,
+  default: new RegExp(review.default.pattern),
   ci: oneOf(CI_VALUES), // whether the sdd-check GitHub workflow is wanted
 }
-export const REVIEW_DEFAULTS: Record<string, string> = { tests: 'run', publish: 'ask', default: 'auto' }
+export const REVIEW_DEFAULTS: Record<string, string> = { tests: review.tests.default, publish: review.publish.default, default: review.default.default }
 
 export const SPEC_STATUSES = ['draft', 'clarified', 'planned', 'in-progress', 'done']
 export const PLAN_STATUSES = ['draft', 'tasks-ready', 'in-progress', 'done']
@@ -66,7 +76,7 @@ export const COMMAND_COLUMN_ALIASES: Record<string, string> = { 'dev / ui-previe
 
 // Version of the artifact format (capabilities keys, tasks.md header). A lower `format:` in
 // capabilities.yml (or a legacy capabilities.md) means `/sdd:doctor init` has migrations to apply.
-export const SDD_FORMAT = 3
+export const SDD_FORMAT: number = props.format.const
 // `<!-- sdd-format: N -->` in the legacy capabilities.md.
 export const SDD_FORMAT_MARKER = /<!--\s*sdd-format:\s*(\d+)\s*-->/
 
