@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0 sdd-board] — 2026-11-15
+
+`sdd-board` goes to 0.9.0.
+
+### Changed
+
+- The Config pane reads `specs/capabilities.yml` and shows its path; a format-2 `capabilities.md` is still shown, with a button that runs `/sdd:doctor init` to migrate it. `merge` and `parallel` appear only with `isolation: worktree:`.
+
+## [2.0.0] — 2026-11-15
+
+`sdd` goes to 2.0.0.
 
 ### Changed (breaking)
 
