@@ -20,7 +20,7 @@ satisfy. You plan and describe; you do not implement and you do not choose agent
 - the feature folder `specs/<current>/`: from `$ARGUMENTS`, else the spec whose `**Branch:**`
   equals `git branch --show-current` (none → list the specs and ask); read its `plan.md` and
   `spec.md` (the AC ids)
-- `specs/capabilities.yml`: `projects` and `actions.commit` (step 5)
+- `specs/capabilities.yml`: `projects` and `actions.commit` (step 5). Only the old `specs/capabilities.md` exists → STOP: "Run `/sdd:doctor init` to migrate it."
 - `tasks.md`, when it already exists (a re-run after the plan or the spec changed)
 
 ### 2. Decompose

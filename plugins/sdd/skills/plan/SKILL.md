@@ -20,7 +20,7 @@ Plan Mode the command writes `plan.md` directly and stops for you to read and ed
 ### 1. Load context
 
 - `specs/constitution.md` (stack, commands, conventions, WHAT NOT TO DO)
-- `specs/capabilities.yml`, only `projects`
+- `specs/capabilities.yml`, only `projects`. Only the old `specs/capabilities.md` exists → STOP: "Run `/sdd:doctor init` to migrate it."
 - the spec: `$ARGUMENTS`, else the `specs/*/spec.md` whose `**Branch:**` equals
   `git branch --show-current` (none → list the specs and ask); its folder is `specs/<current>/`
 
