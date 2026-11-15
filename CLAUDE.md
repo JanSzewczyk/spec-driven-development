@@ -79,6 +79,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
 - **Versioning is manual and multi-file**: a bump (only when the user asks, see Versions below) touches `plugins/<name>/.claude-plugin/plugin.json`, its entry in `.claude-plugin/marketplace.json`, and `CHANGELOG.md`; for `sdd` also the README badge. Keep them in sync.
+- **Tags and GitHub Releases are created by CI on merge, never by hand**: `.github/workflows/release.yml` runs `scripts/release.sh` on a push to `main` that touches a `plugin.json` or `marketplace.json`: `claude plugin tag --push` (`<name>--v<version>`) for each untagged version, then a Release for every tag without one, notes taken from the version's `CHANGELOG.md` section (`## [<ver>]` for `sdd`, `## [<ver> <name>]` for others). Use `/plugin-release` for the bump only and skip its tag step (step 6): a tag made on the feature branch points at a commit that is not on `main` after a squash merge, and CI then sees the tag and does not fix it. `scripts/release.sh --dry-run` shows what CI would do; re-run the workflow by hand (`workflow_dispatch`) to retry.
 - Command/agent references in docs use the `/sdd:<command>` form.
 - Behavior lives in Markdown prompts; the doctor check lives in `shared/sdd-core/` TypeScript with tests. To change what a skill or agent does, edit its prose.
 
@@ -139,10 +140,11 @@ changed a plugin and left its version alone is caught by CI, not by a standing i
 
 ### Releasing
 
-The repo does not tag releases yet; tagging publishes, so it stays a deliberate decision.
+Merging the bump PR is the release: `.github/workflows/release.yml` tags it and creates the GitHub
+Release (see Conventions). Never tag by hand.
 
 ### What runs on its own
 
-Nothing in the background. The steps above happen because this file asks for them; CI, if
+Only `.github/workflows/release.yml`, which tags and releases on merge to `main`. The steps above happen because this file asks for them; CI, if
 `.github/workflows/plugin-checks.yml` exists, fails a pull request with drift or a missing bump.
 <!-- END:plugin-dev -->
