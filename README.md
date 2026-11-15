@@ -9,7 +9,7 @@
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Architecture](#-architecture) • [Documentation](#-table-of-contents)
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Architecture](#-architecture) • [Documentation](https://janszewczyk.github.io/spec-driven-development/)
 
 </div>
 

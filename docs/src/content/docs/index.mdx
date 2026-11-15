@@ -1,0 +1,35 @@
+---
+title: SDD for Claude Code
+description: Spec-Driven Development framework for Claude Code. The spec is the source of truth, code is its consequence.
+template: splash
+hero:
+  tagline: The spec is the source of truth, code is its consequence. A canonical flow from constitution to review, with self-contained tasks handed to your own implementation flow.
+  actions:
+    - text: Get started
+      link: /spec-driven-development/getting-started/installation/
+      icon: right-arrow
+    - text: Command reference
+      link: /spec-driven-development/commands/overview/
+      variant: minimal
+    - text: GitHub
+      link: https://github.com/JanSzewczyk/spec-driven-development
+      variant: minimal
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Canonical phases" icon="list-format">
+    `constitution → spec → clarify → plan → tasks → implement → review`, one slash command per phase.
+  </Card>
+  <Card title="Bring your own implementer" icon="puzzle">
+    `/sdd:implement` hands each task to a skill, agent or command you configure, or implements it in the session.
+  </Card>
+  <Card title="Verified against the spec" icon="approve-check">
+    `/sdd:review` runs tests, `spec-verifier` and your extra checks, then `reviewer` returns READY or NOT READY.
+  </Card>
+  <Card title="Any layout, any app" icon="seti:folder">
+    Single app, monorepo or several repositories. Web, backend and mobile projects side by side, no fixed list of stacks.
+  </Card>
+</CardGrid>
