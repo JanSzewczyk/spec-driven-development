@@ -52,9 +52,17 @@
   display: grid;
 }
 .why > div {
+  position: relative;
   margin: 0 !important;
   padding: 1.25rem 0;
-  border-top: 1px solid var(--sl-color-hairline);
+}
+.why > div::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--sl-color-hairline);
+  transform-origin: left;
 }
 .why > div:last-child {
   border-bottom: 1px solid var(--sl-color-hairline);
@@ -78,8 +86,10 @@
     top: calc(var(--sl-nav-height) + 1.5rem);
   }
   .why > div:first-child {
-    border-top: 0;
     padding-top: 0;
+  }
+  .why > div:first-child::before {
+    display: none;
   }
 }
 
@@ -193,6 +203,12 @@
   translate: 0.25rem -50%;
   color: var(--sl-color-text-accent);
 }
+.explore a:active {
+  background: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+}
+.explore a.primary:hover {
+  background: color-mix(in srgb, var(--sl-color-accent-low) 70%, var(--sl-color-accent) 30%);
+}
 .explore a.primary {
   background: var(--sl-color-accent-low);
   border-color: color-mix(in srgb, var(--sl-color-accent) 45%, transparent);
@@ -208,5 +224,44 @@
 @media (min-width: 64rem) {
   .explore {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Scroll motion: hairlines between the Why statements draw in, and the Start steps
+   light up in order. Without scroll timelines everything is simply visible. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .why > div::before {
+      animation: hairline linear both;
+      animation-timeline: view();
+      animation-range: entry 20% entry 100%;
+    }
+    .why > div > * {
+      animation: lift linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 90%;
+    }
+    .start-steps li::before {
+      animation: step-on linear both;
+      animation-timeline: view();
+      animation-range: entry 20% entry 100%;
+    }
+    @keyframes hairline {
+      from {
+        transform: scaleX(0);
+      }
+    }
+    @keyframes lift {
+      from {
+        opacity: 0;
+        translate: 0 8px;
+      }
+    }
+    @keyframes step-on {
+      from {
+        background: var(--sl-color-gray-6);
+        color: var(--sl-color-gray-4);
+      }
+    }
   }
 }
