@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Epic and task ids.** `tasks.md` carries `**Epic:** <LETTERS>-<4 hex>`, assigned once by `/sdd:tasks`; a task's full id is `<EPIC>-T<n>`. The doctor validates format and uniqueness; `init` assigns ids to existing specs.
-- **Commit per task.** `/sdd:implement` commits `specs/<slug>/` before the first task and each finished task with a `Task: <EPIC>-T<n>` trailer (`commit: task`, default; `commit: off` keeps the old behavior). `/sdd:review` commits what is left.
+- **Commit per task.** `/sdd:tasks` commits `specs/<slug>/` (spec, plan, tasks) with an `Epic:` trailer, `/sdd:implement` commits each finished task with a `Task: <EPIC>-T<n>` trailer (`commit: task`, default; `commit: off` keeps the old behavior). `/sdd:review` commits what is left.
 - **Isolated tasks** (`isolation: worktree`, opt-in): `/sdd:implement` orchestrates one sub-session, worktree and branch per task. `merge: pr` opens a PR per task and waits for a human to merge; `merge: auto` rebases and fast-forwards. New `## Implementation` keys `commit`, `isolation`, `merge`, `parallel`.
 - **`sdd-check` GitHub Action** (`actions/sdd-check`): runs the doctor rules in other repositories and writes a short report (what is missing, which checks failed, what `/sdd:doctor init` repairs). `/sdd:doctor init` asks whether to add the workflow (`ci: on|off` in `## Review`).
 

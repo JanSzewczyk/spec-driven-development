@@ -327,7 +327,7 @@ The file keeps references (AC ids, plan sections) instead of copies. When you ru
    Values: `skill:<name>`, `agent:<name>`, `command:<shell>` (brief on stdin) or `in-session`.
 3. It builds the **brief**: the task, the text of its acceptance criteria, the plan sections, the project's commands and the constitution rules that apply, and a definition of done.
 4. It hands the brief to the flow. The implementer writes tests and code and runs the project's checks. `in-session` means the session itself does that, loading the skills and docs it has for the stack.
-5. Status: `draft` → `in-progress` → `review`. With `commit: task` (default) it commits the task's files with the trailer `Task: <EPIC>-T<n>`; `/sdd:review` commits what is left (statuses, `review.md`) and opens the PR.
+5. Status: `draft` → `in-progress` → `review`. With `commit: task` (default) it commits the task's files with the trailer `Task: <EPIC>-T<n>`; `/sdd:review` commits what is left (statuses, `review.md`) and opens the PR. The documentation itself (spec, plan, tasks) was already committed by `/sdd:tasks`.
 
 Verification is a separate step: `/sdd:review` judges the outcome against the spec.
 
@@ -501,11 +501,12 @@ Phase 4 — Tasks. Split `plan.md` into a list of **self-contained tasks** (form
 - **`depends_on`** only where a task needs another's result or touches the same files.
 - **No copies of the plan or the spec** — tasks refer to AC ids and plan sections.
 - **Epic id.** Writes `**Epic:** <LETTERS>-<4 hex>` into the header once (kept on re-runs); tasks are `<EPIC>-T<n>`.
+- **Commits the documentation.** With `commit: task` (default) it ends by committing `specs/<slug>/` (spec, plan, tasks) as `docs(<slug>): add spec, plan and tasks` with an `Epic:` trailer, so the documentation is in git before any task starts and is visible to worktrees.
 - Does not choose agents or models and writes no code; ends with a one-line `Order:` such as `T1 → T2 ∥ T3 → T4`.
 
 ### 🔨 `/sdd:implement <task-id | all>`
 
-Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.md` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies. With `commit: task` it commits `specs/<slug>/` before the first task and each finished task's files with a `Task: <EPIC>-T<n>` trailer. With `isolation: worktree` it orchestrates sub-sessions instead (see [Isolated tasks](#-isolated-tasks-opt-in)).
+Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.md` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies. With `commit: task` it commits any documentation `/sdd:tasks` left uncommitted before the first task, and each finished task's files with a `Task: <EPIC>-T<n>` trailer. With `isolation: worktree` it orchestrates sub-sessions instead (see [Isolated tasks](#-isolated-tasks-opt-in)).
 
 ### 🔍 `/sdd:review`
 

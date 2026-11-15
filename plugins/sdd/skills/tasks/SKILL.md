@@ -1,7 +1,7 @@
 ---
 name: tasks
 description: Split the plan into self-contained, Jira-like tasks (SDD step 4)
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git branch:*), Bash(git hash-object:*), Bash(date:*)
+allowed-tools: Read, Write, Edit, Glob, Grep, Skill, Agent, Bash(git branch:*), Bash(git hash-object:*), Bash(date:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git log:*)
 argument-hint: "(optional path to plan.md)"
 disable-model-invocation: true
 ---
@@ -20,7 +20,7 @@ satisfy. You plan and describe; you do not implement and you do not choose agent
 - the feature folder `specs/<current>/`: from `$ARGUMENTS`, else the spec whose `**Branch:**`
   equals `git branch --show-current` (none → list the specs and ask); read its `plan.md` and
   `spec.md` (the AC ids)
-- `specs/capabilities.md`, only the `## Projects` section
+- `specs/capabilities.md`: the `## Projects` section, `commit:` under `## Implementation` and the `commit` action under `## Actions` (step 5)
 - `tasks.md`, when it already exists (a re-run after the plan or the spec changed)
 
 ### 2. Decompose
@@ -88,13 +88,26 @@ longer needed is removed only while `draft`, otherwise report it and leave it.
 
 Add one line at the end: `Order: T1 → T2 ∥ T3 → T4` (what can run once its dependencies are done).
 
-### 5. Check, advance, report
+### 5. Check, advance, commit, report
 
 Fail and fix on: an AC with no task, a task with no AC, a cycle, a dependency on a missing task, two
 independent tasks with overlapping `files`.
 
-Set `plan.md` `**Status:**` → `tasks-ready` with Edit (unless already later). Report the task count, projects
-and the `Order:` line. Next: `/sdd:implement T1` (one task) or `/sdd:implement all`; best after
+Set `plan.md` `**Status:**` → `tasks-ready` with Edit (unless already later).
+
+**Commit the documentation** (`commit:` under `## Implementation` is `task`, the default; `off` → skip
+and say the files stay uncommitted). The spec, plan and tasks are the whole documentation of the
+feature, and nothing earlier commits them:
+
+- `git status --short -- specs/<slug>/` is empty → nothing to commit.
+- Otherwise stage `specs/<slug>/` only (never `git add -A`, never other paths) and commit it with the
+  `commit` action from `## Actions` (`skill:` / `agent:` / `command:`); unset → `git add -- specs/<slug>/`
+  and `git commit`. Message `docs(<slug>): add spec, plan and tasks` (a re-run: `docs(<slug>): update tasks`),
+  trailer `Epic: <EPIC>`. Check it landed with `git log -1 --format='%(trailers:key=Epic,valueonly)'`;
+  empty (a skill rewrote the message) → `git commit --amend --trailer 'Epic: <EPIC>'`.
+- Not on the feature branch (`**Branch:**` of the spec) → do not commit; say so.
+
+Report the task count, projects, the commit and the `Order:` line. Next: `/sdd:implement T1` (one task) or `/sdd:implement all`; best after
 `/clear` — it re-reads `tasks.md` from disk.
 
 Do not write code.
