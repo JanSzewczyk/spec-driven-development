@@ -67,6 +67,49 @@
   background: #faf9f5;
 }
 
+/* Asides and badges: warm, muted hues instead of Starlight's blue and purple */
+:root,
+:root[data-theme="dark"] {
+  --sl-color-blue-low: #2f2f2c;
+  --sl-color-blue: #7a7870;
+  --sl-color-blue-high: #c9c7bd;
+  --sl-color-purple-low: #2b3226;
+  --sl-color-purple: #788c5d;
+  --sl-color-purple-high: #b4c79a;
+  --sl-color-green-low: #2b3226;
+  --sl-color-green: #788c5d;
+  --sl-color-green-high: #b4c79a;
+  --sl-color-orange-low: #3a2f1c;
+  --sl-color-orange: #b9822a;
+  --sl-color-orange-high: #e6c27f;
+  --sl-color-red-low: #3d2420;
+  --sl-color-red: #b5483a;
+  --sl-color-red-high: #eba295;
+}
+:root[data-theme="light"] {
+  --sl-color-blue-low: #ebe9df;
+  --sl-color-blue: #8f8d84;
+  --sl-color-blue-high: #4a4944;
+  --sl-color-purple-low: #e6ecdc;
+  --sl-color-purple: #788c5d;
+  --sl-color-purple-high: #44532f;
+  --sl-color-green-low: #e6ecdc;
+  --sl-color-green: #788c5d;
+  --sl-color-green-high: #44532f;
+  --sl-color-orange-low: #f6e6c9;
+  --sl-color-orange: #b9822a;
+  --sl-color-orange-high: #6e4a0f;
+  --sl-color-red-low: #f5dcd6;
+  --sl-color-red: #b5483a;
+  --sl-color-red-high: #7c2a20;
+}
+.sl-badge {
+  font-family: var(--sl-font);
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 0.1em 0.65em;
+}
+
 /* Typography: serif headings, calm weights */
 h1,
 h2,
@@ -87,8 +130,6 @@ h4,
 }
 .sl-markdown-content h2 {
   font-size: var(--sl-text-3xl);
-  border-bottom: 1px solid var(--sl-color-hairline);
-  padding-bottom: 0.35rem;
 }
 .sl-markdown-content h2 a,
 .sl-markdown-content h3 a {
@@ -152,11 +193,25 @@ main > .content-panel:first-child h1,
 }
 .sl-markdown-content :is(th, td) {
   vertical-align: top;
-  border-color: var(--sl-color-hairline);
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--sl-color-hairline);
+  line-height: 1.55;
+}
+.sl-markdown-content tr:last-child td {
+  border-bottom: 0;
 }
 .sl-markdown-content th {
   background: var(--sl-color-gray-6);
   font-weight: 600;
+  font-size: var(--sl-text-sm);
+  text-align: start;
+}
+.sl-markdown-content td code {
+  white-space: nowrap;
+}
+.sl-markdown-content tbody tr:hover td {
+  background: color-mix(in srgb, var(--sl-color-gray-6) 55%, transparent);
 }
 .sl-markdown-content details {
   border: 1px solid var(--sl-color-hairline);
@@ -209,6 +264,15 @@ main > .content-panel:first-child h1,
 [data-has-hero] .hero h1 {
   font-weight: 400;
   letter-spacing: -0.025em;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.1;
+  text-wrap: balance;
+  max-width: 18ch;
+}
+@media (min-width: 50rem) {
+  .why {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 [data-has-hero] .hero .tagline {
   color: var(--sl-color-gray-2);
@@ -216,15 +280,10 @@ main > .content-panel:first-child h1,
 .landing-section {
   margin-top: 3rem;
 }
-.landing-section > h2 {
-  text-align: center;
-  border: 0;
-}
 .landing-lead {
-  text-align: center;
   color: var(--sl-color-gray-2);
   max-width: 42rem;
-  margin: 0 auto 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 /* Mermaid */
@@ -233,4 +292,80 @@ pre.mermaid {
   border: 1px solid var(--sl-color-hairline);
   border-radius: 0.875rem;
   padding: 1rem;
+}
+
+/* Landing: "Why SDD" as two columns of plain text, no cards */
+.why {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 1.5rem 3rem;
+  margin-top: 1rem;
+}
+.why > div {
+  margin-top: 0 !important;
+}
+.why > div > :first-child {
+  margin-top: 0;
+}
+.why h3 {
+  margin: 0;
+  font-size: var(--sl-text-xl);
+}
+.why p {
+  color: var(--sl-color-gray-2);
+  margin: 0.4rem 0 0;
+}
+
+/* Code: no ligatures (they turn `>-` into a dash), proportionate size in headings */
+code,
+pre {
+  font-variant-ligatures: none;
+}
+.sl-markdown-content :is(h2, h3, h4) code {
+  font-size: 0.8em;
+}
+
+/* Links that wrap code in tables: no underline noise */
+.sl-markdown-content td a,
+.sl-markdown-content td a code {
+  text-decoration: none;
+}
+.sl-markdown-content td a:hover {
+  text-decoration: underline;
+}
+
+/* Steps: regular bullets in nested lists */
+.sl-steps ul {
+  list-style: disc;
+}
+
+/* Mermaid: let wide diagrams scroll instead of squashing */
+pre.mermaid {
+  overflow-x: auto;
+}
+
+/* Narrow screens: tables scroll inside their own box instead of widening the page */
+@media (max-width: 50rem) {
+  .sl-markdown-content table {
+    display: block;
+    overflow-x: auto;
+    border-radius: 0.75rem;
+  }
+  .sl-markdown-content :is(th, td) {
+    padding: 0.6rem 0.75rem;
+  }
+}
+[role="tabpanel"],
+.tabs-wrapper {
+  min-width: 0;
+}
+
+/* Steps: room between items */
+.sl-steps > li {
+  padding-bottom: 0.6rem;
+}
+
+/* Mermaid in dark mode: dark nodes, light text, warm hue kept */
+:root:not([data-theme="light"]) pre.mermaid svg {
+  filter: invert(0.9) hue-rotate(180deg);
 }

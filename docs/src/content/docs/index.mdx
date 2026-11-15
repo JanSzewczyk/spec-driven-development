@@ -17,7 +17,7 @@ hero:
       icon: github
 ---
 
-import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+import { CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
 import Pipeline from '../../components/Pipeline.astro';
 
 <div class="landing-section">
@@ -34,20 +34,38 @@ import Pipeline from '../../components/Pipeline.astro';
 
 ## Why SDD
 
-<CardGrid stagger>
-  <Card title="Plan before code" icon="pencil">
-    Claude drafts the plan in Plan Mode and you approve it before a single line is written. The cheapest moment to fix a wrong turn.
-  </Card>
-  <Card title="Bring your own implementer" icon="puzzle">
-    `/sdd:implement` hands each task to a skill, agent or command you configure, or builds it in the session. The framework manages the thinking, not the typing.
-  </Card>
-  <Card title="Verified against the spec" icon="approve-check">
-    Tests, `spec-verifier` and your own checks run in parallel; `reviewer` returns **READY** or **NOT READY** and ticks the acceptance criteria.
-  </Card>
-  <Card title="Any layout, any stack" icon="seti:folder">
-    Single app, monorepo or several repositories. Web, backend and mobile projects side by side, each with its own commands. No fixed list of stacks.
-  </Card>
-</CardGrid>
+<div class="why">
+
+<div>
+
+### Plan before code
+
+Claude drafts the plan in Plan Mode and you approve it before a single line is written. The cheapest moment to fix a wrong turn.
+
+</div>
+<div>
+
+### Bring your own implementer
+
+`/sdd:implement` hands each task to a skill, agent or command you configure, or builds it in the session. The framework manages the thinking, not the typing.
+
+</div>
+<div>
+
+### Verified against the spec
+
+Tests, `spec-verifier` and your own checks run in parallel; `reviewer` returns **READY** or **NOT READY** and ticks the acceptance criteria.
+
+</div>
+<div>
+
+### Any layout, any stack
+
+Single app, monorepo or several repositories. Web, backend and mobile projects side by side. No fixed list of stacks.
+
+</div>
+
+</div>
 
 </div>
 
