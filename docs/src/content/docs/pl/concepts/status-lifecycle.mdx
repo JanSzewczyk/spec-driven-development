@@ -4,38 +4,11 @@ description: Która komenda ustawia jaki status w specu, planie i zadaniach.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
+import StatusLifecycle from '../../../../components/StatusLifecycle.astro';
 
-## Spec
+Każdy plik przechodzi do przodu o jeden status. Komenda pod statusem to ta, która go ustawia.
 
-```mermaid
-stateDiagram-v2
-    [*] --> draft: /sdd:spec
-    draft --> clarified: /sdd:clarify
-    clarified --> planned: /sdd:plan
-    planned --> in_progress: /sdd:implement (pierwsze zadanie)
-    in_progress --> done: /sdd:review READY
-    done --> [*]
-```
-
-## Zadania
-
-```mermaid
-stateDiagram-v2
-    [*] --> draft: /sdd:tasks
-    draft --> in_progress: /sdd:implement
-    in_progress --> review: implementator zgłasza gotowość
-    review --> done: /sdd:review READY
-    review --> in_progress: niespełnione kryteria akceptacji
-    in_progress --> draft: ponowne /sdd:tasks zmienia zakres
-```
-
-## Wszystkie statusy
-
-| Plik | Status | Ustawia |
-|---|---|---|
-| `spec.md` | `draft` → `clarified` → `planned` → `in-progress` → `done` | `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:implement` → `/sdd:review` |
-| `plan.md` | `draft` → `tasks-ready` → `in-progress` → `done` | `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` → `/sdd:review` |
-| zadanie | `draft` → `in-progress` → `review` → `done` | `/sdd:tasks` → `/sdd:implement` → implementator → `/sdd:review` |
+<StatusLifecycle />
 
 <Aside type="note" title="Tylko dwa ruchy wstecz">
 `/sdd:review` cofa zadanie z niespełnionymi kryteriami akceptacji do `in-progress`, a ponowne `/sdd:tasks` cofa rozpoczęte zadanie do `draft`, gdy zmiana dotyka jego zakresu. Nic innego nie cofa statusu.

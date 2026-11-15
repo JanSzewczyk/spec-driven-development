@@ -9,7 +9,7 @@ The **only verification gate**. It judges the result against the acceptance crit
 
 ```mermaid
 flowchart LR
-    S[/sdd:review/] --> T[Tests]
+    S["/sdd:review"] --> T[Tests]
     S --> V[spec-verifier]
     S --> C[Your checks]
     T --> R[reviewer]
@@ -17,6 +17,8 @@ flowchart LR
     C --> R
     R -->|READY| P[Ask · commit · PR]
     R -->|NOT READY| B[Blockers + task to re-run]
+    classDef cmd fill:#dbeafe,stroke:#2563eb,color:#0a0a0a
+    class S cmd
 ```
 
 <Steps>

@@ -10,22 +10,22 @@ import Pipeline from '../../../../components/Pipeline.astro';
 
 ```mermaid
 flowchart TD
-    A[/sdd:doctor init/] --> B[/sdd:constitution/]
-    B --> C[/sdd:spec feat user login/]
-    C --> D[/sdd:clarify/]
-    D --> E[/sdd:plan w Plan Mode/]
-    E --> F[Człowiek recenzuje plan.md]
-    F --> G[/sdd:tasks/]
-    G --> H[/sdd:implement T1/]
+    S["/sdd:doctor … /sdd:plan<br/>setup, spec, clarify, plan"] --> F[Człowiek recenzuje plan.md]
+    F --> G["/sdd:tasks"]
+    G --> H["/sdd:implement T1"]
     H --> I{flow skonfigurowany?}
     I -->|tak| K[Przekaż zadanie do<br/>skonfigurowanego flow]
     I -->|nie| J[Zaimplementuj w sesji]
-    J --> M[/sdd:review/]
+    J --> M["/sdd:review"]
     K --> M
     M --> P[spec-verifier + reviewer + Twoje sprawdzenia]
     P -->|READY| Q[commit + PR]
-    Q --> R[/sdd:retro, opcjonalnie/]
+    Q --> R["/sdd:retro, opcjonalnie"]
     P -->|NOT READY| H
+    classDef cmd fill:#dbeafe,stroke:#2563eb,color:#0a0a0a
+    classDef human fill:#fef3c7,stroke:#d97706,color:#0a0a0a
+    class S,G,H,M,R cmd
+    class F human
 ```
 
 ## Faza po fazie
