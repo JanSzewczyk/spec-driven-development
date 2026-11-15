@@ -17,22 +17,28 @@ hero:
       icon: github
 ---
 
-import { CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
-import Pipeline from '../../components/Pipeline.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import LandingFlow from '../../components/LandingFlow.astro';
 
 <div class="landing-section">
 
-## One flow, seven phases
+## One flow, from setup to review
 
-<p class="landing-lead">Each phase is a slash command that writes a file under <code>specs/&lt;feature&gt;/</code> and re-reads its inputs from disk. Clear the chat between phases and lose nothing.</p>
+<p class="landing-lead">Set up once, then every feature runs the same loop. Each command writes a file under <code>specs/</code> and re-reads its inputs from disk. Clear the chat between phases and lose nothing.</p>
 
-<Pipeline />
+<LandingFlow />
 
 </div>
 
-<div class="landing-section">
+<div class="landing-section landing-why">
+
+<div class="why-intro">
 
 ## Why SDD
+
+<p class="landing-lead">The spec is the source of truth, code is its consequence.</p>
+
+</div>
 
 <div class="why">
 
@@ -43,6 +49,7 @@ import Pipeline from '../../components/Pipeline.astro';
 Claude drafts the plan in Plan Mode and you approve it before a single line is written. The cheapest moment to fix a wrong turn.
 
 </div>
+
 <div>
 
 ### Bring your own implementer
@@ -50,6 +57,7 @@ Claude drafts the plan in Plan Mode and you approve it before a single line is w
 `/sdd:implement` hands each task to a skill, agent or command you configure, or builds it in the session. The framework manages the thinking, not the typing.
 
 </div>
+
 <div>
 
 ### Verified against the spec
@@ -57,6 +65,7 @@ Claude drafts the plan in Plan Mode and you approve it before a single line is w
 Tests, `spec-verifier` and your own checks run in parallel; `reviewer` returns **READY** or **NOT READY** and ticks the acceptance criteria.
 
 </div>
+
 <div>
 
 ### Any layout, any stack
@@ -69,9 +78,22 @@ Single app, monorepo or several repositories. Web, backend and mobile projects s
 
 </div>
 
-<div class="landing-section">
+<div class="landing-section landing-start">
+
+<div class="start-copy">
 
 ## Start in two minutes
+
+<ol class="start-steps">
+  <li><strong>Install</strong> the plugin from the marketplace.</li>
+  <li><strong>Initialize</strong> your project with <code>/sdd:doctor init</code>.</li>
+  <li><strong>Fill in the constitution</strong> with <code>/sdd:constitution</code>: stack and rules.</li>
+  <li><strong>Run the flow</strong> on your first feature.</li>
+</ol>
+
+</div>
+
+<div class="start-code">
 
 <Tabs>
   <TabItem label="Claude Code">
@@ -92,6 +114,7 @@ Then, in your project:
 
 ```text title="claude"
 /sdd:doctor init
+/sdd:constitution
 /sdd:spec feat user can reset password via email
 /sdd:clarify
 /sdd:plan
@@ -102,17 +125,19 @@ Then, in your project:
 
 </div>
 
+</div>
+
 <div class="landing-section">
 
 ## Explore
 
-<CardGrid>
-  <LinkCard title="Quick start" description="Initialize a project and ship a first feature." href="/spec-driven-development/getting-started/quick-start/" />
-  <LinkCard title="Concepts" description="Tasks, status lifecycle, projects, isolation." href="/spec-driven-development/concepts/workflow/" />
-  <LinkCard title="Command reference" description="All 11 slash commands, one page each." href="/spec-driven-development/commands/overview/" />
-  <LinkCard title="capabilities.yml" description="Every key, value and default." href="/spec-driven-development/configuration/capabilities/" />
-  <LinkCard title="End-to-end example" description="A password-reset feature from init to PR." href="/spec-driven-development/guides/example/" />
-  <LinkCard title="sdd-board" description="Desktop side panel showing where each spec stands." href="/spec-driven-development/board/overview/" />
-</CardGrid>
+<nav class="explore" aria-label="Explore">
+  <a href="/spec-driven-development/getting-started/quick-start/" class="primary"><strong>Quick start</strong><span>Initialize a project and ship a first feature.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/concepts/workflow/"><strong>Concepts</strong><span>Tasks, status lifecycle, projects, isolation.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/commands/overview/"><strong>Command reference</strong><span>All 11 slash commands, one page each.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/configuration/capabilities/"><strong>capabilities.yml</strong><span>Every key, value and default.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/guides/example/"><strong>End-to-end example</strong><span>A password-reset feature from init to PR.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/board/overview/"><strong>sdd-board</strong><span>Desktop side panel showing where each spec stands.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+</nav>
 
 </div>

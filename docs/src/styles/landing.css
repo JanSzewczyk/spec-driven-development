@@ -1,0 +1,212 @@
+/* Landing page (template: splash). Hero and flow live in their own components. */
+
+/* Soft blue glow behind the hero */
+[data-has-hero] .hero {
+  position: relative;
+}
+[data-has-hero] .hero::before {
+  content: "";
+  position: absolute;
+  inset: -6rem 0 auto 0;
+  height: 30rem;
+  background:
+    radial-gradient(50% 60% at 18% 0%, color-mix(in srgb, var(--sl-color-accent) 15%, transparent), transparent 70%),
+    radial-gradient(40% 55% at 85% 20%, color-mix(in srgb, var(--sl-color-accent) 9%, transparent), transparent 70%);
+  mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+  pointer-events: none;
+  z-index: -1;
+}
+[data-has-hero] .hero h1 {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-size: clamp(2.4rem, 1.4rem + 3.6vw, 3.75rem);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.landing-section {
+  margin-top: clamp(3.5rem, 8vw, 5.5rem);
+}
+.landing-section > h2:first-child,
+.landing-section h2 {
+  margin-top: 0;
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  letter-spacing: -0.02em;
+}
+.landing-lead {
+  color: var(--sl-color-gray-2);
+  max-width: 40rem;
+  margin: 0.6rem 0 0;
+}
+
+/* Why: heading on the left, four statements on the right, hairlines instead of cards */
+.landing-why {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem 4rem;
+}
+.landing-why > * {
+  margin-top: 0 !important;
+}
+.why {
+  display: grid;
+}
+.why > div {
+  margin: 0 !important;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--sl-color-hairline);
+}
+.why > div:last-child {
+  border-bottom: 1px solid var(--sl-color-hairline);
+}
+.why h3 {
+  margin: 0;
+  font-size: var(--sl-text-lg);
+}
+.why p {
+  margin: 0.4rem 0 0;
+  max-width: 38rem;
+  color: var(--sl-color-gray-2);
+}
+@media (min-width: 56rem) {
+  .landing-why {
+    grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+    align-items: start;
+  }
+  .why-intro {
+    position: sticky;
+    top: calc(var(--sl-nav-height) + 1.5rem);
+  }
+  .why > div:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* Start: steps on the left, commands on the right */
+.landing-start {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem 3.5rem;
+}
+.landing-start > * {
+  margin-top: 0 !important;
+}
+.start-steps {
+  list-style: none;
+  counter-reset: s;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.start-steps li {
+  counter-increment: s;
+  position: relative;
+  margin: 0;
+  padding-inline-start: 2.5rem;
+  min-height: 1.75rem;
+  line-height: 1.6;
+  color: var(--sl-color-gray-2);
+}
+.start-steps li::before {
+  content: counter(s);
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-accent-high);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.start-steps strong {
+  color: var(--sl-color-white);
+}
+.start-steps code {
+  font-size: 0.85em;
+}
+.start-copy,
+.start-code {
+  min-width: 0;
+}
+.start-code > :first-child {
+  margin-top: 0;
+}
+@media (min-width: 56rem) {
+  .landing-start {
+    grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+  }
+}
+
+/* Explore: link rows, the first one is the primary route */
+.explore {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.explore a {
+  position: relative;
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 3rem 1rem 1.1rem;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 0.625rem;
+  color: var(--sl-color-gray-2);
+  text-decoration: none;
+  font-size: var(--sl-text-sm);
+  line-height: 1.5;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+.explore a strong {
+  color: var(--sl-color-white);
+  font-family: var(--font-heading);
+  font-size: var(--sl-text-base);
+  font-weight: 600;
+}
+.explore a:hover,
+.explore a:focus-visible {
+  border-color: var(--sl-color-accent);
+  background: color-mix(in srgb, var(--sl-color-accent) 7%, transparent);
+}
+.explore a:focus-visible {
+  outline: 2px solid var(--sl-color-accent);
+  outline-offset: 2px;
+}
+.explore .go {
+  position: absolute;
+  top: 50%;
+  right: 1.1rem;
+  translate: 0 -50%;
+  color: var(--sl-color-gray-3);
+  transition:
+    translate 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.15s;
+}
+.explore a:hover .go,
+.explore a:focus-visible .go {
+  translate: 0.25rem -50%;
+  color: var(--sl-color-text-accent);
+}
+.explore a.primary {
+  background: var(--sl-color-accent-low);
+  border-color: color-mix(in srgb, var(--sl-color-accent) 45%, transparent);
+}
+.explore a.primary span {
+  color: var(--sl-color-accent-high);
+}
+@media (min-width: 40rem) {
+  .explore {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 64rem) {
+  .explore {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

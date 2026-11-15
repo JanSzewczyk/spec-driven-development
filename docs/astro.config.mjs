@@ -47,8 +47,8 @@ export default defineConfig({
         // To archive the next release, add { slug: "3.0" } to `versions` and start the dev server.
         starlightVersions({ current: { label: "Latest" }, versions: [{ slug: "2.0", label: "v2.0" }] }),
       ],
-      components: { SiteTitle: "./src/components/SiteTitle.astro", Footer: "./src/components/Footer.astro" },
-      customCss: ["./src/styles/custom.css", "./src/styles/flow.css"],
+      components: { SiteTitle: "./src/components/SiteTitle.astro", Footer: "./src/components/Footer.astro", Hero: "./src/components/Hero.astro" },
+      customCss: ["./src/styles/custom.css", "./src/styles/flow.css", "./src/styles/landing.css"],
       sidebar: [
         {
           label: "Getting started",
