@@ -1,0 +1,21 @@
+---
+title: Status lifecycle
+description: Which command sets which status on spec, plan and tasks.
+---
+
+| File | Status | Set by |
+|---|---|---|
+| `spec.md` | `draft` | `/sdd:spec` |
+| | `clarified` | `/sdd:clarify` |
+| | `planned` | `/sdd:plan` |
+| | `in-progress` | `/sdd:implement` (first task) |
+| | `done` | `/sdd:review` (READY) |
+| `plan.md` | `draft` → `tasks-ready` → `in-progress` → `done` | `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` → `/sdd:review` |
+| task in `tasks.md` | `draft` → `in-progress` → `review` → `done` | `/sdd:tasks` → `/sdd:implement` (hand-over, then implementer done) → `/sdd:review` (READY) |
+
+Two moves go backwards:
+
+- `/sdd:review` sets a task with unmet acceptance criteria back to `in-progress`.
+- A `/sdd:tasks` re-run sets a started task back to `draft` when the change touches its scope.
+
+Nothing else moves a status backwards.
