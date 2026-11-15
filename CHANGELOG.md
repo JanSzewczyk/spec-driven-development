@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `/sdd:doctor check` lists every check in the report table (✅ with its summary, ⚠️/❌ with the finding count), followed by a Findings section per failing check with `init` / manual tags and numbered next steps.
+
 ## [0.8.0 sdd-board] — 2026-11-15
 
 `sdd-board` goes to 0.8.0.
