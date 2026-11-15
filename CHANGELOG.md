@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0 sdd-board] — 2026-11-15
+
+`sdd-board` goes to 0.7.0.
+
+### Changed
+
+- **`sdd-board` command renamed**: `/sdd-board` is now `/sdd-dashboard`. The old name no longer exists.
+
+### Fixed
+
+- **`sdd-board` no longer shows "SDD is not set up in this project" while an `/sdd:*` skill runs.** A failed read during a scan replaced the panel state with an empty one. A failed scan now keeps the last good data, and `tool.call` hooks scan only for the main conversation (a subagent's cwd can differ).
+
 ## [0.6.1 sdd-board] — 2026-11-14
 
 `sdd-board` goes to 0.6.1.
