@@ -35,7 +35,7 @@ idempotent.
 Tests: `cd plugins/sdd && claude plugin test` (the doctor check rules) and `cd plugins/sdd-board && claude plugin test`. Shared code is edited in `shared/sdd-core/`; run `scripts/sync-core.sh` afterwards (CI runs it with `--check`).
 
 `sdd-board` has tests (`cd plugins/sdd-board && claude plugin test`). Try the panel locally with
-`claude --plugin-dir plugins/sdd-board` in a project that has `specs/`, then `/sdd-board`.
+`claude --plugin-dir plugins/sdd-board` in a project that has `specs/`, then `/sdd-dashboard`.
 
 ## Architecture
 

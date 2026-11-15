@@ -20,7 +20,7 @@ Needs Claude Code 2.1.287 or later (tested with 2.1.309) and the `sdd` plugin, w
 
 ```text
 /plugin install sdd-board@spec-driven-development
-/sdd-board        # open or focus the panel
+/sdd-dashboard    # open or focus the panel
 ```
 
 The panel also opens by itself when the project has a `specs/` folder (at least 144 columns wide, unless you opened it once). Try it from a checkout without installing: `claude --plugin-dir plugins/sdd-board`.
