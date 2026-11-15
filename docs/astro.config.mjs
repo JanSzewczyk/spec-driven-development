@@ -92,7 +92,10 @@ export default defineConfig({
           translations: { pl: "Agenci" }, items: ["agents/overview"] },
         { label: "Configuration",
           translations: { pl: "Konfiguracja" }, items: ["configuration/capabilities"] },
-        { label: "sdd-board", items: ["board/overview"] },
+        {
+          label: "sdd-board",
+          items: ["board/overview", ...makeChangelogsSidebarLinks([{ type: "all", base: "board/changelog", label: "Changelog" }])],
+        },
         {
           label: "Guides",
           translations: { pl: "Poradniki" },
@@ -113,9 +116,9 @@ export default defineConfig({
             "reference/file-structure",
             "reference/design-decisions",
             "reference/contributing",
-            ...makeChangelogsSidebarLinks([{ type: "all", base: "changelog", label: "Changelog" }]),
           ],
         },
+        ...makeChangelogsSidebarLinks([{ type: "all", base: "changelog", label: "Changelog" }]),
       ],
     }),
   ],
