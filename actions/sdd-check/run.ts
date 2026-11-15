@@ -52,7 +52,7 @@ function fileOf(check: CheckResult, f: Finding): string | undefined {
 }
 
 const ICON = { pass: '✅', warn: '⚠️', fail: '❌' } as const
-const cell = (t: string) => t.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+const cell = (t: string) => t.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ')
 
 // Short report: verdict, what is missing, what failed, what to run. Markdown for the job summary.
 export function summary(r: Report): string {
