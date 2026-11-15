@@ -5,38 +5,43 @@ sidebar:
   label: Overview
 ---
 
-import { LinkCard, CardGrid, Aside, Badge } from '@astrojs/starlight/components';
 import Pipeline from '../../../components/Pipeline.astro';
 
 None of the commands is started by Claude on its own; you run them.
 
 <Pipeline />
 
-## Setup <Badge text="once per project" variant="note" />
+## Setup
 
-<CardGrid>
-  <LinkCard title="/sdd:doctor" description="Audit readiness (check) and bootstrap or repair artifacts (init)." href="/spec-driven-development/commands/doctor/" />
-  <LinkCard title="/sdd:constitution" description="Edit the long-form source of truth." href="/spec-driven-development/commands/constitution/" />
-  <LinkCard title="/sdd:capabilities" description="Pick implementer, git actions and review checks." href="/spec-driven-development/commands/capabilities/" />
-</CardGrid>
+Once per project.
 
-## The flow <Badge text="per feature" variant="tip" />
+| Command | Purpose |
+|---|---|
+| [`/sdd:doctor`](/spec-driven-development/commands/doctor/) | Audit readiness (`check`) and bootstrap or repair artifacts (`init`). |
+| [`/sdd:constitution`](/spec-driven-development/commands/constitution/) | Edit the long-form source of truth. |
+| [`/sdd:capabilities`](/spec-driven-development/commands/capabilities/) | Pick implementer, git actions and review checks. |
 
-<CardGrid>
-  <LinkCard title="/sdd:spec" description="Create the branch and the business spec." href="/spec-driven-development/commands/spec/" />
-  <LinkCard title="/sdd:clarify" description="Close gaps with up to 5 questions." href="/spec-driven-development/commands/clarify/" />
-  <LinkCard title="/sdd:plan" description="Decisions and scope, in Plan Mode." href="/spec-driven-development/commands/plan/" />
-  <LinkCard title="/sdd:tasks" description="Split the plan into self-contained tasks." href="/spec-driven-development/commands/tasks/" />
-  <LinkCard title="/sdd:implement" description="Hand tasks to your implementation flow." href="/spec-driven-development/commands/implement/" />
-  <LinkCard title="/sdd:review" description="Verify, verdict, commit and PR." href="/spec-driven-development/commands/review/" />
-</CardGrid>
+## The flow
 
-## Anytime <Badge text="optional" />
+Per feature, in order.
 
-<CardGrid>
-  <LinkCard title="/sdd:retro" description="Turn review lessons into constitution rules." href="/spec-driven-development/commands/retro/" />
-  <LinkCard title="/sdd:analyze" description="Read-only drift check." href="/spec-driven-development/commands/analyze/" />
-</CardGrid>
+| Command | Purpose |
+|---|---|
+| [`/sdd:spec`](/spec-driven-development/commands/spec/) | Create the branch and the business spec. |
+| [`/sdd:clarify`](/spec-driven-development/commands/clarify/) | Close gaps with up to 5 questions. |
+| [`/sdd:plan`](/spec-driven-development/commands/plan/) | Decisions and scope, in Plan Mode. |
+| [`/sdd:tasks`](/spec-driven-development/commands/tasks/) | Split the plan into self-contained tasks. |
+| [`/sdd:implement`](/spec-driven-development/commands/implement/) | Hand tasks to your implementation flow. |
+| [`/sdd:review`](/spec-driven-development/commands/review/) | Verify, verdict, commit and PR. |
+
+## Anytime
+
+Optional.
+
+| Command | Purpose |
+|---|---|
+| [`/sdd:retro`](/spec-driven-development/commands/retro/) | Turn review lessons into constitution rules. |
+| [`/sdd:analyze`](/spec-driven-development/commands/analyze/) | Read-only drift check. |
 
 ## Summary
 

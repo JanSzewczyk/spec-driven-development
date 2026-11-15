@@ -48,7 +48,7 @@ Failing tests, unmet acceptance criteria, non-goal violations and failed checks 
 review:
   tests: run          # run | skip
   publish: ask        # ask | off
-  default: auto       # audit flow: auto (skills by stack) | skill:<name> | agent:<name>
+  default: auto       # auto | skill:<name> | agent:<name>
   projects:
     api: agent:python-reviewer
   checks: [agent:qa]  # on every review, e.g. QA that starts the app

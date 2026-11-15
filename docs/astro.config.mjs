@@ -7,7 +7,27 @@ export default defineConfig({
   site: "https://janszewczyk.github.io",
   base: "/spec-driven-development",
   integrations: [
-    mermaid({ autoTheme: true }),
+    mermaid({
+      theme: "base",
+      autoTheme: false,
+      mermaidConfig: {
+        themeVariables: {
+          fontFamily: "Inter Variable, system-ui, sans-serif",
+          primaryColor: "#f3f1e8",
+          primaryTextColor: "#141413",
+          primaryBorderColor: "#b0aea5",
+          secondaryColor: "#f6dfd3",
+          tertiaryColor: "#ebe9df",
+          lineColor: "#8f8d84",
+          textColor: "#8f8d84",
+          noteBkgColor: "#f6dfd3",
+          noteTextColor: "#141413",
+          edgeLabelBackground: "#f3f1e8",
+          stateBkg: "#f3f1e8",
+          labelBackground: "#f3f1e8",
+        },
+      },
+    }),
     starlight({
       title: "SDD",
       description: "Spec-Driven Development framework for Claude Code: the spec is the source of truth, code is its consequence.",

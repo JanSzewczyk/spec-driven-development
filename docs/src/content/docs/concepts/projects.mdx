@@ -3,21 +3,15 @@ title: Projects and monorepos
 description: SDD reasons about projects, not one stack.
 ---
 
-import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
 
 SDD works on **projects**: units with their own stack and commands. `/sdd:doctor init` finds them (an Nx or Turborepo workspace, pnpm/yarn/uv/Cargo/Go workspaces, Gradle includes, stray manifests like `apps/api/pyproject.toml`) and asks which sibling repositories belong to the product.
 
-<CardGrid>
-  <Card title="Single app" icon="laptop">
-    One project, `root`. The simplest setup.
-  </Card>
-  <Card title="Monorepo" icon="seti:folder">
-    One project per app or package, each with its own commands and implementer.
-  </Card>
-  <Card title="Several repositories" icon="random">
-    `specs/` in one spec repo; siblings are projects with `repo: true`.
-  </Card>
-</CardGrid>
+| Layout | Projects |
+|---|---|
+| Single app | One project, `root`. The simplest setup. |
+| Monorepo | One project per app or package, each with its own commands and implementer. |
+| Several repositories | `specs/` in one spec repo; siblings are projects with `repo: true`. |
 
 ## What a project gives you
 

@@ -3,21 +3,15 @@ title: Agents
 description: "The three sub-agents: two verify, one surveys."
 ---
 
-import { Card, CardGrid, Badge, Aside } from '@astrojs/starlight/components';
+import { Badge, Aside } from '@astrojs/starlight/components';
 
 Commands invoke agents through the Agent tool; you never call them directly. Implementation is whatever flow you configure.
 
-<CardGrid>
-  <Card title="spec-verifier" icon="magnifier">
-    <Badge text="Sonnet" variant="note" /> Reads the diff against the docs. Never writes code or judges quality.
-  </Card>
-  <Card title="reviewer" icon="approve-check">
-    <Badge text="Opus" variant="danger" /> Final audit. Decides READY or NOT READY.
-  </Card>
-  <Card title="codebase-surveyor" icon="seti:folder">
-    <Badge text="Haiku" variant="success" /> Maps the code before the plan. At most 30 lines.
-  </Card>
-</CardGrid>
+| Agent | Model | Role |
+|---|---|---|
+| [`spec-verifier`](#spec-verifier) | <Badge text="Sonnet" variant="note" /> | Reads the diff against the docs. Never writes code or judges quality. |
+| [`reviewer`](#reviewer) | <Badge text="Opus" variant="danger" /> | Final audit. Decides READY or NOT READY. |
+| [`codebase-surveyor`](#codebase-surveyor) | <Badge text="Haiku" variant="success" /> | Maps the code before the plan. At most 30 lines. |
 
 ## spec-verifier
 

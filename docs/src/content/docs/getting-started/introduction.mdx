@@ -3,7 +3,7 @@ title: Introduction
 description: What SDD is, the problem it solves and what you get.
 ---
 
-import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
 
 Vibe coding (loose prompt, AI guesses, iterate by trial and error) works for demos and breaks in production: every fix breaks something else, security gaps multiply, the codebase turns unmaintainable.
 
@@ -21,14 +21,10 @@ Vibe coding (loose prompt, AI guesses, iterate by trial and error) works for dem
 
 ## What the framework does and does not do
 
-<CardGrid>
-  <Card title="Manages" icon="approve-check">
-    Research, spec, plan, self-contained tasks, the hand-off, and the final audit.
-  </Card>
-  <Card title="Leaves to you" icon="puzzle">
-    The implementation itself. Point `/sdd:implement` at the skill, agent or command you already use.
-  </Card>
-</CardGrid>
+| | |
+|---|---|
+| **Manages** | Research, spec, plan, self-contained tasks, the hand-off, and the final audit. |
+| **Leaves to you** | The implementation itself. Point `/sdd:implement` at the skill, agent or command you already use. |
 
 ## What is in the box
 
