@@ -232,7 +232,7 @@ const PANE = {
   props: { title: 'SDD', isFocused: true, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
 } as const
 
-function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts: { branch?: string; files?: Record<string, string> } = {}) {
+function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts: { branch?: string; files?: Record<string, string>; failing?: () => boolean } = {}) {
   const all = { ...files, ...(opts.files ?? {}) }
   const has = () => (typeof withSpecs === 'function' ? withSpecs() : withSpecs)
   const clock = mock.clock(on)
@@ -247,7 +247,10 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
   const opened: string[] = []
   on('ui.open', (_: any, e: any) => { opened.push(e.id); return { value: { isPlaced: true } } })
   const rel = (p: string) => p.replace(/^.*?\/specs/, 'specs')
-  on('fs.exists', (_: any, e: any) => ({ value: has() && (rel(e.path) === 'specs' || rel(e.path) in all) }))
+  on('fs.exists', (_: any, e: any) => {
+    if (opts.failing?.()) throw new Error('read refused while a skill runs')
+    return { value: has() && (rel(e.path) === 'specs' || rel(e.path) in all) }
+  })
   on('fs.list', () => ({ value: [{ name: 'user-login', kind: 'directory', size: 0, isLink: false }] }))
   on('fs.read', (_: any, e: any) => ({ value: all[rel(e.path)] ?? '' }))
   on('fs.stat', () => ({ value: { mtimeMs: 1000 } }))
@@ -323,6 +326,19 @@ test('the tabs appear once specs/ shows up', async ($, on) => {
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ key: 'tab-current' })).toBeDefined()
   expect(await ui.find({ key: 'tab-all' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a failed scan keeps the last good panel instead of the setup card', async ($, on) => {
+  let failing = false
+  const filled = stubProject($, on, true, { failing: () => failing })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  failing = true
+  await filled.clock.advance(4000)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'SDD is not set up in this project' })).toBeUndefined()
+  expect(await ui.find({ key: 'tab-current' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'User Login' })).toBeDefined()
   await ui.unmount()
 })
 
