@@ -188,7 +188,7 @@ If you want a customized copy (e.g. with org-specific defaults in `capabilities.
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugins/sdd/.claude-plugin/plugin.json`.
 2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.yml.template` to pre-set the implementation flow for your org.
 3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
-4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`sdd--v<version>`) and creates a GitHub Release.
+4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`sdd--v<version>`) and creates a GitHub Release (`sdd-board` gets neither).
 5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install with `/plugin install sdd@spec-driven-development`.
 
 ---
@@ -780,13 +780,13 @@ spec-driven-development/                    # or your own forked plugin path
 │   └── marketplace.json                   # marketplace: sdd + sdd-board
 ├── .github/workflows/
 │   ├── plugin-checks.yml                  # CI: manifest/docs drift, version bumps, load/install, skill audit, plugin tests, sdd-check action
-│   └── release.yml                        # on merge to main: tags new plugin versions and creates GitHub Releases (scripts/release.sh)
+│   └── release.yml                        # on merge to main: tags a new sdd version and creates GitHub Releases (scripts/release.sh)
 ├── actions/sdd-check/                     # GitHub Action: runs the doctor rules in another repository (action.yml, run.ts)
 ├── tests/fixtures/                        # sdd-ok / sdd-broken projects the action's CI job runs on
 ├── README.md / CLAUDE.md / CONTRIBUTING.md / CHANGELOG.md / LICENSE
 ├── shared/sdd-core/                       # TypeScript used by both plugins and the action: parse.ts, formats.ts, check.ts, gather.ts
 ├── scripts/sync-core.sh                   # copies shared/sdd-core into each plugin (a mod imports only its own files)
-├── scripts/release.sh                     # tags untagged plugin versions, creates missing Releases (--dry-run, --notes)
+├── scripts/release.sh                     # tags an untagged sdd version, creates missing sdd Releases (--dry-run, --notes)
 └── plugins/
     ├── sdd-board/                         # Desktop side panel (mod), requires sdd
     │   ├── .claude-plugin/plugin.json
@@ -930,7 +930,7 @@ In short:
 3. Run `claude plugin test` in both plugins, then exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and bump the version of the changed plugin (`plugin.json`, `marketplace.json`, for `sdd` the README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request — the [Plugin Checks](.github/workflows/plugin-checks.yml) workflow fails it on manifest or docs drift, a changed plugin without a version bump, a plugin that does not load or install, a failed skill audit, a drifted `hooks/core/` copy or a failing plugin test
-6. After merge, the [Release](.github/workflows/release.yml) workflow tags the new version (`<plugin>--v<version>`) and creates a GitHub Release from its `CHANGELOG.md` section — do not tag by hand
+6. After merge, the [Release](.github/workflows/release.yml) workflow tags a new `sdd` version (`sdd--v<version>`) and creates a GitHub Release from its `CHANGELOG.md` section; `sdd-board` is not tagged or released — do not tag by hand
 
 ---
 
