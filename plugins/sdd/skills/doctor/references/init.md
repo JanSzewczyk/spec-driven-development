@@ -26,7 +26,7 @@ stack and commands.
   this product (`AskUserQuestion`, multi-select; skip when none). Each chosen repo becomes a
   project (path relative, `../mobile-app`); this repo stays the spec repo — `specs/` lives only
   here. Tell the user the assumption: everyone checks the sibling repos out next to this one
-  under the same names (paths are committed in `capabilities.md` and §2).
+  under the same names (paths are committed in `capabilities.yml` and §2).
 
 Per project record: **name** (workspace project name, else directory), **kind** (web, backend,
 mobile, desktop, library, e2e, infra …; ask only when unclear), **path**, **stack** (language,
@@ -49,32 +49,43 @@ linter). Confirm it is runnable (on `$PATH`, via the package manager, or a repo-
   run pytest`); remove the example rows; empty cell when nothing found. Present → leave untouched.
 - `specs/template.md` absent → `cp` [specs/template.md](../templates/specs/template.md) verbatim. Present → skip.
 - Legacy renames, only when the new path is absent: `specs/_constitution.md` →
-  `specs/constitution.md`, `specs/_template.md` → `specs/template.md`, `.claude/capabilities.md` →
-  `specs/capabilities.md`.
+  `specs/constitution.md`, `specs/_template.md` → `specs/template.md`. `.claude/capabilities.md` is
+  migrated like `specs/capabilities.md` (step 3).
 
-## 3. `specs/capabilities.md`
-Sections are `<!-- auto-generated -->` (regenerate every run) or `<!-- user-override -->` (keep
-byte-for-byte). **Keep these exact headings — other commands match them.**
+## 3. `specs/capabilities.yml`
+`projects` is regenerated every run; every other key is the user's and stays as written, comments
+included. Keys and values: [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md).
+`<version>` below is `version` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`.
 
-- `## Projects` — auto-generated: `- **<name>** — <kind> · <path> · <stack>`, `(repo)` after a
-  sibling repo's path.
-- `## Implementation`, `## Actions`, `## Review`, `## Generated / out-of-band paths` —
-  user-override. New file → `cp` [capabilities.md.template](../templates/capabilities.md.template), then Edit `## Projects`. Existing file → keep them;
-  add each one that is missing from the template, in the template's order.
-- **Format marker.** `<!-- sdd-format: N -->` sits right below the title block. New file: the
-  template has it. Existing file: add or raise it to the template's number only **after** the
-  migrations of this run are done (steps 3 and 5); never lower it.
-- **New keys.** An existing `## Implementation` that lacks `commit`, `isolation`, `merge` or
-  `parallel` gets the template's lines appended (`commit: task`, `isolation: none`, `merge: pr`,
-  `parallel: 3`: today's behaviour plus per-task commits); values the user already set stay. Do not
-  add `ci:` here (step 6).
-- Legacy files: drop the old auto-generated `Specialist agents` and `Skills` sections and rename
-  `Stack profile` → `Projects`. Leave `Task type → routing rules` and `Custom routing rules` as they
-  are (user content, no longer read) and tell the user they can delete them.
+- **New file** → `cp` [capabilities.yml.template](../templates/capabilities.yml.template), replace
+  `{{sdd_version}}` with `<version>`, then write `projects`.
+- **`projects`** → one entry per project from step 1: `name`, `kind`, `path` (`.` for the root),
+  `stack`, and `repo: true` for a sibling repository. Replace only this key's block.
+- **Existing file** → keep it; add a missing top-level key from the template, in the template's
+  order. Raise `format` to the template's number only after this run's migrations (steps 3 and 5);
+  never lower it. Point the `$schema` comment at `sdd--v<version>`.
+- **Migration from `specs/capabilities.md`** (format 2, only when the `.yml` is absent): start from
+  the template and move every value the user set:
 
-Idempotency: a second run with no other change writes an identical file. Match each `## ` heading
-as a single line; a section ends exactly where the next `## ` begins; one blank line between
-sections.
+  | Format 2 | Format 3 |
+  |---|---|
+  | `## Projects` (or `Stack profile`) line `- **<name>** — <kind> · <path> · <stack>`, `(repo)` | `projects` entry, `repo: true` |
+  | `## Implementation` `default:` / `<project>:` | `implementation.default` / `implementation.projects.<project>` |
+  | `isolation: worktree` with `merge:`, `parallel:` | `implementation.isolation.worktree.merge` / `.parallel` |
+  | `isolation: none`, or unset | `implementation.isolation: none`; a stray `merge:` / `parallel:` is dropped |
+  | `commit: task` / `commit: off` | dropped; for `off` tell the user tasks are now committed one by one |
+  | `## Actions` `<key>:` (empty → `null`) | `actions.<key>` |
+  | `## Review` `tests` / `publish` / `default` / `ci`; `<project>:`; `checks: a, b` | `review.*`; `review.projects.<project>`; `review.checks: [a, b]` |
+  | `## Generated / out-of-band paths` list | `generated`, each glob in double quotes |
+  | `Specialist agents`, `Skills`, routing tables, `ui:` | dropped; name them in the report |
+
+  Show the new file, then delete `specs/capabilities.md` (and `.claude/capabilities.md` if present).
+- **Format-3 file with misplaced keys** → move `implementation.merge` / `.parallel` under
+  `isolation.worktree` when `isolation` is `worktree:`, else drop them; drop `implementation.commit`
+  (same note for `off`).
+- Do not set `review.ci` here (step 6).
+
+Idempotency: a second run with no other change writes an identical file. Two-space indentation.
 
 ## 4. Sibling repositories only
 Only when projects live in sibling repositories (without this Claude cannot edit files there);
@@ -95,16 +106,17 @@ line. Leave everything else in the file as it is. Mention in the report that old
 `Task:` trailers.
 
 ## 6. CI workflow
-Ask with `AskUserQuestion`, unless `## Review` already has `ci: on` or `ci: off`, whether to add the
+Ask with `AskUserQuestion`, unless `review.ci` is already `on` or `off`, whether to add the
 `sdd-check` GitHub workflow: it runs the same rules as `check` on every pull request, on pushes to the
 default branch and weekly, and prints a short report of what is missing and what to repair with
 `/sdd:doctor init`. Options: "PR, push and weekly (Recommended)", "Pull requests only", "No".
 
 - Yes → `mkdir -p .github/workflows`, `cp` [sdd-check.yml.template](../templates/sdd-check.yml.template)
-  to `.github/workflows/sdd-check.yml` (for "Pull requests only" delete the `push:` and `schedule:`
-  blocks), set `ci: on` in `## Review`. The file exists with an older `# sdd-workflow: <n>` → replace it
-  with the template, keeping the user's trigger choice, and show the diff first.
-- No → set `ci: off` in `## Review`; write no workflow.
+  to `.github/workflows/sdd-check.yml`, replace `{{sdd_version}}` with `<version>` (for "Pull requests
+  only" delete the `push:` and `schedule:` blocks), set `review.ci: on`. The file exists with an older
+  `# sdd-workflow: <n>` or another `sdd--v` pin → replace it with the template, keeping the user's
+  trigger choice, and show the diff first.
+- No → set `review.ci: off`; write no workflow.
 
 The workflow is the only file `init` writes outside `specs/` and `.claude/`.
 

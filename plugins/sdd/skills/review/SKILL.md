@@ -24,9 +24,9 @@ per sibling repository on the feature branch. Every step and every agent uses th
 
 - Branch ≠ default branch. The feature is the `specs/*/spec.md` whose `**Branch:**` equals the
   current branch (`specs/<current>/`); every task in its `tasks.md` is `review` or `done`.
-- Read from `specs/capabilities.md` the sections `## Projects`, `## Review` and `## Actions`
-  (values and defaults: [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md); an unknown
-  key such as the old `ui:` is ignored).
+- Read `projects`, `review` and `actions` from `specs/capabilities.yml` (keys and defaults:
+  [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md); an unknown key such as the old
+  `ui:` is ignored).
 
 ### 2. Verify — in parallel
 
@@ -37,9 +37,9 @@ Start everything that does not depend on another result **in one message** and w
   project — counts, coverage, failing test names. `tests: skip` → "skipped".
 - **`spec-verifier`** (Agent tool): the feature folder, the diff definition, the generated globs.
   Returns the JSON with AC status, non-goal violations, out-of-scope, drift and per-task status.
-- **Extra checks and audit agents** from `## Review` that are `agent:<name>` — `checks:` entries
+- **Extra checks and audit agents** from `review` that are `agent:<name>` — `review.checks` entries
   (e.g. a QA agent that runs the app and tests the functionality against the acceptance criteria)
-  and `agent:` audit lines for the touched projects. Brief each with the spec's AC, the touched
+  and `agent:` audit values (`review.default`, `review.projects`) for the touched projects. Brief each with the spec's AC, the touched
   projects, how to start the app (`dev` in constitution §2) and the diff definition. A check returns
   `PASS | FAIL | SKIPPED` with findings. `skill:` entries are not run here: pass them to the reviewer.
 
@@ -47,7 +47,7 @@ Start everything that does not depend on another result **in one message** and w
 
 Invoke `reviewer` (Agent tool) once with: the feature folder and `review.md` path, the diff definition
 and changed files per project (kind, stack), every result from step 2, and the skill audits to run
-(`skill:` lines from `## Review`, or `auto`), and the `## Accepted` list of the previous `review.md`
+(`skill:` values from `review`, or `auto`), and the `## Accepted` list of the previous `review.md`
 if there is one. It checks the constitution's rules, runs the skill audits, writes `review.md` and
 returns `{verdict, blockers, warnings}`; each blocker says whether the user may accept it.
 
@@ -76,7 +76,7 @@ commit carries it; see [status-lifecycle.md](${CLAUDE_PLUGIN_ROOT}/references/st
   ("Commit and open PR" (Recommended), "Commit only", "Stop here"). Never stage anything else —
   never `git add -A` (it sweeps in untracked files such as `.env*`).
 
-Commit what is left with the `commit` action and open the PR with the `pr` action from `## Actions`
+Commit what is left with `actions.commit` and open the PR with `actions.pr`
 (`skill:` / `agent:` / `command:`). Unset → do it yourself: `git add -- <confirmed files>`, a
 Conventional Commits message (`<type>(<slug>): <Summary of spec.md>`, trailer `Epic: <EPIC>`; nothing
 left → no commit), `gh pr create` with a body

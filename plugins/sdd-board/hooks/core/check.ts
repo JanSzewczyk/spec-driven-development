@@ -2,39 +2,44 @@
 // the same code runs in the doctor tool and in tests. No mods API in here.
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from './parse.ts'
 import type { Task } from './parse.ts'
+import { generatedPaths, headings, isMap, isolationOf, loadCapabilities, overrides, reviewChecks, section, sectionLines, stripComments, text } from './capabilities.ts'
+import type { Capabilities, Project, YamlMap } from './capabilities.ts'
 import {
   ACTION_KEYS,
-  AUTO_MARKER,
-  CAPABILITIES_LEGACY_PROJECTS,
-  CAPABILITIES_SECTIONS,
+  CAPABILITIES_KEYS,
+  CAPABILITIES_PATH,
   COMMAND_COLUMNS,
   COMMAND_COLUMN_ALIASES,
   CONSTITUTION_SECTIONS,
   EPIC_ID,
   FLOW_VALUE,
-  IMPLEMENTATION_DEFAULTS,
+  IMPLEMENTATION_DEFAULT,
   IMPLEMENTATION_KEYS,
-  OVERRIDE_MARKER,
+  LEGACY_CAPABILITIES_PATH,
   PLAN_STATUSES,
+  PROJECT_KEYS,
+  REVIEW_DEFAULTS,
   REVIEW_KEYS,
   SPEC_STATUSES,
   SPEC_TEMPLATE_PLACEHOLDERS,
   SPEC_TEMPLATE_SECTIONS,
   SDD_FORMAT,
-  SDD_FORMAT_MARKER,
   TASK_STATUSES,
   WORKFLOW_MARKER,
   WORKFLOW_PATH,
   WORKFLOW_VERSION,
+  WORKTREE_DEFAULTS,
+  WORKTREE_KEYS,
   taskBranch,
 } from './formats.ts'
 import type { Level } from './formats.ts'
+export type { Capabilities, Project } from './capabilities.ts'
+export { keyValues, loadCapabilities, parseCapabilities, parseLegacyCapabilities } from './capabilities.ts'
 
 // fix: 'init' — `/sdd:doctor init` repairs it by itself; absent — the user has to change something.
 export type Finding = { level: 'warn' | 'fail'; text: string; fix?: 'init' | 'manual' }
 export type CheckResult = { id: number; name: string; status: Level; summary: string; findings: Finding[] }
 export type Verdict = 'READY' | 'PARTIAL' | 'NOT_READY'
-export type Project = { name: string; kind: string; path: string; stack: string; repo: boolean }
 export type CommandRow = { project: string; path: string; commands: Record<string, string> }
 export type FeatureFiles = { slug: string; spec: string | null; plan: string | null; tasks: string | null; review: string | null }
 // session: the doctor in a Claude Code session; ci: the sdd-check GitHub Action (no gh, tools, sibling repos or installed skills to probe).
@@ -50,7 +55,8 @@ export type Snapshot = {
   workflow: string | null // .github/workflows/sdd-check.yml, null when absent
   constitution: string | null
   template: string | null
-  capabilities: string | null
+  capabilities: string | null // specs/capabilities.yml
+  legacyCapabilities: string | null // specs/capabilities.md (format 2), read only when the YAML file is absent
   legacy: string[] // legacy files found: specs/_constitution.md, specs/_template.md, .claude/capabilities.md
   features: FeatureFiles[]
   settings: string | null // .claude/settings.json, null when absent
@@ -61,32 +67,6 @@ export type Snapshot = {
 }
 export type Report = { status: Verdict; mode: Mode; passed: number; total: number; projects: Project[]; checks: CheckResult[] }
 export type ToolNeed = { key: string; exe: string; dir: string | null; project: string }
-
-// ---------- text helpers ----------
-
-function stripComments(text: string): string {
-  return text.replace(/<!--[\s\S]*?-->/g, '')
-}
-
-type Heading = { title: string; line: number }
-
-function headings(text: string, prefix = '## '): Heading[] {
-  const out: Heading[] = []
-  text.split('\n').forEach((l, i) => {
-    if (l.startsWith(prefix)) out.push({ title: l.slice(prefix.length).trim(), line: i })
-  })
-  return out
-}
-
-// Lines of the first `## ` section whose title satisfies `match`, comments included.
-function sectionLines(text: string, match: (title: string) => boolean): string[] | null {
-  const lines = text.split('\n')
-  const hs = headings(text)
-  const i = hs.findIndex((h) => match(h.title))
-  if (i < 0) return null
-  const end = i + 1 < hs.length ? hs[i + 1].line : lines.length
-  return lines.slice(hs[i].line + 1, end)
-}
 
 function isFilled(lines: string[]): boolean {
   return stripComments(lines.join('\n')).replace(/---/g, '').trim() !== ''
@@ -146,126 +126,86 @@ export function commandOf(command: string): { dir: string | null; exe: string } 
   return tokens.length > 0 ? { dir, exe: tokens[0] } : null
 }
 
-// ---------- capabilities ----------
-
-export type Capabilities = {
-  projects: Project[]
-  sections: Record<string, string[]> // title -> raw lines
-  legacyProjects: boolean
-}
-
-export function parseCapabilities(text: string): Capabilities {
-  const sections: Record<string, string[]> = {}
-  for (const h of headings(text)) {
-    const lines = sectionLines(text, (t) => t === h.title)
-    if (lines) sections[h.title] = lines
-  }
-  const raw = sections.Projects ?? sections[CAPABILITIES_LEGACY_PROJECTS]
-  const projects: Project[] = []
-  for (const line of stripComments((raw ?? []).join('\n')).split('\n')) {
-    const m = line.match(/^\s*-\s+\*\*(.+?)\*\*\s*[—–-]\s*(.+?)\s*$/)
-    if (!m) continue
-    const parts = m[2].split(/\s+·\s+/)
-    const pathRaw = parts[1] ?? ''
-    projects.push({
-      name: m[1].trim(),
-      kind: (parts[0] ?? '').trim(),
-      path: cell(pathRaw.replace(/\(repo\)/, '')),
-      stack: parts.slice(2).join(' · ').trim(),
-      repo: /\(repo\)/.test(pathRaw),
-    })
-  }
-  return { projects, sections, legacyProjects: sections.Projects === undefined && sections[CAPABILITIES_LEGACY_PROJECTS] !== undefined }
-}
-
-export function keyValues(lines: string[]): [string, string][] {
-  const out: [string, string][] = []
-  for (const l of stripComments(lines.join('\n')).split('\n')) {
-    const m = l.match(/^([A-Za-z0-9_.-]+):\s*(.*)$/)
-    if (m) out.push([m[1], m[2].replace(/\s{2,}#.*$/, '').trim()])
-  }
-  return out
-}
-
 // ---------- effective configuration ----------
 
 export type FlowRef = { kind: 'skill' | 'agent' | 'command'; name: string; where: string }
 export type ConfigEntry = { key: string; value: string; source: 'set' | 'default' }
 export type ConfigSection = { title: string; entries: ConfigEntry[] }
-export type Config = { projects: Project[]; commands: CommandRow[]; sections: ConfigSection[]; generated: number; configured: boolean }
+export type Config = { path: string; legacy: boolean; projects: Project[]; commands: CommandRow[]; sections: ConfigSection[]; generated: number; configured: boolean }
 
 const SESSION_GIT = 'the session (git + gh)'
 
-// Every `skill:` / `agent:` / `command:` value the user set in Implementation, Actions and Review.
+// Every `skill:` / `agent:` / `command:` value the user set in implementation, actions and review.
 export function flowRefs(caps: Capabilities): FlowRef[] {
   const out: FlowRef[] = []
   const add = (value: string, where: string) => {
     const m = value.trim().match(/^(skill|agent|command):(\S.*)$/)
     if (m) out.push({ kind: m[1] as FlowRef['kind'], name: m[2].trim(), where })
   }
-  for (const [k, v] of keyValues(caps.sections.Implementation ?? [])) add(v, 'Implementation ' + k)
-  for (const [k, v] of keyValues(caps.sections.Actions ?? [])) add(v, 'Actions ' + k)
-  for (const [k, v] of keyValues(caps.sections.Review ?? [])) {
-    if (k === 'checks') for (const item of v.split(',')) add(item, 'Review checks')
-    else add(v, 'Review ' + k)
-  }
+  add(text(section(caps, 'implementation').default), 'Implementation default')
+  for (const [k, v] of overrides(caps, 'implementation')) add(v, 'Implementation ' + k)
+  for (const [k, v] of Object.entries(section(caps, 'actions'))) add(text(v), 'Actions ' + k)
+  add(text(section(caps, 'review').default), 'Review default')
+  for (const [k, v] of overrides(caps, 'review')) add(v, 'Review ' + k)
+  for (const c of reviewChecks(caps)) add(c, 'Review checks')
   return out
 }
 
 // What `/sdd:implement`, `/sdd:review` and the git actions will really use: the user's value, or the default.
-export function effectiveConfig(capabilities: string, constitution: string | null): Config {
-  const caps = parseCapabilities(capabilities)
-  const get = (section: string) => new Map(keyValues(caps.sections[section] ?? []))
-  const entry = (key: string, value: string | undefined, fallback: string): ConfigEntry => {
-    const set = value !== undefined && value !== '' && value !== fallback
-    return { key, value: value !== undefined && value !== '' ? value : fallback, source: set ? 'set' : 'default' }
+export function effectiveConfig(caps: Capabilities, constitution: string | null): Config {
+  const entry = (key: string, value: string, fallback: string): ConfigEntry => {
+    const set = value !== '' && value !== fallback
+    return { key, value: value !== '' ? value : fallback, source: set ? 'set' : 'default' }
+  }
+  const perProject = (own: Map<string, string>, fallback: string, all: boolean): ConfigEntry[] =>
+    caps.projects
+      .filter((p) => all || own.has(p.name))
+      .map((p) => {
+        const v = own.get(p.name)
+        return v ? { key: p.name, value: v, source: v === fallback ? 'default' : 'set' } : { key: p.name, value: fallback, source: 'default' }
+      })
+
+  const impl = section(caps, 'implementation')
+  const implDefault = entry('default', text(impl.default), IMPLEMENTATION_DEFAULT)
+  const implementation: ConfigEntry[] = [implDefault, ...perProject(new Map(overrides(caps, 'implementation')), implDefault.value, true)]
+  const iso = isolationOf(caps)
+  implementation.push(entry('isolation', iso.mode === 'worktree' ? 'worktree' : '', 'none'))
+  if (iso.mode === 'worktree') {
+    for (const k of Object.keys(WORKTREE_KEYS)) implementation.push(entry(k, iso[k as 'merge' | 'parallel'], WORKTREE_DEFAULTS[k]))
   }
 
-  const impl = get('Implementation')
-  const implDefault = entry('default', impl.get('default'), 'in-session')
-  const implementation: ConfigEntry[] = [implDefault]
-  for (const p of caps.projects) {
-    const own = impl.get(p.name)
-    implementation.push(own ? { key: p.name, value: own, source: own === implDefault.value ? 'default' : 'set' } : { key: p.name, value: implDefault.value, source: 'default' })
-  }
+  const act = section(caps, 'actions')
+  const actions: ConfigEntry[] = ACTION_KEYS.map((k) => (text(act[k]) ? { key: k, value: text(act[k]), source: 'set' } : { key: k, value: SESSION_GIT, source: 'default' }))
 
-  for (const k of Object.keys(IMPLEMENTATION_KEYS)) implementation.push(entry(k, impl.get(k), IMPLEMENTATION_DEFAULTS[k]))
-
-  const act = get('Actions')
-  const actions = ACTION_KEYS.map((k) => ({ key: k, value: act.get(k) || SESSION_GIT, source: (act.get(k) ? 'set' : 'default') as 'set' | 'default' }))
-
-  const rev = get('Review')
-  const revDefault = entry('default', rev.get('default'), 'auto')
-  const review: ConfigEntry[] = [entry('tests', rev.get('tests'), 'run'), entry('publish', rev.get('publish'), 'ask'), revDefault]
-  for (const p of caps.projects) {
-    const own = rev.get(p.name)
-    if (own) review.push({ key: p.name, value: own, source: own === revDefault.value ? 'default' : 'set' })
-  }
-  review.push(entry('ci', rev.get('ci'), 'unset'))
-  const checks = (rev.get('checks') ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  const rev = section(caps, 'review')
+  const revDefault = entry('default', text(rev.default), REVIEW_DEFAULTS.default)
+  const review: ConfigEntry[] = [entry('tests', text(rev.tests), REVIEW_DEFAULTS.tests), entry('publish', text(rev.publish), REVIEW_DEFAULTS.publish), revDefault]
+  review.push(...perProject(new Map(overrides(caps, 'review')), revDefault.value, false))
+  review.push(entry('ci', text(rev.ci), 'unset'))
+  const checks = reviewChecks(caps)
   review.push({ key: 'checks', value: checks.length ? checks.join(', ') : 'none', source: checks.length ? 'set' : 'default' })
 
-  const generated = stripComments((caps.sections['Generated / out-of-band paths'] ?? []).join('\n')).split('\n').filter((l) => /^\s*-\s+\S/.test(l)).length
   const sections: ConfigSection[] = [
     { title: 'Implementation', entries: implementation },
     { title: 'Actions', entries: actions },
     { title: 'Review', entries: review },
   ]
   return {
+    path: caps.path,
+    legacy: caps.legacy,
     projects: caps.projects,
     commands: constitution ? (parseCommandTable(constitution) ?? []) : [],
     sections,
-    generated,
+    generated: generatedPaths(caps).length,
     configured: sections.some((sec) => sec.entries.some((e) => e.source === 'set' && e.key !== 'ci')), // ci is about CI, not about who does a step
   }
 }
 
 // ---------- what the doctor has to probe ----------
 
-export function needs(constitution: string | null, capabilities: string | null): { paths: string[]; tools: ToolNeed[] } {
+export function needs(constitution: string | null, caps: Capabilities | null): { paths: string[]; tools: ToolNeed[] } {
   const paths = new Set<string>()
   const tools = new Map<string, ToolNeed>()
-  const caps = capabilities ? parseCapabilities(capabilities) : null
   for (const p of caps?.projects ?? []) if (p.path && p.path !== '.') paths.add(p.path)
   const rows = constitution ? (parseCommandTable(constitution) ?? []) : []
   for (const r of rows) {
@@ -332,71 +272,105 @@ function checkTemplate(s: Snapshot): CheckResult {
   return finish(2, name, f, 'sections and placeholders present')
 }
 
+const FLOW = 'skill:<name> | agent:<name> | command:<shell> | in-session'
+const SKILL_OR_AGENT = /^(?:skill|agent):\S/
+
+// `isolation` is `none`, or a mapping whose only key is `worktree` (its options under it).
+function isolationProblems(v: unknown): string[] {
+  if (v === undefined || v === null || v === 'none') return []
+  const shape = '`implementation.isolation` is `none` or `worktree:` with `merge` / `parallel` under it'
+  if (v === 'worktree') return [shape + ': write `worktree:` as a key (`isolation: { worktree: {} }` keeps the defaults)']
+  if (!isMap(v)) return [`${shape}, not "${text(v as YamlMap[string])}"`]
+  const keys = Object.keys(v)
+  if (keys.length !== 1 || keys[0] !== 'worktree') return [`${shape}, not key(s) ${keys.map((k) => '`' + k + '`').join(', ')}`]
+  const wt = v.worktree
+  if (wt === null) return []
+  if (!isMap(wt)) return [shape]
+  const out: string[] = []
+  for (const [k, val] of Object.entries(wt)) {
+    if (!WORKTREE_KEYS[k]) out.push(`\`isolation.worktree\`: unknown key "${k}"`)
+    else if (!WORKTREE_KEYS[k].test(text(val))) out.push(`\`isolation.worktree.${k}\`: "${text(val)}" has an unknown value`)
+  }
+  return out
+}
+
 function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult {
-  const name = 'specs/capabilities.md'
-  if (s.capabilities === null || caps === null) {
+  if (caps === null) {
     const hint = s.legacy.includes('.claude/capabilities.md') ? ' (found legacy .claude/capabilities.md: `init` moves it)' : ''
-    return finish(3, name, [fail('missing' + hint + '. Run `/sdd:doctor init`', 'init')], '')
+    return finish(3, CAPABILITIES_PATH, [fail('missing' + hint + '. Run `/sdd:doctor init`', 'init')], '')
   }
+  const name = caps.path
   const f: Finding[] = []
-  if (caps.legacyProjects) f.push(warn('section "Stack profile" is the old name of "Projects": run `/sdd:doctor init`', 'init'))
-  for (const sec of CAPABILITIES_SECTIONS) {
-    const present = sec === 'Projects' ? caps.sections.Projects !== undefined || caps.legacyProjects : caps.sections[sec] !== undefined
-    if (!present) f.push(warn(`section "${sec}" missing: run \`/sdd:doctor init\``, 'init'))
+  for (const e of caps.errors) f.push(fail(`line ${e.line}: ${e.message}`))
+  if (caps.legacy) f.push(warn(`${LEGACY_CAPABILITIES_PATH} is the old Markdown format: \`/sdd:doctor init\` migrates it to ${CAPABILITIES_PATH}`, 'init'))
+  else if (caps.errors.length === 0 && caps.format < SDD_FORMAT) f.push(warn(`\`format\` is ${caps.format || 'not set'}, this version writes ${SDD_FORMAT}: run \`/sdd:doctor init\` to migrate`, 'init'))
+
+  const doc = caps.doc
+  for (const k of Object.keys(doc)) if (!CAPABILITIES_KEYS.includes(k)) f.push(warn(`unknown key "${k}"`))
+  for (const k of ['implementation', 'actions', 'review']) if (doc[k] !== undefined && doc[k] !== null && !isMap(doc[k])) f.push(warn(`\`${k}\` must be a mapping`))
+  if (doc.projects !== undefined && doc.projects !== null && !Array.isArray(doc.projects)) f.push(warn('`projects` must be a list'))
+  else if (Array.isArray(doc.projects)) {
+    doc.projects.forEach((p, i) => {
+      if (!isMap(p)) return f.push(warn(`projects[${i}] is not a mapping`))
+      if (!text(p.name)) f.push(warn(`projects[${i}] has no \`name\``))
+      for (const k of Object.keys(p)) if (!PROJECT_KEYS.includes(k)) f.push(warn(`projects[${i}]: unknown key "${k}"`))
+      if (p.repo !== undefined && typeof p.repo !== 'boolean') f.push(warn(`projects[${i}]: \`repo\` is true or false`))
+    })
   }
-  for (const legacy of ['Specialist agents', 'Skills', 'Task type → routing rules', 'Custom routing rules']) {
-    if (caps.sections[legacy] !== undefined) f.push(warn(`legacy section "${legacy}" is no longer read: delete it`, 'init'))
-  }
-  const projectsMarker = (caps.sections.Projects ?? []).join('\n')
-  if (caps.sections.Projects !== undefined && !projectsMarker.includes(AUTO_MARKER)) f.push(warn(`"Projects" lacks ${AUTO_MARKER}`, 'init'))
-  for (const sec of CAPABILITIES_SECTIONS.slice(1)) {
-    const body = (caps.sections[sec] ?? []).join('\n')
-    if (caps.sections[sec] !== undefined && !body.includes(OVERRIDE_MARKER)) f.push(warn(`"${sec}" lacks ${OVERRIDE_MARKER}`, 'init'))
-  }
-  const format = Number(s.capabilities.match(SDD_FORMAT_MARKER)?.[1] ?? 0)
-  if (format < SDD_FORMAT) f.push(warn(`capabilities.md is at format ${format || '(no marker)'}, this version writes ${SDD_FORMAT}: run \`/sdd:doctor init\` to migrate`, 'init'))
-  if (caps.projects.length === 0) f.push(warn('no project listed under "Projects"'))
+  if (caps.projects.length === 0) f.push(warn('no project listed under `projects`', 'init'))
   const names = new Set(caps.projects.map((p) => p.name))
 
-  const impl = keyValues(caps.sections.Implementation ?? [])
-  if (caps.sections.Implementation !== undefined && !impl.some(([k]) => k === 'default')) f.push(warn('Implementation: no `default:` line (falls back to in-session)'))
-  for (const [k, v] of impl) {
-    if (IMPLEMENTATION_KEYS[k]) {
-      if (!IMPLEMENTATION_KEYS[k].test(v)) f.push(warn(`Implementation: "${k}: ${v}" has an unknown value`))
-      continue
-    }
-    if (k !== 'default' && !names.has(k)) f.push(warn(`Implementation: "${k}" is not a listed project`))
-    if (!FLOW_VALUE.test(v)) f.push(warn(`Implementation: "${k}: ${v}" is not skill:<name> | agent:<name> | command:<shell> | in-session`))
+  const impl = section(caps, 'implementation')
+  for (const k of Object.keys(impl)) {
+    if (k === 'commit') f.push(warn('implementation: `commit` is no longer read (with `isolation: none` the session commits every task, with `worktree` each sub-session does): delete it', 'init'))
+    else if (k === 'merge' || k === 'parallel') f.push(warn(`implementation: \`${k}\` belongs under \`isolation.worktree\``, 'init'))
+    else if (!IMPLEMENTATION_KEYS.includes(k)) f.push(warn(`implementation: unknown key "${k}"`))
   }
-  for (const [k, v] of keyValues(caps.sections.Actions ?? [])) {
-    if (!ACTION_KEYS.includes(k)) f.push(warn(`Actions: unknown key "${k}"`))
-    else if (v !== '' && !/^(?:skill|agent|command):\S/.test(v)) f.push(warn(`Actions: "${k}: ${v}" is not skill:<name> | agent:<name> | command:<shell>`))
+  const implDefault = text(impl.default)
+  if (implDefault && !FLOW_VALUE.test(implDefault)) f.push(warn(`implementation.default: "${implDefault}" is not ${FLOW}`))
+  if (impl.projects !== undefined && impl.projects !== null && !isMap(impl.projects)) f.push(warn('`implementation.projects` must be a mapping of project: value'))
+  for (const [k, v] of overrides(caps, 'implementation')) {
+    if (!names.has(k)) f.push(warn(`implementation.projects: "${k}" is not a listed project`))
+    if (!FLOW_VALUE.test(v)) f.push(warn(`implementation.projects.${k}: "${v}" is not ${FLOW}`))
   }
-  for (const [k, v] of keyValues(caps.sections.Review ?? [])) {
-    if (k === 'checks') {
-      for (const item of v.split(',').map((x) => x.trim()).filter(Boolean)) {
-        if (!/^(?:skill|agent):\S/.test(item)) f.push(warn(`Review: check "${item}" is not skill:<name> | agent:<name>`))
-      }
-    } else if (REVIEW_KEYS[k]) {
-      if (!REVIEW_KEYS[k].test(v)) f.push(warn(`Review: "${k}: ${v}" has an unknown value`))
-    } else if (k === 'ui') {
-      f.push(warn('Review: `ui:` is no longer read (visual review is your own `checks:` entry): delete it'))
-    } else if (names.has(k)) {
-      if (!/^(?:skill|agent):\S/.test(v)) f.push(warn(`Review: "${k}: ${v}" is not skill:<name> | agent:<name>`))
-    } else {
-      f.push(warn(`Review: unknown key "${k}"`))
-    }
+  for (const p of isolationProblems(impl.isolation)) f.push(fail(p))
+
+  for (const [k, v] of Object.entries(section(caps, 'actions'))) {
+    if (!ACTION_KEYS.includes(k)) f.push(warn(`actions: unknown key "${k}"`))
+    else if (text(v) !== '' && !/^(?:skill|agent|command):\S/.test(text(v))) f.push(warn(`actions.${k}: "${text(v)}" is not skill:<name> | agent:<name> | command:<shell>`))
   }
 
-  const implValue = (key: string) => impl.find(([k]) => k === key)?.[1] || IMPLEMENTATION_DEFAULTS[key]
-  const prAction = keyValues(caps.sections.Actions ?? []).some(([k, v]) => k === 'pr' && v !== '')
-  if (implValue('isolation') === 'worktree' && implValue('merge') === 'pr' && !prAction && s.git.gh === false) {
-    f.push(warn('Implementation: merge: pr needs `gh` (or a `pr` action under Actions) to open a pull request per task'))
+  const rev = section(caps, 'review')
+  for (const [k, v] of Object.entries(rev)) {
+    if (k === 'checks') {
+      if (v !== null && !Array.isArray(v)) f.push(warn('`review.checks` must be a list, e.g. `[agent:qa]`'))
+      for (const item of reviewChecks(caps)) if (!SKILL_OR_AGENT.test(item)) f.push(warn(`review.checks: "${item}" is not skill:<name> | agent:<name>`))
+    } else if (k === 'projects') {
+      if (v !== null && !isMap(v)) f.push(warn('`review.projects` must be a mapping of project: value'))
+      for (const [p, val] of overrides(caps, 'review')) {
+        if (!names.has(p)) f.push(warn(`review.projects: "${p}" is not a listed project`))
+        if (!SKILL_OR_AGENT.test(val)) f.push(warn(`review.projects.${p}: "${val}" is not skill:<name> | agent:<name>`))
+      }
+    } else if (REVIEW_KEYS[k]) {
+      if (text(v) !== '' && !REVIEW_KEYS[k].test(text(v))) f.push(warn(`review.${k}: "${text(v)}" has an unknown value`))
+    } else if (k === 'ui') {
+      f.push(warn('review: `ui:` is no longer read (visual review is your own `checks:` entry): delete it'))
+    } else {
+      f.push(warn(`review: unknown key "${k}"`))
+    }
   }
-  const ci = (keyValues(caps.sections.Review ?? []).find(([k]) => k === 'ci') ?? [])[1]
-  if (ci === undefined || ci === '') f.push(warn('Review: `ci:` is not set (on | off): `/sdd:doctor init` asks whether to add the sdd-check GitHub workflow', 'init'))
+  const gen = doc.generated
+  if (gen !== undefined && gen !== null && (!Array.isArray(gen) || gen.some((g) => typeof g !== 'string'))) f.push(warn('`generated` must be a list of quoted globs'))
+
+  const iso = isolationOf(caps)
+  const prAction = text(section(caps, 'actions').pr) !== ''
+  if (iso.mode === 'worktree' && iso.merge === 'pr' && !prAction && s.git.gh === false) {
+    f.push(warn('implementation: `merge: pr` needs `gh` (or an `actions.pr`) to open a pull request per task'))
+  }
+  const ci = text(rev.ci)
+  if (ci === '') f.push(warn('`review.ci` is not set (on | off): `/sdd:doctor init` asks whether to add the sdd-check GitHub workflow', 'init'))
   else if (ci === 'on') {
-    if (s.workflow === null) f.push(warn(`Review: ci is on but ${WORKFLOW_PATH} is missing: run \`/sdd:doctor init\``, 'init'))
+    if (s.workflow === null) f.push(warn(`review.ci is on but ${WORKFLOW_PATH} is missing: run \`/sdd:doctor init\``, 'init'))
     else if (Number(s.workflow.match(WORKFLOW_MARKER)?.[1] ?? 0) < WORKFLOW_VERSION) f.push(warn(`${WORKFLOW_PATH} is older than the template (version ${WORKFLOW_VERSION}): run \`/sdd:doctor init\``, 'init'))
   }
 
@@ -406,17 +380,17 @@ function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult 
       f.push(warn(`${r.where}: ${r.kind}:${r.name} is not installed (looked in .claude, ~/.claude and installed plugins; built-in ones are not scanned). Install or enable it, or fix the name with \`/sdd:capabilities\``))
     }
   }
-  if (!effectiveConfig(s.capabilities, s.constitution).configured) {
-    f.push(warn('Implementation, Actions and Review are all at their defaults: run `/sdd:capabilities` to pick who implements, who runs git and how review verifies (ignore if the defaults are intended)'))
+  if (!effectiveConfig(caps, s.constitution).configured) {
+    f.push(warn('implementation, actions and review are all at their defaults: run `/sdd:capabilities` to pick who implements, who runs git and how review verifies (ignore if the defaults are intended)'))
   }
 
   const rows = s.constitution ? parseCommandTable(s.constitution) : null
   if (rows) {
     const inTable = new Set(rows.map((r) => r.project).filter(Boolean))
-    for (const n of names) if (!inTable.has(n)) f.push(warn(`project "${n}" is in capabilities.md but not in constitution section 2`))
-    for (const n of inTable) if (!names.has(n) && names.size > 0) f.push(warn(`project "${n}" is in constitution section 2 but not in capabilities.md`))
+    for (const n of names) if (!inTable.has(n)) f.push(warn(`project "${n}" is in ${name} but not in constitution section 2`))
+    for (const n of inTable) if (!names.has(n) && names.size > 0) f.push(warn(`project "${n}" is in constitution section 2 but not in ${name}`))
   }
-  return finish(3, name, f, `${caps.projects.length} project(s), sections and values valid`)
+  return finish(3, name, f, `${caps.projects.length} project(s), keys and values valid`)
 }
 
 function checkGit(s: Snapshot, caps: Capabilities | null): CheckResult {
@@ -426,9 +400,9 @@ function checkGit(s: Snapshot, caps: Capabilities | null): CheckResult {
   const f: Finding[] = []
   if (g.clean === false) f.push(warn('working tree is not clean'))
   // `gh` opens the PR only when no `pr` action is configured.
-  const prAction = keyValues(caps?.sections.Actions ?? []).some(([k, v]) => k === 'pr' && v !== '')
-  if (prAction) return finish(4, name, f, 'repository present (a `pr` action is set, gh not needed)')
-  if (g.gh === false) f.push(warn('`gh` not found on PATH (needed for the PR unless a `pr` action is set)'))
+  const prAction = caps !== null && text(section(caps, 'actions').pr) !== ''
+  if (prAction) return finish(4, name, f, 'repository present (`actions.pr` is set, gh not needed)')
+  if (g.gh === false) f.push(warn('`gh` not found on PATH (needed for the PR unless `actions.pr` is set)'))
   else if (g.ghAuth === false) f.push(warn('`gh auth status` failed: run `gh auth login`'))
   const skipped = g.gh === null || (g.gh && g.ghAuth === null)
   return finish(4, name, f, 'repository present' + (skipped ? ' (gh not probed)' : ''))
@@ -441,7 +415,7 @@ function checkTooling(s: Snapshot, caps: Capabilities | null): CheckResult {
   for (const p of caps.projects) {
     if (p.path && p.path !== '.' && s.paths[p.path] === false) f.push(warn(`${p.name}: path "${p.path}" does not exist`))
   }
-  const wanted = needs(s.constitution, s.capabilities).tools
+  const wanted = needs(s.constitution, caps).tools
   for (const t of wanted) if (s.tools[t.key] === false) f.push(warn(`${t.project}: \`${t.exe}\` not found`))
   return finish(5, name, f, `${wanted.length} command executable(s) resolved`)
 }
@@ -511,7 +485,7 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
   const projects = new Set((caps?.projects ?? []).map((p) => p.name))
   const branches = new Map<string, string>()
   const epics = new Map<string, string>()
-  const isolated = new Map(keyValues(caps?.sections.Implementation ?? [])).get('isolation') === 'worktree'
+  const isolated = caps !== null && isolationOf(caps).mode === 'worktree'
   for (const ft of s.features) {
     const at = `specs/${ft.slug}/`
     let ids: string[] = []
@@ -551,7 +525,7 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
         const block = blocks[i] ?? ''
         const where = `${at}tasks.md ${t.id}`
         if (!t.project) f.push(fail(`${where}: no \`project:\``))
-        else if (projects.size > 0 && !projects.has(t.project)) f.push(fail(`${where}: project "${t.project}" is not listed in capabilities.md`))
+        else if (projects.size > 0 && !projects.has(t.project)) f.push(fail(`${where}: project "${t.project}" is not listed in ${caps?.path ?? CAPABILITIES_PATH}`))
         if (!TASK_STATUSES.includes(t.status)) f.push(fail(`${where}: status "${t.status}" is not one of ${TASK_STATUSES.join(' | ')}`))
         if (t.acceptance.length === 0) f.push(fail(`${where}: no \`acceptance:\` ids`))
         for (const a of t.acceptance) if (ids.length > 0 && !ids.includes(a)) f.push(fail(`${where}: acceptance ${a} is not in spec.md`))
@@ -574,7 +548,7 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
 const notInCi = (id: number, name: string): CheckResult => finish(id, name, [], 'not checked in CI')
 
 export function runChecks(s: Snapshot): Report {
-  const caps = s.capabilities === null ? null : parseCapabilities(s.capabilities)
+  const caps = loadCapabilities(s.capabilities, s.legacyCapabilities)
   const ci = s.mode === 'ci'
   const checks = [
     checkConstitution(s),

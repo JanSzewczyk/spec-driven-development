@@ -20,7 +20,7 @@ Plan Mode the command writes `plan.md` directly and stops for you to read and ed
 ### 1. Load context
 
 - `specs/constitution.md` (stack, commands, conventions, WHAT NOT TO DO)
-- `specs/capabilities.md`, only the `## Projects` section
+- `specs/capabilities.yml`, only `projects`
 - the spec: `$ARGUMENTS`, else the `specs/*/spec.md` whose `**Branch:**` equals
   `git branch --show-current` (none → list the specs and ask); its folder is `specs/<current>/`
 
@@ -62,7 +62,7 @@ shape and who provides/consumes it>
 ## File-by-file change list
 ### <project> (<kind> · <path>)
 - `<path>` — <why> (reuses `<existing code>`) [**contract** when others consume it]
-<!-- Group by project from `## Projects` (one group, `root`, in a single-app repo). One line per
+<!-- Group by project from `projects` (one group, `root`, in a single-app repo). One line per
      file, tests included. /sdd:tasks turns this into tasks and orders contracts first. -->
 
 ## Risks & mitigations

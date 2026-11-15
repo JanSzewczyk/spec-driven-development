@@ -1,7 +1,7 @@
 name: SDD Check 🧭
 description: >
   Check that the Spec-Driven Development artifacts of a repository (specs/constitution.md,
-  capabilities.md, every spec, plan and tasks file) match the SDD version this action is pinned to:
+  capabilities.yml, every spec, plan and tasks file) match the SDD version this action is pinned to:
   the same rules as /sdd:doctor check. Fails the job on errors, annotates the files, and writes a
   short report to the job summary: what is missing, which checks failed and what
   /sdd:doctor init repairs. Runs the rules from the ref the action is pinned to, so the calling

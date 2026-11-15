@@ -10,7 +10,7 @@
 
 ## 1. Tech stack
 
-<!-- Several projects? Repeat the list per project (names from `Projects` in specs/capabilities.md). -->
+<!-- Several projects? Repeat the list per project (names from `projects` in specs/capabilities.yml). -->
 
 - **Runtime:**
 - **Framework:**
@@ -29,7 +29,7 @@
 
 ## 2. Run/build commands
 
-<!-- Single source for SDD commands and agents. One row per project in specs/capabilities.md
+<!-- Single source for SDD commands and agents. One row per project in specs/capabilities.yml
      (`root` for a single app). Each command runs from the spec repo's root, so include the `cd`
      (`cd apps/api && uv run pytest`). `test` runs the full suite, `coverage` the suite with a
      coverage report (/sdd:review prefers it), `dev` starts the app locally (extra review checks use it).

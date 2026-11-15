@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed (breaking)
+
+- **`specs/capabilities.md` → `specs/capabilities.yml`.** The configuration is YAML with a JSON Schema (`plugins/sdd/schemas/capabilities.schema.json`, linked from the file for editor validation). Per-project values move under `implementation.projects` / `review.projects`, sibling repositories are `repo: true`, `review.checks` is a list, the generated globs are `generated`. `format: 3` replaces `<!-- sdd-format: N -->`.
+- **`implementation.isolation`** is `none` or `worktree:` with `merge` and `parallel` under it; those two no longer exist outside `worktree`.
+- **`commit` is removed.** With `isolation: none` the session always commits each task (and `/sdd:tasks` the documentation); with `worktree` each sub-session commits on its branch.
+- The `sdd-check` workflow template pins the action to the installed release (`@sdd--v<version>`) instead of `@main` (`# sdd-workflow: 2`).
+
+### Migration
+
+1. Update the plugin, then run `/sdd:doctor init`: it writes `specs/capabilities.yml` from your `capabilities.md` (values kept, `commit` dropped, `merge` / `parallel` moved under `worktree`), deletes the `.md`, and rewrites the workflow.
+2. Until then the doctor, the board and `sdd-check` still read `capabilities.md` and warn; the other skills stop and ask for `init`.
+
 ## [1.3.1] — 2026-11-15
 
 `sdd` goes to 1.3.1.

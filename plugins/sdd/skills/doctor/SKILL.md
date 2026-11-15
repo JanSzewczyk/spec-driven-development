@@ -19,7 +19,7 @@ disable-model-invocation: true
 
 Mode comes from the user message: `check` (default; "audit", "is ready") reports only;
 `init` ("setup", "create", "fix") creates or repairs artifacts, then runs `check`.
-`init`: follow [references/init.md](references/init.md) — load it only for `init`, and start with a task list of its steps (roots and findings, discover, seed, capabilities, sibling repos, epic ids, CI workflow, re-check) kept current. Seed files it copies: [constitution](templates/constitution.md.template), [capabilities](templates/capabilities.md.template), [spec template](templates/specs/template.md), [sdd-check workflow](templates/sdd-check.yml.template).
+`init`: follow [references/init.md](references/init.md) — load it only for `init`, and start with a task list of its steps (roots and findings, discover, seed, capabilities, sibling repos, epic ids, CI workflow, re-check) kept current. Seed files it copies: [constitution](templates/constitution.md.template), [capabilities](templates/capabilities.yml.template), [spec template](templates/specs/template.md), [sdd-check workflow](templates/sdd-check.yml.template).
 
 ## `check`
 
@@ -44,7 +44,7 @@ Tool not available (mods are off: `--safe-mode`, `disableAllHooks`, WSL, Claude 
 |:-:|-------|:------:|--------|
 | 1 | `specs/constitution.md` | ✅ | sections and commands table present |
 | 2 | `specs/template.md` | ✅ | sections and placeholders present |
-| 3 | `specs/capabilities.md` | ⚠️ | 2 findings |
+| 3 | `specs/capabilities.yml` | ⚠️ | 2 findings |
 | 4 | Git + gh | ✅ | repository present |
 | 5 | Tooling | ⚠️ | 1 finding |
 | 6 | Sibling repositories | ✅ | no sibling repositories |
@@ -52,15 +52,15 @@ Tool not available (mods are off: `--safe-mode`, `disableAllHooks`, WSL, Claude 
 
 ## Findings
 
-**3 · `specs/capabilities.md`**
-- ⚠️ `<!-- sdd-format: N -->` missing · 🔧 init
-- ⚠️ `ci:` unset · 🔧 init
+**3 · `specs/capabilities.yml`**
+- ⚠️ `format` is 2, this version writes 3 · 🔧 init
+- ⚠️ `review.ci` is not set · 🔧 init
 
 **5 · Tooling**
 - ⚠️ api: `uv` not found · ✋ manual
 
 ## Next steps
-1. `/sdd:doctor init` repairs: format marker, `ci:` value
+1. `/sdd:doctor init` repairs: format, `review.ci`
 2. Install `uv` for `api`
 ```
 

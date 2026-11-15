@@ -16,8 +16,8 @@ The repository is a Claude Code plugin. Its layout:
 - **`plugins/sdd-board/`** — the Desktop side-panel mod (hooks module in `hooks/`, tests in `tests/`). Run its tests with `cd plugins/sdd-board && claude plugin test`, and try it with `claude --plugin-dir plugins/sdd-board`.
 - **`plugins/sdd/skills/`, `agents/`** — framework payload, auto-discovered by Claude Code once the plugin is installed. Every slash command is a skill (`skills/<name>/SKILL.md`); text shared by several skills is in `plugins/sdd/references/`.
 - **`plugins/sdd/skills/doctor/`** — `SKILL.md` holds `check` (calls the `doctor_check` tool); `references/init.md` holds `init`. `templates/` holds the per-project seed files copied/adapted into target projects.
-- **`plugins/sdd/hooks/`** — the mod behind the `doctor_check` tool; **`shared/sdd-core/`** — the TypeScript both plugins and the action use (`parse.ts`, `formats.ts`, `check.ts`, `gather.ts`).
-- **`actions/sdd-check/`** — the GitHub Action other repositories use to validate their `specs/` (`uses: JanSzewczyk/spec-driven-development/actions/sdd-check@main`); `run.ts` imports `shared/sdd-core` directly. Fixtures for its CI job are in `tests/fixtures/sdd-ok` and `sdd-broken`. Edit it there and run `scripts/sync-core.sh`: a mod imports only files inside its own plugin and symlinks fail validation, so each plugin carries a copy (CI fails when a copy drifts).
+- **`plugins/sdd/hooks/`** — the mod behind the `doctor_check` tool; **`shared/sdd-core/`** — the TypeScript both plugins and the action use (`yaml.ts`, `capabilities.ts`, `parse.ts`, `formats.ts`, `check.ts`, `gather.ts`).
+- **`actions/sdd-check/`** — the GitHub Action other repositories use to validate their `specs/` (`uses: JanSzewczyk/spec-driven-development/actions/sdd-check@sdd--v<version>`); `run.ts` imports `shared/sdd-core` directly. Fixtures for its CI job are in `tests/fixtures/sdd-ok`, `sdd-legacy` (a format-2 `capabilities.md`) and `sdd-broken`. Edit it there and run `scripts/sync-core.sh`: a mod imports only files inside its own plugin and symlinks fail validation, so each plugin carries a copy (CI fails when a copy drifts).
 - **Root docs** (`README.md`, `LICENSE`, `CHANGELOG.md`, `.github/`) — repo-level documentation.
 
 ## Testing your changes locally
@@ -42,10 +42,10 @@ the plugin and exercise the real skills against a target project, then verify th
    ```
 
 3. Verify by hand that `init` created files **under the project root** (not the plugin):
-   `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md`,
+   `specs/constitution.md`, `specs/template.md`, `specs/capabilities.yml`,
    and, with sibling repositories, `permissions.additionalDirectories` in `.claude/settings.json`.
 4. Re-run `/sdd:doctor init` and confirm idempotency: existing constitution and template are
-   not overwritten, `<!-- user-override -->` sections in `capabilities.md` survive, settings.json
+   not overwritten, `capabilities.yml` changes only in `projects`, settings.json
    gains no duplicate paths, and any user keys are preserved. Point it at a malformed
    `settings.json` and confirm it refuses to touch the file.
 
@@ -70,7 +70,8 @@ the plugin and exercise the real skills against a target project, then verify th
 
 | Change type | Location |
 |------|------|
-| Default implementation flow for new projects | Edit `## Implementation` in `skills/doctor/templates/capabilities.md.template` |
+| Default implementation flow for new projects | Edit `implementation` in `skills/doctor/templates/capabilities.yml.template` |
+| A `capabilities.yml` key or value | `shared/sdd-core/formats.ts`, `plugins/sdd/schemas/capabilities.schema.json`, the template, the key table in `plugins/sdd/references/capabilities.md` (`node scripts/check-capabilities.ts` checks they agree), a migration in `init.md` when an old value changes meaning |
 | New SDD-doctor check | `shared/sdd-core/check.ts` + a test in `plugins/sdd/tests/` + the row in `plugins/sdd/references/formats.md`, then `scripts/sync-core.sh` |
 | New slash command | New folder `skills/<name>/SKILL.md` (`name`, `description`, `allowed-tools`, `disable-model-invocation: true`). Document in README. |
 | Text several skills repeat | `references/<file>.md`, linked as `${CLAUDE_PLUGIN_ROOT}/references/<file>.md` |

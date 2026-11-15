@@ -1,5 +1,6 @@
-import { effectiveConfig } from './core/check.ts'
+import { effectiveConfig, loadCapabilities } from './core/check.ts'
 import type { Config } from './core/check.ts'
+import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from './core/formats.ts'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from './core/parse.ts'
 import { currentSlug, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
@@ -88,7 +89,8 @@ async function scan($: any): Promise<boolean> {
           modified,
         })
       }
-      const caps = await readText($, 'specs/capabilities.md')
+      const yml = await readText($, CAPABILITIES_PATH)
+      const caps = loadCapabilities(yml, yml === null ? await readText($, LEGACY_CAPABILITIES_PATH) : null)
       if (caps !== null) cfg = effectiveConfig(caps, await readText($, 'specs/constitution.md'))
     }
   } catch {

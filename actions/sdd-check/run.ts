@@ -47,7 +47,7 @@ function fileOf(check: CheckResult, f: Finding): string | undefined {
   if (m) return m[1]
   if (check.id === 1) return 'specs/constitution.md'
   if (check.id === 2) return 'specs/template.md'
-  if (check.id === 3) return 'specs/capabilities.md'
+  if (check.id === 3) return check.name // specs/capabilities.yml, or the legacy .md it read
   return undefined
 }
 

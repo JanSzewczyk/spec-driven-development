@@ -1,8 +1,8 @@
 // Reads a project into a Snapshot for runChecks. Everything goes through `Io`, so the same code
 // runs in the doctor tool (mods API) and in the sdd-check GitHub Action (node:fs).
-import { flowRefs, needs, parseCapabilities } from './check.ts'
+import { flowRefs, loadCapabilities, needs } from './check.ts'
 import type { FeatureFiles, Mode, Snapshot } from './check.ts'
-import { WORKFLOW_PATH } from './formats.ts'
+import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH, WORKFLOW_PATH } from './formats.ts'
 
 export type Io = {
   read(path: string): Promise<string | null> // null: absent or unreadable
@@ -85,7 +85,9 @@ export async function gather(io: Io, options: GatherOptions = {}): Promise<Snaps
   const offline = options.offline === true
   const constitution = await io.read('specs/constitution.md')
   const template = await io.read('specs/template.md')
-  const capabilities = await io.read('specs/capabilities.md')
+  const capabilities = await io.read(CAPABILITIES_PATH)
+  const legacyCapabilities = capabilities === null ? await io.read(LEGACY_CAPABILITIES_PATH) : null
+  const caps = loadCapabilities(capabilities, legacyCapabilities)
   const legacy: string[] = []
   for (const p of ['specs/_constitution.md', 'specs/_template.md', '.claude/capabilities.md']) if (await io.exists(p)) legacy.push(p)
 
@@ -95,6 +97,7 @@ export async function gather(io: Io, options: GatherOptions = {}): Promise<Snaps
     constitution,
     template,
     capabilities,
+    legacyCapabilities,
     legacy,
     features: await readFeatures(io),
     settings: await io.read('.claude/settings.json'),
@@ -122,12 +125,12 @@ export async function gather(io: Io, options: GatherOptions = {}): Promise<Snaps
     }
   }
 
-  const wanted = needs(constitution, capabilities)
+  const wanted = needs(constitution, caps)
   for (const p of wanted.paths) base.paths[p] = await io.exists(p)
   for (const t of wanted.tools) base.tools[t.key] = await toolResolves(io, t.exe, t.dir)
 
-  if (capabilities) {
-    const refs = flowRefs(parseCapabilities(capabilities)).filter((r) => r.kind !== 'command')
+  if (caps) {
+    const refs = flowRefs(caps).filter((r) => r.kind !== 'command')
     if (refs.length > 0) {
       const home = (await io.run(['sh', '-c', 'printf %s "$HOME"']))?.stdout.trim() ?? ''
       const plugins = home ? await installedPlugins(io, home) : null

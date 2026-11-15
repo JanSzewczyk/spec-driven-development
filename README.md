@@ -48,7 +48,7 @@ The unique contribution of this framework: it **manages the thinking and the ver
 ### 🎭 Implementation hand-off
 
 - **🎫 [Jira-like tasks](#-tasks-and-the-implementation-hand-off)** — each task in `tasks.md` is a self-contained ticket (project, scope, acceptance criteria, dependencies) under one Epic
-- **🔌 Bring your own implementer** — `/sdd:implement` hands each task to a skill, agent or command you configure in `capabilities.md`, or implements it in the session when none is set
+- **🔌 Bring your own implementer** — `/sdd:implement` hands each task to a skill, agent or command you configure in `specs/capabilities.yml`, or implements it in the session when none is set
 - **🧠 Context discipline** — tasks and plans carry decisions and references, not copies; large reads go to sub-agents
 
 ### ✅ Verification
@@ -120,7 +120,7 @@ An optional companion mod (needs Claude Code 2.1.287+; installing it installs `s
 - **Current** tab — the active spec (from the git branch, the one you pinned, or the newest one still in progress): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), a readiness checklist for the next command, the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, the task list, and buttons that open `spec` / `plan` / `tasks` / `review`.
 - **All** tab — every spec with its phase and task progress, filterable; **Show** pins one as current.
 - **+ New spec** in the tab bar puts `/sdd:spec feat ` in the prompt at any time.
-- **⚙ Config** (top right) — opens a read-only configuration panel: projects, the effective `capabilities.md` values for Implementation, Actions and Review (set values vs defaults), the commands from constitution §2 per project, and buttons for `/sdd:capabilities` and `/sdd:doctor check`.
+- **⚙ Config** (top right) — opens a read-only configuration panel: projects, the effective `specs/capabilities.yml` values for implementation, actions and review (set values vs defaults), the commands from constitution §2 per project, and buttons for `/sdd:capabilities` and `/sdd:doctor check`.
 - **No SDD in the project** — only a setup card; **Init SDD in this project** runs `/sdd:doctor init` in the session (the one button that runs a command).
 - Refreshes by itself: after Claude writes a file under `specs/`, after a branch switch, after each turn, and on a 4 s poll for edits made elsewhere. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
 
@@ -183,10 +183,10 @@ The panel opens by itself only in a window at least 144 columns wide, unless you
 
 ### 🍴 Forking the plugin for your own organization
 
-If you want a customized copy (e.g. with org-specific defaults in `capabilities.md.template`):
+If you want a customized copy (e.g. with org-specific defaults in `capabilities.yml.template`):
 
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugins/sdd/.claude-plugin/plugin.json`.
-2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.md.template` to pre-set the implementation flow for your org.
+2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.yml.template` to pre-set the implementation flow for your org.
 3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
 4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`, and tag a release.
 5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install with `/plugin install sdd@spec-driven-development`.
@@ -200,7 +200,7 @@ If you want a customized copy (e.g. with org-specific defaults in `capabilities.
 Open the target project in Claude Code and run:
 
 ```text
-/sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.md
+/sdd:doctor init      # bootstraps specs/constitution.md, specs/template.md, specs/capabilities.yml
 /sdd:doctor check     # confirms 7/7 — files present and valid, git, tooling, feature specs
 /sdd:capabilities     # optional: pick implementer, git actions and review checks from your installed skills/agents
 /sdd:constitution     # edit specs/constitution.md (long-form, no token limit)
@@ -210,7 +210,7 @@ What `init` does:
 
 - Bootstraps `specs/constitution.md` from the bundled template (skipped if already present — never overwrites).
 - Copies `specs/template.md` (the base for new feature specs) into the project.
-- Generates `specs/capabilities.md`: the detected projects and the `## Implementation` section where you choose who implements the tasks.
+- Generates `specs/capabilities.yml`: the detected projects, who implements the tasks, git actions and review settings (all at their defaults until you change them).
 - With projects in sibling repositories, adds their paths to `permissions.additionalDirectories` in `.claude/settings.json` (other keys preserved; malformed JSON is left untouched).
 
 > **`CLAUDE.md` is not touched.** The project-root `CLAUDE.md` (if you keep one as a Claude Code session loader) is fully owned by you — the SDD framework never reads or writes it. The source of truth is `specs/constitution.md`, edited via `/sdd:constitution`.
@@ -261,7 +261,7 @@ flowchart TD
 | **Clarify** | `/sdd:clarify` | AI finds the gaps in spec.md, asks up to 5 questions (with proposed answers) and writes the answers into the spec in one run |
 | **Plan** | `/sdd:plan` | Generate `plan.md`: decisions, contracts, file-by-file change list, risks (diagrams, data model, API surface only when they help). **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Split the plan into self-contained, Jira-like tasks (project, scope, acceptance criteria, dependencies) under one Epic |
-| **Implement** | `/sdd:implement <task-id or all>` | Build a brief from the task and hand it to the flow configured in `capabilities.md` (or implement in the session). Does not verify on its own |
+| **Implement** | `/sdd:implement <task-id or all>` | Build a brief from the task and hand it to the flow configured in `capabilities.yml` (or implement in the session). Does not verify on its own |
 | **Review** | `/sdd:review` | Tests, `spec-verifier` and your extra checks in parallel, then `reviewer` → verdict READY/NOT READY → AC ticked in the spec → commit + PR |
 | **Retro** | `/sdd:retro` | Optional, after review: turns the repeatable mistakes in `review.md` into WHAT NOT TO DO entries (with a reason) in the constitution |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
@@ -317,17 +317,18 @@ files: apps/web/src/features/reset/*
 The file keeps references (AC ids, plan sections) instead of copies. When you run `/sdd:implement T2`:
 
 1. Dependencies must be `review|done`, otherwise it stops and names the blockers.
-2. It reads `## Implementation` in `specs/capabilities.md` — the line for the task's project wins over `default`:
-   ```markdown
-   ## Implementation
-   default: in-session
-   api: agent:python-developer
-   web: skill:my-web-flow
+2. It reads `implementation` in `specs/capabilities.yml` — the task's project wins over `default`:
+   ```yaml
+   implementation:
+     default: in-session
+     projects:
+       api: agent:python-developer
+       web: skill:my-web-flow
    ```
    Values: `skill:<name>`, `agent:<name>`, `command:<shell>` (brief on stdin) or `in-session`.
 3. It builds the **brief**: the task, the text of its acceptance criteria, the plan sections, the project's commands and the constitution rules that apply, and a definition of done.
 4. It hands the brief to the flow. The implementer writes tests and code and runs the project's checks. `in-session` means the session itself does that, loading the skills and docs it has for the stack.
-5. Status: `draft` → `in-progress` → `review`. With `commit: task` (default) it commits the task's files with the trailer `Task: <EPIC>-T<n>`; `/sdd:review` commits what is left (statuses, `review.md`) and opens the PR. The documentation itself (spec, plan, tasks) was already committed by `/sdd:tasks`.
+5. Status: `draft` → `in-progress` → `review`. It commits the task's files with the trailer `Task: <EPIC>-T<n>`; `/sdd:review` commits what is left (statuses, `review.md`) and opens the PR. The documentation itself (spec, plan, tasks) was already committed by `/sdd:tasks`.
 
 Verification is a separate step: `/sdd:review` judges the outcome against the spec.
 
@@ -337,16 +338,15 @@ Every command finds the feature by the `**Branch:**` line of its `spec.md`, so t
 
 ### 🌿 Isolated tasks (opt-in)
 
-```markdown
-## Implementation
-default: in-session
-commit: task
-isolation: worktree   # none (default) | worktree
-merge: pr             # pr (default) | auto
-parallel: 3
+```yaml
+implementation:
+  isolation:          # none (default): this session implements and commits each task
+    worktree:
+      merge: pr       # pr (default) | auto
+      parallel: 3
 ```
 
-With `isolation: worktree` the session running `/sdd:implement all` only orchestrates: every ready task runs in its own sub-session (Desktop) or isolated agent, in its own worktree, on `<spec-branch>--<EPIC>-T<n>` cut from the SDD branch. Sub-sessions never touch `specs/`; only the orchestrator writes `tasks.md`.
+`merge` and `parallel` exist only under `worktree`. With it the session running `/sdd:implement all` only orchestrates: every ready task runs in its own sub-session (Desktop) or isolated agent, in its own worktree, on `<spec-branch>--<EPIC>-T<n>` cut from the SDD branch. Sub-sessions never touch `specs/`; only the orchestrator writes `tasks.md`.
 
 - `merge: pr` — human in the loop: each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task, the board shows "waiting for merge"). You merge; running `/sdd:implement all` again checks the PRs and starts the tasks they unblock.
 - `merge: auto` — the orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation.
@@ -379,38 +379,33 @@ Three techniques prevent context bloat:
 
 SDD reasons about **projects**, not about one stack. `/sdd:doctor init` finds them — an Nx or Turborepo workspace, pnpm/yarn/uv/Cargo/Go workspaces, Gradle includes, or stray manifests such as `apps/api/pyproject.toml` — and asks which sibling repositories belong to the product when the code is spread over several repos.
 
-- **`capabilities.md` → `## Projects`** lists each one with its kind (web, backend, mobile, library, e2e …), path and stack; `## Implementation` can name a different flow per project.
+- **`capabilities.yml` → `projects`** lists each one with its kind (web, backend, mobile, library, e2e …), path and stack; `implementation.projects` can name a different flow per project.
 - **Constitution §2** has one command row per project (`test`, `coverage`, `typecheck`, `lint`, `dev`), so a Python API runs `cd apps/api && uv run pytest`, the web app `pnpm nx run web:test`, a Flutter app `flutter test`.
 - **Several repositories**: assumes everyone checks the sibling repos out next to the spec repo under the same names (the relative paths are committed). `specs/` lives in one spec repo; `/sdd:implement` makes sure the same feature branch exists in each sibling repo before the flow edits it, and `/sdd:review` commits and opens a linked PR in every one of them. `init` adds the sibling repos to `permissions.additionalDirectories`.
 
 A Claude Code session loader (`CLAUDE.md`, root or per-module) stays yours: the framework never reads, writes or enforces it (see Best Practices).
 
-### 📇 Capabilities registry — hybrid mode
+### 📇 Configuration — `specs/capabilities.yml`
 
-`specs/capabilities.md` has two kinds of sections:
+YAML with a JSON Schema (editor validation through the `# yaml-language-server: $schema=…` line). `/sdd:doctor init` rewrites `projects` on every run; every other key is yours, and `/sdd:capabilities` fills them from what you have installed, after you confirm. All keys, values and defaults: [`references/capabilities.md`](plugins/sdd/references/capabilities.md).
 
-- **`<!-- auto-generated -->`** — `## Projects`, rewritten by `/sdd:doctor init` on every run
-- **`<!-- user-override -->`** — `## Implementation`, `## Actions`, `## Review` and `## Generated / out-of-band paths`, preserved untouched (`init` only adds a missing one); `/sdd:capabilities` fills them from what you have installed, after you confirm
-
-Example schema:
-
-```markdown
-## Projects
-<!-- auto-generated -->
-- **web** — web · apps/web · TypeScript, Next.js 15; pnpm + nx
-- **api** — backend · apps/api · Python 3.13, FastAPI; uv
-- **mobile** — mobile · ../mobile-app (repo) · Flutter 3, Dart
-
-## Implementation
-<!-- user-override -->
-default: in-session
-api: agent:python-developer
-
-## Generated / out-of-band paths
-<!-- user-override -->
-- `**/*.generated.*`
-- `**/uv.lock`
+```yaml
+format: 3
+projects:
+  - name: web
+    kind: web
+    path: apps/web
+    stack: TypeScript, Next.js 15; pnpm + nx
+implementation:
+  default: in-session
+  projects:
+    api: agent:python-developer
+  isolation: none
+generated:
+  - "**/*.generated.*"
 ```
+
+A project in a sibling repository adds `repo: true`. A format-2 `specs/capabilities.md` is still read with a warning; `/sdd:doctor init` migrates it.
 
 ---
 
@@ -418,14 +413,14 @@ api: agent:python-developer
 
 ### 🏥 `/sdd:doctor [check|init]`
 
-Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.md valid (values well-formed, `skill:` / `agent:` names installed, not left at the defaults), git + gh, tooling per project (including `command:` values), sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
+Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.yml valid (YAML and values well-formed, `skill:` / `agent:` names installed, not left at the defaults), git + gh, tooling per project (including `command:` values), sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
-- `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. It is also the **update path**: it first reads the `check` findings and repairs every one tagged `fix: init` (new `capabilities.md` keys, the format marker, epic ids in old `tasks.md`, an outdated workflow), then re-checks. It asks whether to add the `sdd-check` workflow. Never touches the project-root `CLAUDE.md`.
+- `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it rewrites only `projects` in `capabilities.yml`. It is also the **update path**: it first reads the `check` findings and repairs every one tagged `fix: init` (a format-2 `capabilities.md` migrated to YAML, misplaced keys, `format`, epic ids in old `tasks.md`, an outdated workflow), then re-checks. It asks whether to add the `sdd-check` workflow. Never touches the project-root `CLAUDE.md`.
 
 #### ✅ `sdd-check` GitHub Action
 
-The same rules as `check`, in CI of any repository that uses SDD, so a change in the framework (a new `capabilities.md` key, a new `tasks.md` field) is caught where nobody runs the doctor. Checks 4–6 (git, tooling, sibling repos) are not judged in CI. The job summary is a short report: what is missing, which checks failed, and that `/sdd:doctor init` repairs them. `/sdd:doctor init` offers to write this workflow (`.github/workflows/sdd-check.yml`):
+The same rules as `check`, in CI of any repository that uses SDD, so a change in the framework (a new `capabilities.yml` key, a new `tasks.md` field) is caught where nobody runs the doctor. Checks 4–6 (git, tooling, sibling repos) are not judged in CI. The job summary is a short report: what is missing, which checks failed, and that `/sdd:doctor init` repairs them. `/sdd:doctor init` offers to write this workflow (`.github/workflows/sdd-check.yml`):
 
 ```yaml
 name: SDD Check 🧭
@@ -449,11 +444,11 @@ jobs:
       - name: Checkout code 📚
         uses: actions/checkout@v7
       - name: Check SDD specs, plans and capabilities 🧭
-        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@main
+        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@sdd--v2.0.0
         # Inputs: path, fail-on (fail | warn), node-version.
 ```
 
-The action runs the rules from the ref it is pinned to, so the repository vendors nothing.
+The action runs the rules from the ref it is pinned to, so the repository vendors nothing. `init` pins it to the installed sdd version and moves the pin on upgrade.
 
 ### 📜 `/sdd:constitution`
 
@@ -465,7 +460,7 @@ Phase 1 — Specify. `<type>` ∈ {`feat`, `fix`, `chore`, `refactor`, `docs`} (
 
 Steps:
 
-1. Create the branch with the `branch` action from `## Actions` (a skill, agent or command), else a branch skill the session has, else `git checkout -b <type>/<slug>`
+1. Create the branch with `actions.branch` (a skill, agent or command), else a branch skill the session has, else `git checkout -b <type>/<slug>`
 2. Read the real branch name; `feature_slug` is the part after the first `/`
 3. Generate `specs/<feature_slug>/spec.md` from `specs/template.md` with the real name in `**Branch:**`; only the Summary is filled
 
@@ -501,12 +496,12 @@ Phase 4 — Tasks. Split `plan.md` into a list of **self-contained tasks** (form
 - **`depends_on`** only where a task needs another's result or touches the same files.
 - **No copies of the plan or the spec** — tasks refer to AC ids and plan sections.
 - **Epic id.** Writes `**Epic:** <LETTERS>-<4 hex>` into the header once (kept on re-runs); tasks are `<EPIC>-T<n>`.
-- **Commits the documentation.** With `commit: task` (default) it ends by committing `specs/<slug>/` (spec, plan, tasks) as `docs(<slug>): add spec, plan and tasks` with an `Epic:` trailer, so the documentation is in git before any task starts and is visible to worktrees.
+- **Commits the documentation.** It ends by committing `specs/<slug>/` (spec, plan, tasks) as `docs(<slug>): add spec, plan and tasks` with an `Epic:` trailer, so the documentation is in git before any task starts and is visible to worktrees.
 - Does not choose agents or models and writes no code; ends with a one-line `Order:` such as `T1 → T2 ∥ T3 → T4`.
 
 ### 🔨 `/sdd:implement <task-id | all>`
 
-Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.md` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies. With `commit: task` it commits any documentation `/sdd:tasks` left uncommitted before the first task, and each finished task's files with a `Task: <EPIC>-T<n>` trailer. With `isolation: worktree` it orchestrates sub-sessions instead (see [Isolated tasks](#-isolated-tasks-opt-in)).
+Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.yml` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies. It commits any documentation `/sdd:tasks` left uncommitted before the first task, and each finished task's files with a `Task: <EPIC>-T<n>` trailer. With `isolation: worktree:` it orchestrates sub-sessions instead (see [Isolated tasks](#-isolated-tasks-opt-in)).
 
 ### 🔍 `/sdd:review`
 
@@ -516,27 +511,27 @@ Phase 6 — the only verification gate, judging the result against the acceptanc
 2. `reviewer` gets all results, checks the diff against each **WHAT NOT TO DO** rule of the constitution, runs the domain audits and writes `specs/<slug>/review.md` with the verdict READY / NOT READY
 3. When every blocker is one you may accept (an out-of-scope change, a constitution rule, a non-critical audit finding), you are asked once: fix them, or accept them with a reason — accepted items go under `## Accepted` in `review.md` and are not raised again. Failing tests, unmet acceptance criteria, non-goal violations and failed checks cannot be accepted
 4. Whatever the verdict: acceptance criteria are ticked `[x]` / unticked in `spec.md`, and tasks with unmet criteria go back to `in-progress`
-5. READY: shows the commit title, PR title and file list and asks (`publish: ask`); then commits what is left (statuses, `review.md`) and opens the PR with the `commit` / `pr` actions from `capabilities.md`, or with git and `gh` when none is set
+5. READY: shows the commit title, PR title and file list and asks (`publish: ask`); then commits what is left (statuses, `review.md`) and opens the PR with `actions.commit` / `actions.pr`, or with git and `gh` when none is set
 6. NOT READY: concrete blockers, each unmet criterion with the task to re-run (`/sdd:implement T3`)
 
-Configure it in `specs/capabilities.md`:
+Configure it in `specs/capabilities.yml` (keys: [`references/capabilities.md`](plugins/sdd/references/capabilities.md)):
 
-```markdown
-## Review
-tests: run          # run | skip
-ui: auto            # auto | off
-publish: ask        # ask | off
-default: auto       # audit flow: auto (skills by stack) | skill:<name> | agent:<name>
-api: agent:python-reviewer
-checks: agent:qa    # extra agents/skills on every review, e.g. QA that starts the app and tests the functionality
+```yaml
+review:
+  tests: run          # run | skip
+  publish: ask        # ask | off
+  default: auto       # audit flow: auto (skills by stack) | skill:<name> | agent:<name>
+  projects:
+    api: agent:python-reviewer
+  checks: [agent:qa]  # on every review, e.g. QA that starts the app and tests the functionality
 
-## Actions
-branch: skill:create-branch
-commit: skill:create-commit
-pr: skill:create-pull-request
+actions:
+  branch: skill:create-branch
+  commit: skill:create-commit
+  pr: skill:create-pull-request
 ```
 
-`## Actions` is shared with `/sdd:spec` (the `branch` action). A check returns `PASS | FAIL | SKIPPED`; `FAIL` blocks READY, `SKIPPED` never does.
+`actions.branch` is used by `/sdd:spec`. A check returns `PASS | FAIL | SKIPPED`; `FAIL` blocks READY, `SKIPPED` never does.
 
 ### 🔁 `/sdd:retro`
 
@@ -544,7 +539,7 @@ Optional, after `/sdd:review`. Reads `review.md` (blockers, violated rules, acce
 
 ### ⚙️ `/sdd:capabilities`
 
-Optional, after `/sdd:doctor init`. Scans the session's skills and agents, installed plugins (also ones not enabled), `~/.claude` and `.claude` files, and repo signals (`gh`, CI, e2e setup). Drafts `## Implementation`, `## Actions` and `## Review` per project with a reason for each value, then asks you to confirm and to settle choices and gaps. Writes only those values; keeps existing decisions unless you change them; re-run after installing plugins.
+Optional, after `/sdd:doctor init`. Scans the session's skills and agents, installed plugins (also ones not enabled), `~/.claude` and `.claude` files, and repo signals (`gh`, CI, e2e setup). Drafts `implementation`, `actions` and `review` per project with a reason for each value, then asks you to confirm and to settle choices and gaps. Writes only those values; keeps existing decisions unless you change them; re-run after installing plugins.
 
 ### 📊 `/sdd:analyze`
 
@@ -604,7 +599,7 @@ Pipeline:
 
 **Output:** Markdown, per project: `Structure`, `Conventions`, `Reuse` (`path` — what it does).
 
-> Visual or functional checks of the running app (a QA or UI agent) are yours: add them under `checks:` in `## Review`.
+> Visual or functional checks of the running app (a QA or UI agent) are yours: add them to `review.checks`.
 
 ---
 
@@ -722,7 +717,7 @@ Order: T1 → T2 ∥ T3 → T4
 - `T2` and `T3` start once `T1` is done: `web` uses `skill:my-web-flow`, `mobile` falls back to `in-session`.
 - `T4` follows when `T1` and `T2` are done.
 
-Each task flips to `review` when its implementer reports done; nothing is verified here; with `commit: task` each task's files are committed with its `Task:` trailer.
+Each task flips to `review` when its implementer reports done; nothing is verified here; each task's files are committed with its `Task:` trailer.
 
 ### 🔍 Review
 
@@ -765,7 +760,7 @@ your-project/
 ├── specs/
 │   ├── constitution.md                    # source of truth — created by `/sdd:doctor init` if missing, edited by `/sdd:constitution`
 │   ├── template.md                        # base template for new feature specs
-│   ├── capabilities.md                    # projects (auto-generated) + implementation flow and generated paths (yours)
+│   ├── capabilities.yml                   # configuration: projects (written by init) + flows, actions, review, generated paths (yours)
 │   └── <feature-slug>/
 │       ├── spec.md                        # business specification
 │       ├── plan.md                        # architecture + Mermaid diagrams
@@ -775,7 +770,7 @@ your-project/
 └── CLAUDE.md                              # (optional, user-owned) Claude Code session loader — never touched by SDD
 ```
 
-> **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.md` and, only with sibling repositories, `permissions.additionalDirectories` in `.claude/settings.json`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md` — is yours.
+> **Files SDD creates / edits:** `specs/constitution.md`, `specs/template.md`, `specs/capabilities.yml` and, only with sibling repositories, `permissions.additionalDirectories` in `.claude/settings.json`. Per-feature artifacts under `specs/<slug>/` are produced by the SDD flow commands. Everything else — including the root `CLAUDE.md` — is yours.
 
 ### 🧩 In the repository (installed once per machine)
 
@@ -811,7 +806,7 @@ spec-driven-development/                    # or your own forked plugin path
         │       │   └── init.md            # `init` procedure (loaded only for init)
         │       └── templates/             # bundled seed files read by `init`
         │           ├── constitution.md.template   # long-form project constitution
-        │           ├── capabilities.md.template   # auto-generated + user-override hybrid
+        │           ├── capabilities.yml.template  # seed for specs/capabilities.yml
         │           └── specs/template.md          # base for new feature specs
         └── agents/                        # 3 sub-agents
             ├── spec-verifier.md
@@ -834,7 +829,7 @@ Thirteen actionable rules drawn from the source materials (Spec Kit, BMAD, Kiro,
 7. **🌿 One branch per feature.** `/sdd:spec` enforces it. Conventional Commits naming (`feat/...`, `fix/...`).
 8. **🤝 Use sub-agents for large reads.** Don't grep 50 files in the main session — invoke a sub-agent (Agent tool) and receive only a summary.
 9. **🔄 Keep spec ↔ code in sync.** When you change code manually, update the spec. Use `/sdd:analyze` to detect drift periodically.
-10. **💬 Fresh chat per task — and `/clear` between phases.** Open a new Claude session when switching to a new task, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.md`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
+10. **💬 Fresh chat per task — and `/clear` between phases.** Open a new Claude session when switching to a new task, and `/clear` between `plan → tasks → implement → review`. Every phase command re-reads its inputs from disk (`spec.md` / `plan.md` / `tasks.md` / `capabilities.yml`), so clearing loses no context — each phase starts from a small, cheap context. `tasks.md` status is your handover document.
 11. **❓ Embrace the Clarify phase.** Letting AI ask questions before planning surfaces gaps that would otherwise burn implementation cycles.
 12. **💰 Tier your models.** Run judgement-heavy phases (`/sdd:constitution`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review`) on Opus; run mechanical phases (`/sdd:spec`, `/sdd:tasks`, `/sdd:analyze`) on Sonnet (Haiku for trivial work). See "Cost & model tiering" below.
 13. **📦 Batch human feedback.** Collect visual/QA tweaks and NOT READY fixes into one message per round instead of many small turns — each turn reprocesses the full context and multiplies cost.
@@ -855,7 +850,7 @@ What to avoid — common failure modes when adopting SDD:
 - ❌ **Implementing without a spec.** SDD only works if every feature has its `specs/<slug>/spec.md` first.
 - ❌ **Running Opus for mechanical phases.** Decomposition and drift checks don't need the top tier — you pay Opus rates for Sonnet work.
 - ❌ **Drip-feeding feedback.** Ten small "move this 2px" turns each reprocess the whole context. Batch them into one message per round.
-- ❌ **Pulling generated diffs into the loop.** Regenerated clients/mocks/schemas (`*.msw.ts`, `*.schemas.ts`, …) balloon context and trigger false out-of-scope/drift findings. Declare them in `capabilities.md` → `Generated / out-of-band paths`.
+- ❌ **Pulling generated diffs into the loop.** Regenerated clients/mocks/schemas (`*.msw.ts`, `*.schemas.ts`, …) balloon context and trigger false out-of-scope/drift findings. Declare them in `capabilities.yml` → `generated`.
 
 ---
 
@@ -890,7 +885,7 @@ Why this framework looks the way it does:
 | **Conventional Commits in `/sdd:spec`** | Branch names and commit messages aligned with industry standard. Compatible with semantic-release, changeset, etc. |
 | **Plan = decisions, tasks = tickets** | The plan holds architectural and technical decisions and the scope; tasks refer to it instead of copying it. |
 | **Plan Mode for `/sdd:plan`** | Approving the plan is the human review; nothing is written before it. |
-| **Hybrid capabilities.md** | The `<!-- auto-generated -->` section reflects the detected projects. `<!-- user-override -->` sections (implementation, actions, review, generated paths) preserve your configuration. Re-running `init` is safe. |
+| **Configuration in YAML** | `capabilities.yml` is data, not prose: a schema validates it in the editor and the doctor. `init` rewrites only `projects`; the rest stays yours. Re-running `init` is safe. |
 | **The branch is the key** | Commands find the feature by the `**Branch:**` line in `spec.md`, so any branch-naming skill works. |
 | **Constitution lives under `specs/`, not in `CLAUDE.md`** | Two separate concerns. `specs/constitution.md` is the long-form source of truth — no token budget, rationale-rich, edited via `/sdd:constitution`. The project root `CLAUDE.md`, if you keep one, is a Claude Code session loader fully owned by you; the framework never reads, writes, or enforces its structure. |
 | **Framework lives in the plugin, project owns its specs** | Commands, agents and the doctor skill ship with the plugin (installed once per machine). The project keeps only what is genuinely project-specific: `specs/` and whatever `CLAUDE.md` you choose to maintain. Plugin updates roll out by reinstalling; project data is never overwritten. |
@@ -903,10 +898,10 @@ Why this framework looks the way it does:
 |---------|--------------|-----|
 | `/sdd:spec` stops with "Run `/sdd:doctor init` first" | `specs/template.md` missing | `/sdd:doctor init` |
 | A command cannot find the feature | No `spec.md` has your current branch in `**Branch:**` (renamed branch) | Switch to the spec's branch, or fix the `**Branch:**` line |
-| `/sdd:implement` does not use my flow | no `## Implementation` line for the project, so it falls back to `in-session` | Add `<project>: skill:<name>`, `agent:<name>` or `command:<shell>` (or `default:`) under `## Implementation` in `capabilities.md` |
+| `/sdd:implement` does not use my flow | no `implementation.projects` entry for the project, so it falls back to `default` (`in-session`) | Add `<project>: skill:<name>`, `agent:<name>` or `command:<shell>` under `implementation.projects` (or set `implementation.default`) in `capabilities.yml` |
 | `spec-verifier` always returns `satisfied: true` even for incomplete code | Acceptance criteria in spec.md are too vague | Rewrite AC to be measurable (`input X → output Y`) |
 | Plan Mode disabled but `/sdd:plan` still works | Plan Mode is recommended but not required | For correctness this is fine; for safety enable Plan Mode (Shift+Tab) |
-| `capabilities.md` lacks `## Implementation` | file written by an older version | `/sdd:doctor init` adds the section |
+| Only `specs/capabilities.md` exists | written by SDD before 2.0 | `/sdd:doctor init` migrates it to `capabilities.yml` |
 
 ---
 
