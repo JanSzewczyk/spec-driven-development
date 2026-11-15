@@ -21,7 +21,7 @@ business specification: no implementation code, no frameworks or libraries.
 ### 1. Branch
 
 Create a git branch for this feature with `actions.branch` from
-`specs/capabilities.yml` (`skill:` / `agent:` / `command:`; give it the type and the description).
+`specs/capabilities.yml` (`skill:` / `agent:` / `command:`; give it the type and the description). Only the old `specs/capabilities.md` exists → STOP: "Run `/sdd:doctor init` to migrate it."
 Unset → use a branch-creating skill the session has, else run `git checkout -b <type>/<slug>`
 (`slug`: kebab-case, `[a-z0-9-]`, max 50 chars). Then read the real name:
 

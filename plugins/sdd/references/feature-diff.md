@@ -13,7 +13,8 @@ git diff "$base" -- . ':(exclude)<glob>' …    # committed + uncommitted change
 git ls-files --others --exclude-standard      # new files — part of the feature too
 ```
 
-- `<glob>` = the `generated` globs of `specs/capabilities.yml`. Apply them to the
+- `<glob>` = the `generated` globs of `specs/capabilities.yml` (only the old `specs/capabilities.md`
+  exists → its `Generated / out-of-band paths` list). Apply them to the
   untracked list too. Agents never flag a path that matches one.
 - Projects in sibling repositories (`repo: true` under `projects`): compute the same diff in each repo
   that is on the feature branch (`git -C <repo> …`) and pass every agent the repos with their bases.

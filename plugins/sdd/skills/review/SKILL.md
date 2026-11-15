@@ -26,7 +26,7 @@ per sibling repository on the feature branch. Every step and every agent uses th
   current branch (`specs/<current>/`); every task in its `tasks.md` is `review` or `done`.
 - Read `projects`, `review` and `actions` from `specs/capabilities.yml` (keys and defaults:
   [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md); an unknown key such as the old
-  `ui:` is ignored).
+  `ui:` is ignored). Only the old `specs/capabilities.md` exists → STOP: "Run `/sdd:doctor init` to migrate it."
 
 ### 2. Verify — in parallel
 
