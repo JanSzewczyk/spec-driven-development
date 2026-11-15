@@ -22,12 +22,6 @@
   pointer-events: none;
   z-index: -1;
 }
-[data-has-hero] .hero h1 {
-  background: linear-gradient(120deg, var(--sl-color-white), var(--sl-color-accent-high) 60%, var(--sl-color-accent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 
 /* Section headings on the landing page */
 .landing-section {
