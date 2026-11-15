@@ -28,7 +28,16 @@ export const REVIEW_KEYS: Record<string, RegExp> = {
   tests: /^(?:run|skip)$/,
   publish: /^(?:ask|off)$/,
   default: /^(?:auto|(?:skill|agent|command):\S.*)$/,
+  ci: /^(?:on|off)$/, // whether the sdd-check GitHub workflow is wanted
 }
+// Keys of `## Implementation` that are not project names, with the values they accept.
+export const IMPLEMENTATION_KEYS: Record<string, RegExp> = {
+  commit: /^(?:task|off)$/, // commit every finished task with its Task: trailer
+  isolation: /^(?:none|worktree)$/, // each task in its own worktree and branch
+  merge: /^(?:pr|auto)$/, // with isolation: worktree, who merges a task branch
+  parallel: /^[1-9]\d*$/, // tasks running at once with isolation: worktree
+}
+export const IMPLEMENTATION_DEFAULTS: Record<string, string> = { commit: 'task', isolation: 'none', merge: 'pr', parallel: '3' }
 export const ACTION_KEYS = ['branch', 'commit', 'pr']
 
 export const SPEC_STATUSES = ['draft', 'clarified', 'planned', 'in-progress', 'done']
@@ -38,3 +47,18 @@ export const TASK_STATUSES = ['draft', 'in-progress', 'review', 'done']
 // Columns of the constitution §2 table; `dev / ui-preview` is the name used before the rename.
 export const COMMAND_COLUMNS = ['test', 'coverage', 'typecheck', 'lint', 'dev']
 export const COMMAND_COLUMN_ALIASES: Record<string, string> = { 'dev / ui-preview': 'dev', 'dev/ui-preview': 'dev', 'ui-preview': 'dev' }
+
+// Version of the artifact format (capabilities.md keys, tasks.md header). A lower
+// `<!-- sdd-format: N -->` marker in capabilities.md means `/sdd:doctor init` has migrations to apply.
+export const SDD_FORMAT = 2
+export const SDD_FORMAT_MARKER = /<!--\s*sdd-format:\s*(\d+)\s*-->/
+
+// Epic id in tasks.md: 2-5 capital letters from the slug, a dash and 4 hex characters (ULOG-7f3a).
+export const EPIC_ID = /^[A-Z]{2,5}-[0-9a-f]{4}$/
+// Task branch: `<spec branch>--<epic>-T<n>`; the separator is `--` because `feat/x/...` collides with the ref `feat/x`.
+export const taskBranch = (specBranch: string, epic: string, taskId: string) => `${specBranch}--${epic}-${taskId}`
+
+// The sdd-check workflow the doctor installs; its first lines carry `# sdd-workflow: <n>`.
+export const WORKFLOW_PATH = '.github/workflows/sdd-check.yml'
+export const WORKFLOW_VERSION = 1
+export const WORKFLOW_MARKER = /^#\s*sdd-workflow:\s*(\d+)\s*$/m

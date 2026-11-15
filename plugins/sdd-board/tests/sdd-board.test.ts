@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/core/parse.ts'
+import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/core/parse.ts'
 import { blockedBy, currentSlug, derive, gate } from '../hooks/model.ts'
 import type { Feature } from '../hooks/model.ts'
 
@@ -511,4 +511,25 @@ test('on Desktop the configuration pane draws tiles and row separators', async (
   expect(await ui.find({ type: 'Text', text: 'customised' })).toBeDefined()
   expect(await ui.find({ type: 'Svg', alt: 'separator' })).toBeDefined()
   await ui.unmount()
+})
+
+test('parseEpicId and the branch and pr of a task', () => {
+  const text = '# Tasks: X\n\n**Spec:** `a`  **Plan:** `b`\n**Epic:** LOG-7f3a\n\n## Epic: X\n\n### T1: A\nstatus: in-progress\nbranch: feat/x--LOG-7f3a-T1\npr: #12\n'
+  expect(parseEpicId(text)).toBe('LOG-7f3a')
+  expect(parseEpicId('# Tasks\n## Epic: x\n')).toBe('')
+  const [t] = parseTasks(text)
+  expect(t.branch).toBe('feat/x--LOG-7f3a-T1')
+  expect(t.pr).toBe('#12')
+})
+
+test('tasks waiting for a merge turn the next step into "implement all" while nothing else is ready', () => {
+  const waiting = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: in-progress\npr: #13\n')
+  const d = derive(feature({ planStatus: 'tasks-ready', tasks: waiting }))
+  expect(d.next?.command).toBe('/sdd:implement all')
+  expect(d.next?.why).toContain('#12, #13')
+  expect(d.phase).toBe('implement')
+  const g = gate(feature({ planStatus: 'tasks-ready', tasks: waiting }))!
+  expect(g.checks.find((c) => c.key === 'merge')?.hint).toBe('T1 #12, T2 #13')
+  const more = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: draft\n')
+  expect(derive(feature({ planStatus: 'tasks-ready', tasks: more })).next?.command).toBe('/sdd:implement T2')
 })

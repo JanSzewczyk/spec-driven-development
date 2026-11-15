@@ -1,7 +1,7 @@
 ---
 name: tasks
 description: Split the plan into self-contained, Jira-like tasks (SDD step 4)
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git branch:*)
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git branch:*), Bash(git hash-object:*), Bash(date:*)
 argument-hint: "(optional path to plan.md)"
 disable-model-invocation: true
 ---
@@ -42,12 +42,25 @@ tests" or for "the service" of one unit. Tests belong to the task that delivers 
 - **Do not copy the plan or the spec.** Refer to AC ids and plan sections; `/sdd:implement` inlines
   them into the brief when it hands the task over.
 
-### 3. Write `specs/<current>/tasks.md`
+### 3. Epic id
+
+The Epic gets an id that never changes: `<LETTERS>-<4 hex>`, for example `ULOG-7f3a`. Tasks keep
+their `T<n>` headings; the full id of a task is `<EPIC>-T<n>` (`ULOG-7f3a-T3`). It is what
+`/sdd:implement` puts in commit trailers and task branch names.
+
+- `tasks.md` has a `**Epic:**` line → keep it.
+- Otherwise build it: 2–5 capital letters from the spec slug (first letter of each word; one word →
+  its first 4 letters), `-`, and 4 hex characters from
+  `printf '%s %s' "<spec branch>" "$(date +%s)" | git hash-object --stdin | cut -c1-4`. Another
+  `specs/*/tasks.md` already has that id → hash again.
+
+### 4. Write `specs/<current>/tasks.md`
 
 ````markdown
 # Tasks: <feature_title>
 
 **Spec:** `specs/<slug>/spec.md`  **Plan:** `specs/<slug>/plan.md`
+**Epic:** <EPIC>
 
 ## Epic: <feature_title>
 
@@ -68,14 +81,14 @@ notes: <optional — a constraint or constitution rule that applies here>
 the AC). `acceptance` is measurable via the spec's AC ids. Write `depends_on: []` when the task
 waits for nothing; omit `notes` when nothing applies.
 
-**Re-run** (a `tasks.md` exists): update it, do not start over. Keep each existing task's id and
-`status`; a task that is `in-progress`, `review` or `done` keeps its `scope` unless the change
+**Re-run** (a `tasks.md` exists): update it, do not start over. Keep the `**Epic:**` id (an old
+file without one gets one) and each existing task's id, `status`, `branch:` and `pr:` lines; a task that is `in-progress`, `review` or `done` keeps its `scope` unless the change
 touches it — then set it back to `draft` and say so. New tasks take the next unused id; a task no
 longer needed is removed only while `draft`, otherwise report it and leave it.
 
 Add one line at the end: `Order: T1 → T2 ∥ T3 → T4` (what can run once its dependencies are done).
 
-### 4. Check, advance, report
+### 5. Check, advance, report
 
 Fail and fix on: an AC with no task, a task with no AC, a cycle, a dependency on a missing task, two
 independent tasks with overlapping `files`.

@@ -58,4 +58,4 @@ other sections as the template has them (filled manually or by `/sdd:clarify`).
 - ✅ Branch `<branch>` · Spec `specs/<feature_slug>/spec.md`
 - 👉 Next: edit the spec, or `/sdd:clarify` to have AI ask gap questions.
 
-Do not commit — `/sdd:review` does.
+Do not commit — `/sdd:implement` commits the spec files with the first task, `/sdd:review` the rest.

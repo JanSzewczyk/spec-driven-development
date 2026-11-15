@@ -16,7 +16,8 @@ The repository is a Claude Code plugin. Its layout:
 - **`plugins/sdd-board/`** — the Desktop side-panel mod (hooks module in `hooks/`, tests in `tests/`). Run its tests with `cd plugins/sdd-board && claude plugin test`, and try it with `claude --plugin-dir plugins/sdd-board`.
 - **`plugins/sdd/skills/`, `agents/`** — framework payload, auto-discovered by Claude Code once the plugin is installed. Every slash command is a skill (`skills/<name>/SKILL.md`); text shared by several skills is in `plugins/sdd/references/`.
 - **`plugins/sdd/skills/doctor/`** — `SKILL.md` holds `check` (calls the `doctor_check` tool); `references/init.md` holds `init`. `templates/` holds the per-project seed files copied/adapted into target projects.
-- **`plugins/sdd/hooks/`** — the mod behind the `doctor_check` tool; **`shared/sdd-core/`** — the TypeScript both plugins use (`parse.ts`, `formats.ts`, `check.ts`). Edit it there and run `scripts/sync-core.sh`: a mod imports only files inside its own plugin and symlinks fail validation, so each plugin carries a copy (CI fails when a copy drifts).
+- **`plugins/sdd/hooks/`** — the mod behind the `doctor_check` tool; **`shared/sdd-core/`** — the TypeScript both plugins and the action use (`parse.ts`, `formats.ts`, `check.ts`, `gather.ts`).
+- **`actions/sdd-check/`** — the GitHub Action other repositories use to validate their `specs/` (`uses: JanSzewczyk/spec-driven-development/actions/sdd-check@main`); `run.ts` imports `shared/sdd-core` directly. Fixtures for its CI job are in `tests/fixtures/sdd-ok` and `sdd-broken`. Edit it there and run `scripts/sync-core.sh`: a mod imports only files inside its own plugin and symlinks fail validation, so each plugin carries a copy (CI fails when a copy drifts).
 - **Root docs** (`README.md`, `LICENSE`, `CHANGELOG.md`, `.github/`) — repo-level documentation.
 
 ## Testing your changes locally

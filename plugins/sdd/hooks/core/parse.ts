@@ -8,6 +8,8 @@ export type Task = {
   project: string
   dependsOn: string[] // task ids that must be review|done first; [] when none or not stated
   acceptance: string[] // AC ids the task serves
+  branch: string // task branch while it runs in its own worktree; '' otherwise
+  pr: string // pull request (number or URL) while it waits for a merge; '' otherwise
 }
 export type SpecInfo = {
   title: string
@@ -94,6 +96,11 @@ export function parsePlanStatus(text: string): string {
   return header(text, 'Status').split(/\s/)[0]
 }
 
+// `**Epic:** ULOG-7f3a` in the tasks.md header; '' when absent.
+export function parseEpicId(text: string): string {
+  return header(text, 'Epic').split(/\s/)[0]
+}
+
 // tasks.md: each task is a `### T<n>: title` heading followed by `key: value` lines.
 export function parseTasks(text: string): Task[] {
   const tasks: Task[] = []
@@ -101,12 +108,12 @@ export function parseTasks(text: string): Task[] {
   for (const raw of text.split('\n')) {
     const h = raw.match(/^###\s+(T\d+)\s*[:\-–·]\s*(.*)$/i)
     if (h) {
-      task = { id: h[1].toUpperCase(), title: h[2].trim(), status: 'draft', project: '', dependsOn: [], acceptance: [] }
+      task = { id: h[1].toUpperCase(), title: h[2].trim(), status: 'draft', project: '', dependsOn: [], acceptance: [], branch: '', pr: '' }
       tasks.push(task)
       continue
     }
     if (!task) continue
-    const f = raw.match(/^(project|status|depends_on|acceptance):\s*(.*)$/)
+    const f = raw.match(/^(project|status|depends_on|acceptance|branch|pr):\s*(.*)$/)
     if (!f) continue
     const value = f[2].replace(/\s+#.*$/, '').trim()
     if (f[1] === 'depends_on' || f[1] === 'acceptance') {
@@ -114,7 +121,7 @@ export function parseTasks(text: string): Task[] {
       if (f[1] === 'depends_on') task.dependsOn = list
       else task.acceptance = list
     } else {
-      task[f[1] as 'project' | 'status'] = unquote(value)
+      task[f[1] as 'project' | 'status' | 'branch' | 'pr'] = unquote(value)
     }
   }
   return tasks

@@ -3,8 +3,9 @@
 Read this when a step needs "the changes of the feature": `/sdd:review`, `/sdd:analyze` and the
 briefs for `spec-verifier` and `reviewer`.
 
-`/sdd:implement` never commits, so the work is mostly **uncommitted** and new files are
-**untracked**. Every step and every agent uses this definition:
+`/sdd:implement` commits each finished task (`commit: task`), but the latest work and the spec
+files can still be **uncommitted** and new files **untracked**. Every step and every agent uses
+this definition:
 
 ```bash
 base=$(git merge-base HEAD <default-branch>)

@@ -1,0 +1,30 @@
+# sdd-workflow: 1
+# Added by /sdd:doctor init. Checks that specs/ (constitution, capabilities, specs, plans, tasks)
+# match the SDD version this repository uses, and prints what is missing and how to repair it.
+name: SDD Check 🧭
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sdd:
+    name: SDD Artifacts 🧭
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check SDD specs, plans and capabilities 🧭
+        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@main
+        # Inputs: path, fail-on (fail | warn), node-version.

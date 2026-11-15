@@ -10,12 +10,12 @@ disable-model-invocation: true
 
 The **Review** phase of SDD: the only verification gate. It judges the implemented work against the
 acceptance criteria and the project's rules, writes `review.md` with a READY / NOT READY verdict,
-and — on READY — commits and opens the PR. It never implements anything.
+and — on READY — commits what is left and opens the PR. It never implements anything.
 
 ## The feature diff
 
-Compute it as in [feature-diff.md](${CLAUDE_PLUGIN_ROOT}/references/feature-diff.md): committed and
-uncommitted changes plus untracked files against the merge base, generated globs excluded, one diff
+Compute it as in [feature-diff.md](${CLAUDE_PLUGIN_ROOT}/references/feature-diff.md): the commits
+`/sdd:implement` made per task, uncommitted changes and untracked files against the merge base, generated globs excluded, one diff
 per sibling repository on the feature branch. Every step and every agent uses that definition.
 
 ## Steps
@@ -70,14 +70,16 @@ Set the complete tasks to `done` and `**Status:**` in `spec.md` and `plan.md` to
 commit carries it; see [status-lifecycle.md](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md)). Then, per `publish:`:
 
 - `off` → stop; report the verdict and `review.md`.
-- `ask` (default) → show the commit title, the PR title and the exact list of files you will
-  stage (the feature diff, tracked and untracked, plus `specs/<slug>/`), via `AskUserQuestion`
+- `ask` (default) → show the commit title (when something is left to commit), the PR title and the
+  exact list of files you will stage (what is still uncommitted: `specs/<slug>/` with the statuses,
+  `review.md`, and any task files `/sdd:implement` did not commit), via `AskUserQuestion`
   ("Commit and open PR" (Recommended), "Commit only", "Stop here"). Never stage anything else —
   never `git add -A` (it sweeps in untracked files such as `.env*`).
 
-Commit with the `commit` action and open the PR with the `pr` action from `## Actions`
+Commit what is left with the `commit` action and open the PR with the `pr` action from `## Actions`
 (`skill:` / `agent:` / `command:`). Unset → do it yourself: `git add -- <confirmed files>`, a
-Conventional Commits message (`<type>(<slug>): <Summary of spec.md>`), `gh pr create` with a body
+Conventional Commits message (`<type>(<slug>): <Summary of spec.md>`, trailer `Epic: <EPIC>`; nothing
+left → no commit), `gh pr create` with a body
 holding the summary, the changes from `plan.md`, the test results and a link to `spec.md`.
 
 **Several repositories:** confirm once for all, then publish per touched repo as in
@@ -85,11 +87,12 @@ holding the summary, the changes from `plan.md`, the test results and a link to 
 
 ### 6. NOT READY
 
-Do not commit. List the blockers and, for each unmet acceptance criterion, the task to re-run
+Do not commit or open a PR. List the blockers and, for each unmet acceptance criterion, the task to re-run
 (`/sdd:implement T3`). Report briefly: verdict, blockers, `review.md` path.
 
 ## Constraints
 
-- Never commit or open a PR on NOT READY, or without the user's confirmation when `publish: ask`.
+- Never commit the review outcome or open a PR on NOT READY, or without the user's confirmation when
+  `publish: ask`. Fixes after NOT READY are new commits with the same `Task:` trailer.
 - Never `git add -A` / `git add .`: stage the confirmed list only.
 - Run each check once; do not loop them. Verification agents never flag the generated globs.

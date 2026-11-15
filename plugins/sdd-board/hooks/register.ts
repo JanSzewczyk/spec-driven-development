@@ -1,6 +1,6 @@
 import { effectiveConfig } from './core/check.ts'
 import type { Config } from './core/check.ts'
-import { parsePlan, parseReview, parseSpec, parseTasks } from './core/parse.ts'
+import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from './core/parse.ts'
 import { currentSlug, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
@@ -83,6 +83,7 @@ async function scan($: any): Promise<boolean> {
           planStatus: plan === null ? null : parsePlan(plan).status || 'draft',
           plan: plan === null ? null : parsePlan(plan),
           tasks: tasks === null ? null : parseTasks(tasks),
+          epic: tasks === null ? '' : parseEpicId(tasks),
           review: review === null ? null : parseReview(review),
           modified,
         })
