@@ -40,9 +40,9 @@ line → STOP: "Run `/sdd:tasks` (or `/sdd:doctor init`) to assign an epic id."
 
 ### 3. Commit the documentation, then build the brief
 
-**Documentation commit.** `commit: task` and `specs/<slug>/` has uncommitted changes (spec, plan,
-tasks — nothing before this step commits them) → commit them now, before any status is set or any
-task starts: `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`, via the `commit`
+**Documentation commit.** `/sdd:tasks` already committed the spec, plan and tasks. When `specs/<slug>/`
+still has uncommitted changes (edits made after it, or `/sdd:tasks` ran with `commit: off`) and
+`commit: task` → commit them now, before any status is set or any task starts: `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`, via the `commit`
 action or `git add -- specs/<slug>/`. A worktree or sub-session only sees what is committed.
 `commit: off` → skip; `/sdd:review` commits everything at the end.
 
