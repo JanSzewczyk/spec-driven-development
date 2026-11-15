@@ -78,7 +78,7 @@ Dla własnej kopii z własnymi ustawieniami domyślnymi:
 1. Zrób fork repozytorium i zaktualizuj `homepage` w `plugins/sdd/.claude-plugin/plugin.json`.
 2. *(Opcjonalnie)* Edytuj `plugins/sdd/skills/doctor/templates/capabilities.yml.template`, aby ustawić domyślny flow implementacji.
 3. *(Opcjonalnie)* Edytuj `plugins/sdd/skills/doctor/templates/constitution.md.template`, aby dodać standardowe reguły WHAT NOT TO DO.
-4. Podbij `version` w `plugin.json` i we wpisie `sdd` w `.claude-plugin/marketplace.json`. Po merge do `main` workflow wydania taguje `sdd--v<version>` i tworzy GitHub Release.
+4. Podbij `version` w `plugin.json` i we wpisie `sdd` w `.claude-plugin/marketplace.json`. Po merge do `main` workflow wydania taguje `v<version>` i tworzy GitHub Release.
 5. Użytkownicy dodają Twój fork przez `/plugin marketplace add <your-org>/<your-repo>` i instalują `sdd@spec-driven-development`.
 
 </Steps>

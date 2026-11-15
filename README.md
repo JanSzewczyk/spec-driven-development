@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-2.0.2-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.0.3-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -188,7 +188,7 @@ If you want a customized copy (e.g. with org-specific defaults in `capabilities.
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugins/sdd/.claude-plugin/plugin.json`.
 2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.yml.template` to pre-set the implementation flow for your org.
 3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
-4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`sdd--v<version>`) and creates a GitHub Release (`sdd-board` gets neither).
+4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`v<version>`) and creates a GitHub Release (`sdd-board` gets neither).
 5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install with `/plugin install sdd@spec-driven-development`.
 
 ---
@@ -930,7 +930,7 @@ In short:
 3. Run `claude plugin test` in both plugins, then exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and bump the version of the changed plugin (`plugin.json`, `marketplace.json`, for `sdd` the README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request — the [Plugin Checks](.github/workflows/plugin-checks.yml) workflow fails it on manifest or docs drift, a changed plugin without a version bump, a plugin that does not load or install, a failed skill audit, a drifted `hooks/core/` copy or a failing plugin test
-6. After merge, the [Release](.github/workflows/release.yml) workflow tags a new `sdd` version (`sdd--v<version>`) and creates a GitHub Release from its `CHANGELOG.md` section; `sdd-board` is not tagged or released — do not tag by hand
+6. After merge, the [Release](.github/workflows/release.yml) workflow tags a new `sdd` version (`v<version>`) and creates a GitHub Release from its `CHANGELOG.md` section; `sdd-board` is not tagged or released — do not tag by hand
 
 ---
 
