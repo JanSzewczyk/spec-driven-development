@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tags the main plugin's (sdd) version `v<version>` when it has no tag yet and creates a GitHub
-# Release for every `v<version>` tag that has none. Tags before 2.0.3 are `sdd--v<version>` and stay. Other plugins (sdd-board) are versioned in their manifests
+# Release for every `v<version>` tag that has none. Other plugins (sdd-board) are versioned in their manifests
 # only: no tag, no Release. Run by .github/workflows/release.yml on merge to main.
 # Usage: scripts/release.sh                         tag (git tag -a + push) and release
 #        scripts/release.sh --dry-run               print what would happen, change nothing
@@ -45,12 +45,10 @@ fi
 tag="v$version"
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   echo "tag exists: $tag"
-elif git rev-parse -q --verify "refs/tags/$name--$tag" >/dev/null; then
-  echo "tag exists: $name--$tag (legacy name)"
 elif $dry_run; then
   echo "would tag: $tag ($(git rev-parse --short HEAD))"
 else
-  git tag -a "$tag" -m "$name v$version"
+  git tag -a "$tag" -m "$tag"
   git push origin "refs/tags/$tag"
   echo "tagged: $tag"
 fi
@@ -71,9 +69,9 @@ while read -r tag; do
     body="See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY:-JanSzewczyk/spec-driven-development}/blob/main/CHANGELOG.md)."
   fi
   if $dry_run; then
-    echo "would release: $tag (\"$name v$version\", ${#body} chars of notes)"
+    echo "would release: $tag (\"$tag\", ${#body} chars of notes)"
   else
-    gh release create "$tag" --verify-tag --title "$name v$version" --notes "$body"
+    gh release create "$tag" --verify-tag --title "$tag" --notes "$body"
     echo "released: $tag"
   fi
 done < <(git tag -l "v[0-9]*" --sort=version:refname)
