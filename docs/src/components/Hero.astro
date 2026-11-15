@@ -91,7 +91,7 @@ const installCmd = "/plugin marketplace add JanSzewczyk/spec-driven-development\
             </p>
             <p class="res">
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <path d="m3.5 8.5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="m3.5 8.5 3 3 6-7" pathLength="1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               <span class="out">{l.out}</span>
               <span class="pill" data-kind={l.kind}>{l.pill}</span>
@@ -345,16 +345,84 @@ const installCmd = "/plugin marketplace add JanSzewczyk/spec-driven-development\
     --c: #34d399;
   }
 
-  /* One authored moment: the session writes itself line by line */
+  .copy-btn:active {
+    transform: scale(0.97);
+  }
+  .res svg path {
+    stroke-dasharray: 1;
+  }
+
+  /* One authored moment: the copy settles in, then the session writes itself line by line.
+     Each line is a beat: command, then the check draws, then the status pill lands. */
   @media (prefers-reduced-motion: no-preference) {
-    .log li {
-      animation: line 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-      animation-delay: calc(0.25s + var(--i) * 0.32s);
+    .copy > * {
+      animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: calc(var(--k, 0) * 0.07s);
     }
-    @keyframes line {
+    .copy > :nth-child(2) {
+      --k: 1;
+    }
+    .copy > :nth-child(3) {
+      --k: 2;
+    }
+    .copy > :nth-child(4) {
+      --k: 3;
+    }
+    .stage {
+      animation: rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+    }
+    .log li {
+      --d: calc(0.6s + var(--i) * 0.46s);
+    }
+    .log .cmd {
+      animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--d) both;
+    }
+    .log .res {
+      animation: fade 0.3s ease-out calc(var(--d) + 0.22s) both;
+    }
+    .res svg path {
+      animation: draw 0.35s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--d) + 0.26s) both;
+    }
+    .pill {
+      transform-origin: left center;
+      animation: pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--d) + 0.4s) both;
+    }
+    .log li:last-child .pill {
+      animation:
+        pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--d) + 0.4s) both,
+        ping 1.1s ease-out calc(var(--d) + 0.55s) 1 both;
+    }
+    @keyframes rise {
       from {
         opacity: 0;
-        transform: translateY(6px);
+        transform: translateY(10px);
+      }
+    }
+    @keyframes fade {
+      from {
+        opacity: 0;
+      }
+    }
+    @keyframes draw {
+      from {
+        stroke-dashoffset: 1;
+      }
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    @keyframes pop {
+      from {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+    }
+    @keyframes ping {
+      from {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 45%, transparent);
+      }
+      to {
+        box-shadow: 0 0 0 9px transparent;
       }
     }
   }
