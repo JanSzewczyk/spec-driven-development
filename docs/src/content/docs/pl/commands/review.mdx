@@ -4,22 +4,11 @@ description: "Bramka weryfikacji: testy, spec-verifier, reviewer, potem commit i
 ---
 
 import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import ReviewFlow from '../../../../components/ReviewFlow.astro';
 
 **Jedyna bramka weryfikacji.** Ocenia wynik względem kryteriów akceptacji i reguł projektu.
 
-```mermaid
-flowchart LR
-    S["/sdd:review"] --> T[Testy]
-    S --> V[spec-verifier]
-    S --> C[Twoje sprawdzenia]
-    T --> R[reviewer]
-    V --> R
-    C --> R
-    R -->|READY| P[Pytanie · commit · PR]
-    R -->|NOT READY| B[Blokery + zadanie do ponowienia]
-    classDef cmd fill:#dbeafe,stroke:#2563eb,color:#0a0a0a
-    class S cmd
-```
+<ReviewFlow />
 
 <Steps>
 

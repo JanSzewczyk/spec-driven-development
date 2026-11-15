@@ -1,0 +1,25 @@
+---
+const pl = Astro.currentLocale === "pl";
+const t = pl
+  ? { par: "równolegle", tests: "Testy", checks: "Twoje sprawdzenia", reviewer: "reviewer", ask: "Pytanie · commit · PR", block: "Blokery + zadanie do ponowienia" }
+  : { par: "in parallel", tests: "Tests", checks: "Your checks", reviewer: "reviewer", ask: "Ask · commit · PR", block: "Blockers + task to re-run" };
+---
+
+<div class="fx">
+  <div class="fx-col" style="max-width:40rem">
+    <div class="fx-node fx-cmd"><code>/sdd:review</code></div>
+    <div class="fx-down" data-label={t.par}></div>
+    <div class="fx-row" style="--cols:3">
+      <div class="fx-node"><b>{t.tests}</b></div>
+      <div class="fx-node"><b>spec-verifier</b></div>
+      <div class="fx-node"><b>{t.checks}</b></div>
+    </div>
+    <div class="fx-down"></div>
+    <div class="fx-node fx-cmd"><code>{t.reviewer}</code></div>
+    <div class="fx-down"></div>
+    <div class="fx-row">
+      <div class="fx-node fx-ok"><span class="fx-tag">READY</span><b>{t.ask}</b></div>
+      <div class="fx-node fx-bad"><span class="fx-tag">NOT READY</span><b>{t.block}</b></div>
+    </div>
+  </div>
+</div>

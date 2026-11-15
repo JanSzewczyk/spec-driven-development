@@ -5,28 +5,12 @@ description: Fazy, co robi każda komenda i jak się łączą.
 
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
 import Pipeline from '../../../../components/Pipeline.astro';
+import WorkflowLoop from '../../../../components/WorkflowLoop.astro';
+import Architecture from '../../../../components/Architecture.astro';
 
 <Pipeline />
 
-```mermaid
-flowchart TD
-    S["/sdd:doctor … /sdd:plan<br/>setup, spec, clarify, plan"] --> F[Człowiek recenzuje plan.md]
-    F --> G["/sdd:tasks"]
-    G --> H["/sdd:implement T1"]
-    H --> I{flow skonfigurowany?}
-    I -->|tak| K[Przekaż zadanie do<br/>skonfigurowanego flow]
-    I -->|nie| J[Zaimplementuj w sesji]
-    J --> M["/sdd:review"]
-    K --> M
-    M --> P[spec-verifier + reviewer + Twoje sprawdzenia]
-    P -->|READY| Q[commit + PR]
-    Q --> R["/sdd:retro, opcjonalnie"]
-    P -->|NOT READY| H
-    classDef cmd fill:#dbeafe,stroke:#2563eb,color:#0a0a0a
-    classDef human fill:#fef3c7,stroke:#d97706,color:#0a0a0a
-    class S,G,H,M,R cmd
-    class F human
-```
+<WorkflowLoop />
 
 ## Faza po fazie
 
@@ -48,14 +32,6 @@ Decydujesz przy **Clarify** (odpowiedzi), **Plan** (zatwierdzenie dialogu) i **R
 
 ## Jak części do siebie pasują
 
-```mermaid
-flowchart LR
-    subgraph F[Framework: główna sesja]
-      direction TB
-      c[constitution] --> s[spec] --> cl[clarify] --> p[plan] --> t[tasks] --> h[hand-off] --> r[review]
-    end
-    h -- brief na zadanie --> I[Flow implementacji<br/>Twój skill, agent lub komenda<br/>albo sama sesja]
-    r -- narzędzie Agent --> V[Agenci weryfikacji<br/>spec-verifier · reviewer<br/>Twoje sprawdzenia]
-```
+<Architecture />
 
 Implementacja celowo leży poza frameworkiem: wskazujesz `/sdd:implement` flow, którego już używasz.

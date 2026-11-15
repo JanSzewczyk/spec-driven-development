@@ -4,6 +4,7 @@ description: Samodzielne zadania, briefy i sposób delegowania implementacji.
 ---
 
 import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import TaskWaves from '../../../../components/TaskWaves.astro';
 
 `/sdd:tasks` zapisuje jeden **Epic** (funkcję) z **samodzielnymi zadaniami**: ticketami, które można przekazać implementatorowi w takiej postaci. Zadanie to spójny kawałek zachowania w jednym projekcie (cały ekran, zestaw endpointów z logiką i storage), nigdy warstwa ani mikrokrok.
 
@@ -23,13 +24,7 @@ files: apps/web/src/features/reset/*
 
 Zadania trzymają **odwołania** (id AC, sekcje planu) zamiast kopii; brief wstawia je w momencie przekazania.
 
-```mermaid
-flowchart LR
-    T1[T1 Reset API<br/>api] --> T2[T2 Reset screen<br/>web]
-    T1 --> T3[T3 Reset screen<br/>mobile]
-    T1 --> T4[T4 E2E test]
-    T2 --> T4
-```
+<TaskWaves />
 
 ## Co robi `/sdd:implement T2`
 

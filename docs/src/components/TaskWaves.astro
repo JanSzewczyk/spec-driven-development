@@ -1,0 +1,37 @@
+---
+const pl = Astro.currentLocale === "pl";
+const t = pl
+  ? { w1: "Startuje pierwsze", w2: "Po T1", w3: "Po T1 i T2", needs: "wymaga", note: "Zadania w jednej kolumnie są niezależne i mogą iść równolegle." }
+  : { w1: "Starts first", w2: "After T1", w3: "After T1 and T2", needs: "needs", note: "Tasks in one column are independent and can run in parallel." };
+const waves = [
+  { cap: t.w1, tasks: [{ id: "T1", name: "Reset API", proj: "api", needs: "" }] },
+  { cap: t.w2, tasks: [{ id: "T2", name: "Reset screen", proj: "web", needs: "T1" }, { id: "T3", name: "Reset screen", proj: "mobile", needs: "T1" }] },
+  { cap: t.w3, tasks: [{ id: "T4", name: "E2E test", proj: "", needs: "T1, T2" }] },
+];
+---
+
+<div class="fx">
+  <div class="fx-waves" style={`--cols:${waves.length}`}>
+    {
+      waves.map((w) => (
+        <div class="fx-wave">
+          <p class="fx-cap">{w.cap}</p>
+          {w.tasks.map((k) => (
+            <div class="fx-node fx-cmd">
+              <code>{k.id}</code>
+              <b>{k.name}</b>
+              {(k.proj || k.needs) && (
+                <small>
+                  {k.proj}
+                  {k.proj && k.needs ? " · " : ""}
+                  {k.needs ? `${t.needs} ${k.needs}` : ""}
+                </small>
+              )}
+            </div>
+          ))}
+        </div>
+      ))
+    }
+  </div>
+  <p class="fx-note">{t.note}</p>
+</div>

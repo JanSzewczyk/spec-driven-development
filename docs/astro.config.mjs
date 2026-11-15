@@ -48,7 +48,7 @@ export default defineConfig({
         starlightVersions({ current: { label: "Latest" }, versions: [{ slug: "2.0", label: "v2.0" }] }),
       ],
       components: { SiteTitle: "./src/components/SiteTitle.astro", Footer: "./src/components/Footer.astro" },
-      customCss: ["./src/styles/custom.css"],
+      customCss: ["./src/styles/custom.css", "./src/styles/flow.css"],
       sidebar: [
         {
           label: "Getting started",

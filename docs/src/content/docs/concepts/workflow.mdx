@@ -5,28 +5,12 @@ description: The phases, what each command does and how they connect.
 
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
 import Pipeline from '../../../components/Pipeline.astro';
+import WorkflowLoop from '../../../components/WorkflowLoop.astro';
+import Architecture from '../../../components/Architecture.astro';
 
 <Pipeline />
 
-```mermaid
-flowchart TD
-    S["/sdd:doctor … /sdd:plan<br/>setup, spec, clarify, plan"] --> F[Human reviews plan.md]
-    F --> G["/sdd:tasks"]
-    G --> H["/sdd:implement T1"]
-    H --> I{flow configured?}
-    I -->|yes| K[Hand the task to<br/>the configured flow]
-    I -->|no| J[Implement in the session]
-    J --> M["/sdd:review"]
-    K --> M
-    M --> P[spec-verifier + reviewer + your checks]
-    P -->|READY| Q[commit + PR]
-    Q --> R["/sdd:retro, optional"]
-    P -->|NOT READY| H
-    classDef cmd fill:#dbeafe,stroke:#2563eb,color:#0a0a0a
-    classDef human fill:#fef3c7,stroke:#d97706,color:#0a0a0a
-    class S,G,H,M,R cmd
-    class F human
-```
+<WorkflowLoop />
 
 ## Phase by phase
 
@@ -48,14 +32,6 @@ You decide at **Clarify** (answers), **Plan** (approving the dialog) and **Revie
 
 ## How the pieces fit
 
-```mermaid
-flowchart LR
-    subgraph F[The framework: main session]
-      direction TB
-      c[constitution] --> s[spec] --> cl[clarify] --> p[plan] --> t[tasks] --> h[hand-off] --> r[review]
-    end
-    h -- brief per task --> I[Implementation flow<br/>your skill, agent or command<br/>or the session itself]
-    r -- Agent tool --> V[Verification agents<br/>spec-verifier · reviewer<br/>your own checks]
-```
+<Architecture />
 
 Implementation is deliberately outside the framework: you point `/sdd:implement` at the flow you already use.
