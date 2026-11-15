@@ -87,7 +87,7 @@ the plugin and exercise the real skills against a target project, then verify th
 - [ ] Doctor exercised against a fresh project: `/sdd:doctor check` → `init` → `check`, artifacts verified by hand and idempotency confirmed.
 - [ ] If a command or agent was added or removed, the README's File Structure and reference sections reflect it.
 - [ ] `CHANGELOG.md` section added for the new version.
-- [ ] `plugins/<name>/.claude-plugin/plugin.json` `version` bumped (same value in `.claude-plugin/marketplace.json`; for `sdd` also the README badge).
+- [ ] `plugins/<name>/.claude-plugin/plugin.json` `version` bumped (same value in `.claude-plugin/marketplace.json`; for `sdd` also the README badge). Do not tag (with `/plugin-release`, skip its tag step): on merge, `.github/workflows/release.yml` creates the `<name>--v<version>` tag and a GitHub Release with the `CHANGELOG.md` section as notes.
 
 ## Reporting issues
 

@@ -1,0 +1,46 @@
+name: Release 🚀
+
+# Tags `<plugin>--v<version>` for every plugin version merged to main without a tag
+# (`claude plugin tag`, which checks plugin.json against marketplace.json) and creates a GitHub
+# Release for every such tag that has none, with notes from CHANGELOG.md. The version itself is
+# bumped by hand in the pull request (checked by Plugin Checks); this workflow only publishes it.
+# Run it by hand (workflow_dispatch) to retry or to create Releases for tags that lack one.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/*/.claude-plugin/plugin.json"
+      - ".claude-plugin/marketplace.json"
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Tag and Release 🏷️
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Set the tagger identity 🤖
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Set up Node.js 🟢
+        uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+      - name: Install Claude Code 🤖
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Tag new versions and create Releases 🚀
+        run: scripts/release.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
