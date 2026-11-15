@@ -265,6 +265,11 @@ test('legacy capabilities.md: isolation, merge and parallel move under worktree;
   expect((parseLegacyCapabilities(LEGACY.replace('commit: off', 'merge: auto')).doc.implementation as any).isolation).toBeUndefined()
 })
 
+test('legacy capabilities.md: an npm-scoped project line is read', () => {
+  const md = LEGACY.replace('- **web** — web', '- **@acme/web** — web').replace('checks: agent:qa', 'checks: agent:qa\n@acme/web: agent:nextjs:code-reviewer')
+  expect((parseLegacyCapabilities(md).doc.review as any).projects).toEqual({ '@acme/web': 'agent:nextjs:code-reviewer' })
+})
+
 test('the YAML file wins over the legacy one', () => {
   expect(loadCapabilities(CAPABILITIES, LEGACY)!.legacy).toBe(false)
   expect(loadCapabilities(null, LEGACY)!.legacy).toBe(true)
@@ -274,7 +279,16 @@ test('the YAML file wins over the legacy one', () => {
 test('capabilities: a YAML syntax error fails check 3 with its line', () => {
   const r = runChecks(allTools(snapshot({ capabilities: CAPABILITIES.replace('  tests: run', '  tests: &x run') })))
   expect(r.checks[2].status).toBe('fail')
-  expect(texts(r, 3)[0]).toMatch(/^line 25: anchors/)
+  expect(texts(r, 3)).toEqual([expect.stringMatching(/^line 25: anchors/)])
+})
+
+test('capabilities: an npm-scoped project name must be quoted', () => {
+  const scoped = CAPABILITIES.replace('- name: web', '- name: "@acme/web"').replace('    api: agent:python-developer', '    api: agent:python-developer\n    "@acme/web": in-session')
+  const constitution = CONSTITUTION.replace('| web |', '| @acme/web |')
+  expect(texts(runChecks(allTools(snapshot({ capabilities: scoped, constitution }))), 3)).toEqual([])
+  expect(parseCapabilities(scoped).projects[0].name).toBe('@acme/web')
+  const bare = texts(runChecks(allTools(snapshot({ capabilities: scoped.replace('"@acme/web"', '@acme/web') }))), 3)
+  expect(bare).toEqual(['line 4: a plain value cannot start with "@": quote it'])
 })
 
 test('capabilities: unknown keys, wrong shapes and an old format warn', () => {

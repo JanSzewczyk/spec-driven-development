@@ -45,7 +45,7 @@ export function sectionLines(text: string, match: (title: string) => boolean): s
 export function keyValues(lines: string[]): [string, string][] {
   const out: [string, string][] = []
   for (const l of stripComments(lines.join('\n')).split('\n')) {
-    const m = l.match(/^([A-Za-z0-9_.-]+):\s*(.*)$/)
+    const m = l.match(/^([@A-Za-z0-9_./-]+):\s*(.*)$/) // `@scope/name` project keys included
     if (m) out.push([m[1], m[2].replace(/\s{2,}#.*$/, '').trim()])
   }
   return out

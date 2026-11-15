@@ -85,6 +85,9 @@ included. Keys and values: [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/ca
   (same note for `off`).
 - Do not set `review.ci` here (step 6).
 
+Quoting: wrap a key or value in double quotes when it starts with `@ * & ! % | > [ { "` or a backtick,
+or contains `: ` or ` #` (npm scopes: `name: "@acme/web"`, `"@acme/web": in-session`); globs always.
+
 Idempotency: a second run with no other change writes an identical file. Two-space indentation.
 
 ## 4. Sibling repositories only
