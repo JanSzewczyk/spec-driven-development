@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -444,7 +444,7 @@ jobs:
       - name: Checkout code 📚
         uses: actions/checkout@v7
       - name: Check SDD specs, plans and capabilities 🧭
-        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@sdd--v2.0.0
+        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@sdd--v2.0.1
         # Inputs: path, fail-on (fail | warn), node-version.
 ```
 

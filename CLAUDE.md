@@ -60,7 +60,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
   - `SKILL.md` holds `check`: it calls the `doctor_check` tool (7 read-only checks, rules in `shared/sdd-core/check.ts`, listed in `references/formats.md`) and does the checks itself when the tool is missing.
   - `references/init.md` (loaded only for `init`) is LLM-driven, since detection needs judgement: it detects projects and quality commands and writes the per-project artifacts with file tools. The only `.claude/settings.json` edit is adding sibling-repository paths to `permissions.additionalDirectories` (malformed JSON is never touched). No settings hooks are generated.
   - `templates/` seeds `constitution.md.template`, `capabilities.yml.template`, `specs/template.md`, `sdd-check.yml.template`.
-- **`schemas/capabilities.schema.json`** — JSON Schema of `capabilities.yml`, linked from the file's `# yaml-language-server` line (pinned to the release tag). `scripts/check-capabilities.ts` (CI) checks that `formats.ts`, the schema, the template and the key table in `references/capabilities.md` agree.
+- **`shared/sdd-core/capabilities.schema.json`** — JSON Schema of `capabilities.yml` and the **single source** of its keys, allowed values, defaults and patterns: `formats.ts` reads them from `capabilities.schema.ts`, a TS copy that `scripts/sync-core.sh` generates (a mod loads only code files). The script also copies the JSON to `plugins/sdd/schemas/` (the URL the file's `# yaml-language-server` line points at, pinned to the release tag). `scripts/check-capabilities.ts` (CI) checks that the template and the key table in `references/capabilities.md` agree with it.
   - **Critical invariant:** artifacts are written under the *repo root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`), so artifacts land in the project, not the plugin.
 
 ### Key concepts when editing
@@ -95,7 +95,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 | Per-task commits, isolation and merge modes | `skills/implement/SKILL.md`, `skills/implement/references/isolation.md`, `skills/review/SKILL.md` |
 | The `init` procedure (incl. the sibling-repo `settings.json` edit) | `skills/doctor/references/init.md` |
 | Files seeded into target projects | `skills/doctor/templates/` |
-| A `capabilities.yml` key or value | `shared/sdd-core/formats.ts` (+ `capabilities.ts` / `check.ts`), `schemas/capabilities.schema.json`, `skills/doctor/templates/capabilities.yml.template`, the key table in `references/capabilities.md`; `node scripts/check-capabilities.ts` checks they agree; a migration in `init.md` when an old value changes |
+| A `capabilities.yml` key or value | `shared/sdd-core/capabilities.schema.json` (+ `capabilities.ts` / `check.ts` for rules a schema cannot express), then `scripts/sync-core.sh`; `skills/doctor/templates/capabilities.yml.template`, the key table in `references/capabilities.md`; `node scripts/check-capabilities.ts` checks they agree; a migration in `init.md` when an old value changes |
 | What the Desktop panel shows or how it derives the next step | `plugins/sdd-board/hooks/{model,view,svg}.ts` (logic, drawing); `register.ts` holds only hooks and `$` calls |
 | How `specs/` files are parsed (panel and doctor) | `shared/sdd-core/parse.ts`, with a test in `plugins/sdd-board/tests/`, then `scripts/sync-core.sh` |
 

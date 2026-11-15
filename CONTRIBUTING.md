@@ -71,7 +71,7 @@ the plugin and exercise the real skills against a target project, then verify th
 | Change type | Location |
 |------|------|
 | Default implementation flow for new projects | Edit `implementation` in `skills/doctor/templates/capabilities.yml.template` |
-| A `capabilities.yml` key or value | `shared/sdd-core/formats.ts`, `plugins/sdd/schemas/capabilities.schema.json`, the template, the key table in `plugins/sdd/references/capabilities.md` (`node scripts/check-capabilities.ts` checks they agree), a migration in `init.md` when an old value changes meaning |
+| A `capabilities.yml` key or value | `shared/sdd-core/capabilities.schema.json` (the source of keys, values and defaults; `formats.ts` reads it), then `scripts/sync-core.sh`; the template, the key table in `plugins/sdd/references/capabilities.md` (`node scripts/check-capabilities.ts` checks they agree), a migration in `init.md` when an old value changes meaning |
 | New SDD-doctor check | `shared/sdd-core/check.ts` + a test in `plugins/sdd/tests/` + the row in `plugins/sdd/references/formats.md`, then `scripts/sync-core.sh` |
 | New slash command | New folder `skills/<name>/SKILL.md` (`name`, `description`, `allowed-tools`, `disable-model-invocation: true`). Document in README. |
 | Text several skills repeat | `references/<file>.md`, linked as `${CLAUDE_PLUGIN_ROOT}/references/<file>.md` |

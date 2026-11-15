@@ -1,5 +1,6 @@
-// Keeps the capabilities.yml contract in one voice: the values in shared/sdd-core/formats.ts, the
-// JSON Schema, the seeded template and the key table in references/capabilities.md must agree.
+// Keeps the capabilities.yml contract in one voice. The JSON Schema (shared/sdd-core/capabilities.schema.json)
+// is the source of keys, values and defaults; formats.ts reads it. The seeded template and the key table
+// in references/capabilities.md are prose and must agree with it.
 // Usage: node scripts/check-capabilities.ts   (exit 1 and one line per mismatch)
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -45,18 +46,9 @@ const KEYS: Record<string, { values: string[] | null; default: string | null }> 
   generated: { values: null, default: null },
 }
 
-// 1. Schema enums.
-const schema = JSON.parse(read('schemas/capabilities.schema.json'))
+// 1. The schema is the source of the values; scripts/sync-core.sh --check keeps its copies equal.
+const schema = JSON.parse(readFileSync(join(root, 'shared/sdd-core/capabilities.schema.json'), 'utf8'))
 const p = schema.properties
-const iso = p.implementation.properties.isolation.oneOf
-same('schema isolation string', iso[1].enum, ISOLATION_VALUES.filter((v) => v === 'none'))
-same('schema isolation object', iso[2].required, ISOLATION_VALUES.filter((v) => v !== 'none'))
-same('schema worktree keys', Object.keys(iso[2].properties.worktree.properties), Object.keys(WORKTREE_DEFAULTS))
-same('schema merge', iso[2].properties.worktree.properties.merge.enum, MERGE_VALUES)
-same('schema review.tests', p.review.properties.tests.enum, [...TESTS_VALUES, null])
-same('schema review.publish', p.review.properties.publish.enum, [...PUBLISH_VALUES, null])
-same('schema review.ci', p.review.properties.ci.enum, [...CI_VALUES, null])
-same('schema actions', Object.keys(p.actions.properties), ACTION_KEYS)
 
 // 2. The seeded template.
 const tpl = parseCapabilities(read('skills/doctor/templates/capabilities.yml.template'))
@@ -85,4 +77,4 @@ if (problems.length > 0) {
   for (const x of problems) console.log('::error::capabilities contract: ' + x)
   process.exit(1)
 }
-console.log('capabilities contract: formats.ts, schema, template and reference agree')
+console.log('capabilities contract: schema, template and reference agree')
