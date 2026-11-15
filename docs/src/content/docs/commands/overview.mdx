@@ -1,0 +1,55 @@
+---
+title: Commands overview
+description: All 11 slash commands at a glance.
+sidebar:
+  label: Overview
+---
+
+import { LinkCard, CardGrid, Aside, Badge } from '@astrojs/starlight/components';
+import Pipeline from '../../../components/Pipeline.astro';
+
+None of the commands is started by Claude on its own; you run them.
+
+<Pipeline />
+
+## Setup <Badge text="once per project" variant="note" />
+
+<CardGrid>
+  <LinkCard title="/sdd:doctor" description="Audit readiness (check) and bootstrap or repair artifacts (init)." href="/spec-driven-development/commands/doctor/" />
+  <LinkCard title="/sdd:constitution" description="Edit the long-form source of truth." href="/spec-driven-development/commands/constitution/" />
+  <LinkCard title="/sdd:capabilities" description="Pick implementer, git actions and review checks." href="/spec-driven-development/commands/capabilities/" />
+</CardGrid>
+
+## The flow <Badge text="per feature" variant="tip" />
+
+<CardGrid>
+  <LinkCard title="/sdd:spec" description="Create the branch and the business spec." href="/spec-driven-development/commands/spec/" />
+  <LinkCard title="/sdd:clarify" description="Close gaps with up to 5 questions." href="/spec-driven-development/commands/clarify/" />
+  <LinkCard title="/sdd:plan" description="Decisions and scope, in Plan Mode." href="/spec-driven-development/commands/plan/" />
+  <LinkCard title="/sdd:tasks" description="Split the plan into self-contained tasks." href="/spec-driven-development/commands/tasks/" />
+  <LinkCard title="/sdd:implement" description="Hand tasks to your implementation flow." href="/spec-driven-development/commands/implement/" />
+  <LinkCard title="/sdd:review" description="Verify, verdict, commit and PR." href="/spec-driven-development/commands/review/" />
+</CardGrid>
+
+## Anytime <Badge text="optional" />
+
+<CardGrid>
+  <LinkCard title="/sdd:retro" description="Turn review lessons into constitution rules." href="/spec-driven-development/commands/retro/" />
+  <LinkCard title="/sdd:analyze" description="Read-only drift check." href="/spec-driven-development/commands/analyze/" />
+</CardGrid>
+
+## Summary
+
+| Command | Writes | Plan Mode |
+|---|---|---|
+| `/sdd:doctor [check\|init]` | `specs/` base files (init only) | no |
+| `/sdd:constitution` | `specs/constitution.md` | no |
+| `/sdd:spec <type> <description>` | branch, `spec.md` | no |
+| `/sdd:clarify` | `spec.md` | **never** (it writes) |
+| `/sdd:plan` | `plan.md` | **recommended** |
+| `/sdd:tasks` | `tasks.md`, commit | no |
+| `/sdd:implement <task-id \| all>` | task commits, statuses | no |
+| `/sdd:review` | `review.md`, commit, PR | no |
+| `/sdd:retro` | constitution §5 | no |
+| `/sdd:capabilities` | `capabilities.yml` | no |
+| `/sdd:analyze` | nothing | no |

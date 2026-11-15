@@ -1,0 +1,46 @@
+---
+title: Introduction
+description: What SDD is, the problem it solves and what you get.
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+Vibe coding (loose prompt, AI guesses, iterate by trial and error) works for demos and breaks in production: every fix breaks something else, security gaps multiply, the codebase turns unmaintainable.
+
+**SDD inverts it.** The specification is the source of truth; code is its mechanical consequence. Claude reads and confirms a plan before a single line is written, and a final review checks the result against the acceptance criteria before anything is committed.
+
+## Vibe coding vs SDD
+
+| | Vibe coding | SDD |
+|---|---|---|
+| **Starting point** | A vague prompt | A reviewed spec with acceptance criteria |
+| **Design** | Implicit, in the model's head | `plan.md`, approved by you in Plan Mode |
+| **Work units** | One long chat | Self-contained tasks, one per session |
+| **Done means** | "Looks right" | Every acceptance criterion verified |
+| **Lessons** | Forgotten | Written into the constitution |
+
+## What the framework does and does not do
+
+<CardGrid>
+  <Card title="Manages" icon="approve-check">
+    Research, spec, plan, self-contained tasks, the hand-off, and the final audit.
+  </Card>
+  <Card title="Leaves to you" icon="puzzle">
+    The implementation itself. Point `/sdd:implement` at the skill, agent or command you already use.
+  </Card>
+</CardGrid>
+
+## What is in the box
+
+| Piece | What | Role |
+|---|---|---|
+| **11 skills** | Slash commands, started only by you | `doctor`, `constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `retro`, `analyze`, `capabilities` |
+| **3 agents** | Sub-agents, invoked by commands | [`spec-verifier`](/spec-driven-development/agents/overview/#spec-verifier), [`reviewer`](/spec-driven-development/agents/overview/#reviewer), [`codebase-surveyor`](/spec-driven-development/agents/overview/#codebase-surveyor) |
+| **1 mod** | Registers the `doctor_check` tool | Powers `/sdd:doctor check` |
+| **sdd-board** | Optional Desktop panel | [Shows where each spec stands](/spec-driven-development/board/overview/) |
+
+<Aside type="note" title="Built on">
+[GitHub Spec Kit](https://github.com/github/spec-kit) (canonical phases), BMAD Method (sharding, role-based sub-agents), Amazon Kiro (Mermaid generation), OpenSpec (lightweight CLI for legacy code), and Claude Code's slash commands, Plan Mode and agents.
+</Aside>
+
+Next: [install the plugin](/spec-driven-development/getting-started/installation/).

@@ -1,0 +1,17 @@
+---
+title: /sdd:retro
+description: Turn review lessons into constitution rules.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Optional, after [`/sdd:review`](/spec-driven-development/commands/review/). Reads `review.md` (blockers, violated rules, accepted items, drift) and proposes **WHAT NOT TO DO** entries for the constitution.
+
+- Only **repeatable** mistakes.
+- Only ones constitution §5 does not already cover.
+- Each entry needs a `**Why:**` that comes from the review or from you. It asks instead of inventing one.
+- Writes only constitution §5.
+
+<Aside type="tip">
+This is how the project gets smarter: a mistake caught once becomes a rule `reviewer` checks on every future review.
+</Aside>

@@ -57,6 +57,7 @@ export default defineConfig({
           label: "Guides",
           items: [
             "guides/example",
+            "guides/cheatsheet",
             "guides/best-practices",
             "guides/anti-patterns",
             "guides/cost",

@@ -1,0 +1,96 @@
+---
+interface Props {
+  compact?: boolean;
+}
+const { compact = false } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const steps = [
+  { cmd: "constitution", label: "Constitution", note: "Stack, rules, WHAT NOT TO DO", href: "/commands/constitution/" },
+  { cmd: "spec", label: "Specify", note: "Branch + business spec", href: "/commands/spec/" },
+  { cmd: "clarify", label: "Clarify", note: "Up to 5 questions", href: "/commands/clarify/" },
+  { cmd: "plan", label: "Plan", note: "Decisions, scope, risks", href: "/commands/plan/" },
+  { cmd: "tasks", label: "Tasks", note: "Jira-like tickets", href: "/commands/tasks/" },
+  { cmd: "implement", label: "Implement", note: "Hand-off to your flow", href: "/commands/implement/" },
+  { cmd: "review", label: "Review", note: "READY or NOT READY", href: "/commands/review/" },
+];
+---
+
+<ol class:list={["pipeline", { compact }]}>
+  {
+    steps.map((s, i) => (
+      <li>
+        <a href={base + s.href}>
+          <span class="n">{i + 1}</span>
+          <strong>{s.label}</strong>
+          <code>/sdd:{s.cmd}</code>
+          {!compact && <small>{s.note}</small>}
+        </a>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .pipeline {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(6.6rem, 1fr));
+    gap: 0.75rem;
+    counter-reset: none;
+  }
+  .pipeline li {
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+  .pipeline a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    height: 100%;
+    padding: 0.9rem 0.9rem 0.8rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+    background: var(--sl-color-bg-nav);
+    text-decoration: none;
+    color: var(--sl-color-white);
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .pipeline a:hover {
+    border-color: var(--sl-color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px -8px var(--sl-color-accent);
+  }
+  .n {
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 999px;
+    background: var(--sl-color-accent);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  strong {
+    font-size: var(--sl-text-base);
+    margin-top: 0.25rem;
+  }
+  code {
+    font-size: 0.72rem;
+    color: var(--sl-color-accent-high);
+    background: none;
+    padding: 0;
+    border: 0;
+  }
+  small {
+    color: var(--sl-color-gray-2);
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+  .compact {
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  }
+</style>

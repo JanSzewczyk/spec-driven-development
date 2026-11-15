@@ -1,0 +1,34 @@
+---
+title: Contributing
+description: Development setup and how to change the plugins.
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+Behavior lives in **Markdown prompts**: the body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes. The only code is TypeScript: the mod that registers `doctor_check` and the rules and parsers in `shared/sdd-core/`.
+
+<Steps>
+
+1. Fork and branch with Conventional Commits naming (`git checkout -b feat/new-check`).
+2. Change the plugin (`plugins/sdd/skills/`, `agents/`, `references/`, `skills/doctor/templates/`) or the panel (`plugins/sdd-board/hooks/`). Shared TypeScript lives in `shared/sdd-core/`; run `scripts/sync-core.sh` afterwards.
+3. Run `claude plugin test` in both plugins, then exercise the doctor against a fresh project (`check` → `init` → `check`).
+4. Update the README and these docs, and bump the changed plugin's version (`plugin.json`, `marketplace.json`, for `sdd` the README badge) with a `CHANGELOG.md` section.
+5. Open a PR. Plugin Checks fail it on manifest or docs drift, a changed plugin without a bump, a plugin that does not load or install, a failed skill audit, a drifted `hooks/core/` copy or a failing test.
+6. After merge, the release workflow tags a new `sdd` version and creates a GitHub Release. `sdd-board` is not tagged.
+
+</Steps>
+
+<Aside type="caution">
+Never tag by hand.
+</Aside>
+
+## Working on this site
+
+```bash
+cd docs
+npm install
+npm run dev      # http://localhost:4321/spec-driven-development/
+npm run build
+```
+
+Pages are in `docs/src/content/docs/`, the sidebar in `docs/astro.config.mjs`. The full map of where to change what is in [CLAUDE.md](https://github.com/JanSzewczyk/spec-driven-development/blob/main/CLAUDE.md).

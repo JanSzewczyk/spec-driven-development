@@ -1,0 +1,106 @@
+---
+title: Quick start
+description: Initialize a project and ship a first feature.
+---
+
+import { Steps, Aside, FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
+import Pipeline from '../../../components/Pipeline.astro';
+
+<Pipeline compact />
+
+## 1. Initialize the project
+
+<Steps>
+
+1. Open the target project in Claude Code and run:
+
+   ```text
+   /sdd:doctor init
+   ```
+
+   It detects your projects and their commands, then creates:
+
+   <FileTree>
+   - specs/
+     - constitution.md source of truth, edit it next
+     - template.md base for new specs
+     - capabilities.yml projects + flows, actions, review
+   </FileTree>
+
+2. Confirm everything is in place:
+
+   ```text
+   /sdd:doctor check     # 7/7
+   ```
+
+3. *(Optional)* Pick the implementer, git actions and review checks from your installed skills and agents:
+
+   ```text
+   /sdd:capabilities
+   ```
+
+4. Fill in your rules and stack commands:
+
+   ```text
+   /sdd:constitution
+   ```
+
+</Steps>
+
+<Aside type="note">
+The project-root `CLAUDE.md` is never read or written by SDD. The source of truth is `specs/constitution.md`.
+</Aside>
+
+## 2. Build a feature
+
+<Steps>
+
+1. **Specify.** Creates the branch and the spec skeleton:
+
+   ```text
+   /sdd:spec feat user can reset password via email
+   ```
+
+2. **Clarify.** Answer up to 5 questions; the spec is updated:
+
+   ```text
+   /sdd:clarify
+   ```
+
+3. **Plan.** Switch to Plan Mode (Shift+Tab) first. Approving the dialog saves `plan.md`; read it carefully:
+
+   ```text
+   /sdd:plan
+   ```
+
+4. **Tasks.** One Epic, self-contained tasks, committed to git:
+
+   ```text
+   /sdd:tasks
+   ```
+
+5. **Implement.** One task or all of them, handed to your flow:
+
+   ```text
+   /sdd:implement all
+   ```
+
+6. **Review.** Verdict, ticked acceptance criteria, commit and PR:
+
+   ```text
+   /sdd:review
+   ```
+
+7. *(Optional)* **Retro.** Turn repeatable mistakes into constitution rules:
+
+   ```text
+   /sdd:retro
+   ```
+
+</Steps>
+
+<Aside type="tip">
+Each phase re-reads its inputs from disk, so `/clear` between phases loses nothing.
+</Aside>
+
+See the whole run with real output in the [end-to-end example](/spec-driven-development/guides/example/).
