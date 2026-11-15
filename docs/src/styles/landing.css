@@ -227,41 +227,84 @@
   }
 }
 
-/* Scroll motion: hairlines between the Why statements draw in, and the Start steps
-   light up in order. Without scroll timelines everything is simply visible. */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .why > div::before {
-      animation: hairline linear both;
-      animation-timeline: view();
-      animation-range: entry 20% entry 100%;
-    }
-    .why > div > * {
-      animation: lift linear both;
-      animation-timeline: view();
-      animation-range: entry 10% entry 90%;
-    }
-    .start-steps li::before {
-      animation: step-on linear both;
-      animation-timeline: view();
-      animation-range: entry 20% entry 100%;
-    }
-    @keyframes hairline {
-      from {
-        transform: scaleX(0);
-      }
-    }
-    @keyframes lift {
-      from {
-        opacity: 0;
-        translate: 0 8px;
-      }
-    }
-    @keyframes step-on {
-      from {
-        background: var(--sl-color-gray-6);
-        color: var(--sl-color-gray-4);
-      }
-    }
+/* Page motion: sections reveal as they enter the viewport (script in Hero.astro adds
+   .reveal-ready and then .in per element, with --rd as a stagger inside one batch).
+   Without the script, or with reduced motion, nothing is hidden. */
+.reveal-ready :is(
+    .landing-section > .sl-heading-wrapper,
+    .landing-section > .landing-lead,
+    .flow .group-title,
+    .flow li,
+    .why-intro,
+    .why > div,
+    .start-copy,
+    .start-code,
+    .explore a
+  ):not(.in) {
+  opacity: 0;
+}
+.reveal-ready :is(
+    .landing-section > .sl-heading-wrapper,
+    .landing-section > .landing-lead,
+    .flow .group-title,
+    .flow li,
+    .why-intro,
+    .why > div,
+    .start-copy,
+    .start-code,
+    .explore a
+  ).in {
+  animation: lp-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--rd, 0s) both;
+}
+@keyframes lp-reveal {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
+/* Flow: the connector draws down to the next node once its row lands */
+.reveal-ready .flow li::before {
+  transform-origin: top;
+}
+.reveal-ready .flow li:not(.in)::before {
+  transform: scaleY(0);
+}
+.reveal-ready .flow li.in::before {
+  animation: lp-grow 0.55s ease-out calc(var(--rd, 0s) + 0.25s) both;
+}
+@keyframes lp-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Why: hairlines draw in from the left */
+.reveal-ready .why > div.in::before {
+  animation: lp-hairline 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--rd, 0s) both;
+}
+@keyframes lp-hairline {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Start: the numbered circles light up one after another */
+.reveal-ready .start-copy.in .start-steps li::before {
+  animation: lp-step 0.5s ease-out calc(var(--rd, 0s) + 0.35s + var(--n, 0) * 0.14s) both;
+}
+.start-steps li:nth-child(2) {
+  --n: 1;
+}
+.start-steps li:nth-child(3) {
+  --n: 2;
+}
+.start-steps li:nth-child(4) {
+  --n: 3;
+}
+@keyframes lp-step {
+  from {
+    background: var(--sl-color-gray-6);
+    color: var(--sl-color-gray-4);
   }
 }

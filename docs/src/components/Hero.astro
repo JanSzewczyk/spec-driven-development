@@ -103,6 +103,52 @@ const installCmd = "/plugin marketplace add JanSzewczyk/spec-driven-development\
   </figure>
 </div>
 
+<script is:inline>
+  /* Section reveal is opt-in: hidden states exist only once this flag is set */
+  if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.documentElement.classList.add("reveal-ready");
+    setTimeout(() => {
+      if (!document.documentElement.dataset.revealLive) document.documentElement.classList.remove("reveal-ready");
+    }, 3000);
+  }
+</script>
+
+<script>
+  const targets = [
+    ".landing-section > .sl-heading-wrapper",
+    ".landing-section > .landing-lead",
+    ".flow .group-title",
+    ".flow li",
+    ".why-intro",
+    ".why > div",
+    ".start-copy",
+    ".start-code",
+    ".explore a",
+  ].join(",");
+  const els = Array.from(document.querySelectorAll<HTMLElement>(targets));
+  const root = document.documentElement;
+  if (root.classList.contains("reveal-ready") && els.length) {
+    root.dataset.revealLive = "1";
+    let initial = true;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const batch = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top || a.boundingClientRect.left - b.boundingClientRect.left);
+        batch.forEach((e, i) => {
+          // first batch waits for the hero to settle
+          e.target.style.setProperty("--rd", `${(initial ? 0.5 : 0) + Math.min(i, 9) * 0.06}s`);
+          e.target.classList.add("in");
+          io.unobserve(e.target);
+        });
+        initial = false;
+      },
+      { rootMargin: "0px 0px -6% 0px", threshold: 0.05 },
+    );
+    els.forEach((el) => io.observe(el));
+  }
+</script>
+
 <script>
   document.querySelectorAll<HTMLButtonElement>(".hero .copy-btn").forEach((btn) => {
     const label = btn.textContent;
