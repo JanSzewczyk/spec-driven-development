@@ -9,7 +9,7 @@ import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 ```mermaid
 flowchart LR
-    S[/sdd:review/] --> T[Testy]
+    S["/sdd:review"] --> T[Testy]
     S --> V[spec-verifier]
     S --> C[Twoje sprawdzenia]
     T --> R[reviewer]
@@ -17,6 +17,8 @@ flowchart LR
     C --> R
     R -->|READY| P[Pytanie · commit · PR]
     R -->|NOT READY| B[Blokery + zadanie do ponowienia]
+    classDef cmd fill:#dbeafe,stroke:#2563eb,color:#0a0a0a
+    class S cmd
 ```
 
 <Steps>

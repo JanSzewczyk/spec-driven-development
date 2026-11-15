@@ -1,0 +1,324 @@
+---
+type Kind = "draft" | "ready" | "progress" | "review" | "done";
+interface Step {
+  status: string;
+  kind: Kind;
+  by: string;
+  note?: string;
+}
+interface Back {
+  from: string;
+  fromKind: Kind;
+  to: string;
+  toKind: Kind;
+  by: string;
+  why: string;
+}
+interface Track {
+  file: string;
+  steps: Step[];
+  back: Back[];
+}
+
+const locale = Astro.currentLocale === "pl" ? "pl" : "en";
+const t =
+  locale === "pl"
+    ? { by: "ustawia", back: "Ruchy wstecz", first: "pierwsze zadanie", unmet: "niespełnione kryteria akceptacji", scope: "ponowne uruchomienie dotyka zakresu", implementer: "implementator" }
+    : { by: "set by", back: "Moves backwards", first: "first task", unmet: "unmet acceptance criteria", scope: "a re-run touches its scope", implementer: "implementer" };
+
+const tracks: Track[] = [
+  {
+    file: "spec.md",
+    steps: [
+      { status: "draft", kind: "draft", by: "/sdd:spec" },
+      { status: "clarified", kind: "ready", by: "/sdd:clarify" },
+      { status: "planned", kind: "ready", by: "/sdd:plan" },
+      { status: "in-progress", kind: "progress", by: "/sdd:implement", note: t.first },
+      { status: "done", kind: "done", by: "/sdd:review" },
+    ],
+    back: [],
+  },
+  {
+    file: "plan.md",
+    steps: [
+      { status: "draft", kind: "draft", by: "/sdd:plan" },
+      { status: "tasks-ready", kind: "ready", by: "/sdd:tasks" },
+      { status: "in-progress", kind: "progress", by: "/sdd:implement" },
+      { status: "done", kind: "done", by: "/sdd:review" },
+    ],
+    back: [],
+  },
+  {
+    file: locale === "pl" ? "zadanie" : "task",
+    steps: [
+      { status: "draft", kind: "draft", by: "/sdd:tasks" },
+      { status: "in-progress", kind: "progress", by: "/sdd:implement" },
+      { status: "review", kind: "review", by: t.implementer },
+      { status: "done", kind: "done", by: "/sdd:review" },
+    ],
+    back: [
+      { from: "review", fromKind: "review", to: "in-progress", toKind: "progress", by: "/sdd:review", why: t.unmet },
+      { from: "in-progress", fromKind: "progress", to: "draft", toKind: "draft", by: "/sdd:tasks", why: t.scope },
+    ],
+  },
+];
+---
+
+<div class="lifecycle">
+  {
+    tracks.map((track) => (
+      <section class="track">
+        <h4 class="file">
+          <code>{track.file}</code>
+        </h4>
+        <ol class="steps" style={`--n:${track.steps.length}`}>
+          {track.steps.map((s) => (
+            <li>
+              <span class="status" data-kind={s.kind}>
+                {s.status}
+              </span>
+              <span class="by">
+                <span class="lbl">{t.by}</span>
+                {s.by.startsWith("/") ? <code>{s.by}</code> : <span class="who">{s.by}</span>}
+                {s.note && <span class="note">({s.note})</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
+        {track.back.length > 0 && (
+          <ul class="back" aria-label={t.back}>
+            {track.back.map((b) => (
+              <li>
+                <span class="status small" data-kind={b.toKind}>
+                  {b.to}
+                </span>
+                <svg viewBox="0 0 24 12" width="24" height="12" aria-hidden="true">
+                  <path d="M23 6H2M7 1 2 6l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span class="status small" data-kind={b.fromKind}>
+                  {b.from}
+                </span>
+                <span class="why">
+                  <code>{b.by}</code> · {b.why}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  /* Starlight adds margin-top between siblings in prose; the component spaces itself */
+  .lifecycle :is(li, span, code, svg, h4, ol, ul) {
+    margin-top: 0 !important;
+  }
+  .lifecycle {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .track {
+    display: grid;
+    gap: 1rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+    --surface: var(--sl-color-gray-7);
+    background: var(--surface);
+    padding: 1rem 1.25rem 1.1rem;
+  }
+  :global(:root[data-theme="light"]) .track {
+    --surface: #fff;
+  }
+  .file {
+    margin: 0;
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    color: var(--sl-color-gray-3);
+  }
+  .file code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  /* Horizontal rail: dots on a line, one column per status */
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  }
+  .steps > li {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0 0.75rem 0 0;
+  }
+  .steps > li::after {
+    content: "";
+    position: absolute;
+    top: 0.85rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--sl-color-gray-5);
+    z-index: 0;
+  }
+  .steps > li:last-child::after {
+    display: none;
+  }
+
+  .status {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    font-family: var(--__sl-font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 14%, var(--surface, var(--sl-color-gray-7)));
+    border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  }
+  .status::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--c);
+  }
+  .status.small {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.55rem;
+  }
+  [data-kind="draft"] {
+    --c: var(--sl-color-gray-3);
+  }
+  [data-kind="ready"] {
+    --c: var(--sl-color-blue);
+  }
+  [data-kind="progress"] {
+    --c: var(--sl-color-orange);
+  }
+  [data-kind="review"] {
+    --c: var(--sl-color-purple-alt, #8b5cf6);
+  }
+  [data-kind="done"] {
+    --c: var(--sl-color-green);
+  }
+  :global(:root[data-theme="light"]) [data-kind="draft"] {
+    --c: #525252;
+  }
+  :global(:root[data-theme="light"]) [data-kind="ready"] {
+    --c: #1d4ed8;
+  }
+  :global(:root[data-theme="light"]) [data-kind="progress"] {
+    --c: #b45309;
+  }
+  :global(:root[data-theme="light"]) [data-kind="review"] {
+    --c: #6d28d9;
+  }
+  :global(:root[data-theme="light"]) [data-kind="done"] {
+    --c: #047857;
+  }
+
+  .by {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.1rem 0.4rem;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+    line-height: 1.4;
+  }
+  .by .lbl {
+    flex-basis: 100%;
+  }
+  .by code {
+    font-size: 0.78rem;
+    background: none;
+    padding: 0;
+    color: var(--sl-color-text-accent);
+  }
+  .by .who {
+    color: var(--sl-color-gray-2);
+  }
+  .by .note {
+    flex-basis: 100%;
+  }
+
+  .back {
+    list-style: none;
+    margin: 0;
+    padding: 0.85rem 0 0;
+    border-top: 1px dashed var(--sl-color-hairline-shade);
+    display: grid;
+    gap: 0.5rem;
+  }
+  .back > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+  .back svg {
+    color: var(--sl-color-gray-4);
+    flex: none;
+  }
+  .back .why {
+    display: block;
+    margin-left: 0.25rem;
+    flex: 1 1 auto;
+    min-width: 12rem;
+  }
+  .by code,
+  .back code {
+    display: inline;
+  }
+  .back code {
+    font-size: 0.78rem;
+    background: none;
+    padding: 0;
+    color: var(--sl-color-text-accent);
+  }
+
+  /* Narrow: vertical rail */
+  @media (max-width: 40rem) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
+    .steps > li {
+      padding: 0 0 1.1rem 0;
+    }
+    .steps > li:last-child {
+      padding-bottom: 0;
+    }
+    .by {
+      padding-left: 1.5rem;
+    }
+    .steps > li::after {
+      top: 1.9rem;
+      bottom: 0.1rem;
+      left: 0.9rem;
+      right: auto;
+      width: 2px;
+      height: auto;
+    }
+  }
+</style>

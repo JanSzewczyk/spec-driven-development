@@ -4,38 +4,11 @@ description: Which command sets which status on spec, plan and tasks.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
+import StatusLifecycle from '../../../components/StatusLifecycle.astro';
 
-## Spec
+Each file moves forward one status at a time. The command under a status is the one that sets it.
 
-```mermaid
-stateDiagram-v2
-    [*] --> draft: /sdd:spec
-    draft --> clarified: /sdd:clarify
-    clarified --> planned: /sdd:plan
-    planned --> in_progress: /sdd:implement (first task)
-    in_progress --> done: /sdd:review READY
-    done --> [*]
-```
-
-## Tasks
-
-```mermaid
-stateDiagram-v2
-    [*] --> draft: /sdd:tasks
-    draft --> in_progress: /sdd:implement
-    in_progress --> review: implementer reports done
-    review --> done: /sdd:review READY
-    review --> in_progress: unmet acceptance criteria
-    in_progress --> draft: /sdd:tasks re-run touches scope
-```
-
-## All statuses
-
-| File | Status | Set by |
-|---|---|---|
-| `spec.md` | `draft` → `clarified` → `planned` → `in-progress` → `done` | `/sdd:spec` → `/sdd:clarify` → `/sdd:plan` → `/sdd:implement` → `/sdd:review` |
-| `plan.md` | `draft` → `tasks-ready` → `in-progress` → `done` | `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` → `/sdd:review` |
-| task | `draft` → `in-progress` → `review` → `done` | `/sdd:tasks` → `/sdd:implement` → implementer → `/sdd:review` |
+<StatusLifecycle />
 
 <Aside type="note" title="Only two moves go backwards">
 `/sdd:review` sets a task with unmet acceptance criteria back to `in-progress`, and a `/sdd:tasks` re-run sets a started task back to `draft` when the change touches its scope. Nothing else moves a status backwards.
