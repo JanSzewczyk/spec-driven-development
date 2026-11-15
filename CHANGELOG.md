@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2 sdd-board] — 2026-11-15
+
+`sdd-board` goes to 0.9.2.
+
+### Fixed
+
+- The generated copy of `shared/sdd-core` strips HTML comments until none are left (code scanning alert).
+
+## [2.0.2] — 2026-11-15
+
+`sdd` goes to 2.0.2.
+
+### Fixed
+
+- `stripComments` removes HTML comments until none are left, so a removed comment cannot join its surroundings into a new one.
+- `sdd-check` escapes backslashes before pipes in the summary table (code scanning alerts).
+
 ## [0.9.1 sdd-board] — 2026-11-15
 
 `sdd-board` goes to 0.9.1.
