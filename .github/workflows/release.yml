@@ -1,16 +1,17 @@
 name: Release 🚀
 
-# Tags `<plugin>--v<version>` for every plugin version merged to main without a tag
+# Tags `sdd--v<version>` when the sdd version merged to main has no tag
 # (`claude plugin tag`, which checks plugin.json against marketplace.json) and creates a GitHub
-# Release for every such tag that has none, with notes from CHANGELOG.md. The version itself is
-# bumped by hand in the pull request (checked by Plugin Checks); this workflow only publishes it.
+# Release for every such tag that has none, with notes from CHANGELOG.md. sdd-board is versioned
+# in its manifest only: no tag, no Release. The version itself is bumped by hand in the pull
+# request (checked by Plugin Checks); this workflow only publishes it.
 # Run it by hand (workflow_dispatch) to retry or to create Releases for tags that lack one.
 
 on:
   push:
     branches: [main]
     paths:
-      - "plugins/*/.claude-plugin/plugin.json"
+      - "plugins/sdd/.claude-plugin/plugin.json"
       - ".claude-plugin/marketplace.json"
   workflow_dispatch:
 
