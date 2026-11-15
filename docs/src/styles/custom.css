@@ -253,72 +253,12 @@ main > .content-panel:first-child h1,
   border-radius: 0.5rem;
 }
 
-/* Landing: soft blue glow */
-[data-has-hero] .hero {
-  position: relative;
-}
-[data-has-hero] .hero::before {
-  content: "";
-  position: absolute;
-  inset: -4rem 0 auto 0;
-  height: 22rem;
-  background: radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--sl-color-accent) 16%, transparent), transparent 70%);
-  pointer-events: none;
-  z-index: -1;
-}
-[data-has-hero] .hero h1 {
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
-  line-height: 1.1;
-  text-wrap: balance;
-  max-width: 20ch;
-}
-@media (min-width: 50rem) {
-  .why {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-[data-has-hero] .hero .tagline {
-  color: var(--sl-color-gray-2);
-}
-.landing-section {
-  margin-top: 3rem;
-}
-.landing-lead {
-  color: var(--sl-color-gray-2);
-  max-width: 42rem;
-  margin-bottom: 1.25rem;
-}
-
 /* Mermaid */
 pre.mermaid {
   background: transparent !important;
   border: 1px solid var(--sl-color-hairline);
   border-radius: 0.5rem;
   padding: 1rem;
-}
-
-/* Landing: "Why SDD" as two columns of plain text, no cards */
-.why {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-  gap: 1.5rem 3rem;
-  margin-top: 1rem;
-}
-.why > div {
-  margin-top: 0 !important;
-}
-.why > div > :first-child {
-  margin-top: 0;
-}
-.why h3 {
-  margin: 0;
-  font-size: var(--sl-text-xl);
-}
-.why p {
-  color: var(--sl-color-gray-2);
-  margin: 0.4rem 0 0;
 }
 
 /* Code: no ligatures (they turn `>-` into a dash), proportionate size in headings */
@@ -418,4 +358,44 @@ pre.mermaid {
   .by-szum {
     display: none;
   }
+}
+
+/* File tree: just the files, no box and no list bullets. The global `details` card
+   style above must not reach the tree, so Starlight's indentation is restored here. */
+.sl-markdown-content starlight-file-tree {
+  display: block;
+  padding: 0 0.5rem 0 1.25rem !important;
+  border: 0 !important;
+  background: none !important;
+}
+.sl-markdown-content starlight-file-tree :is(ul, li) {
+  list-style: none;
+}
+.sl-markdown-content starlight-file-tree li::marker {
+  content: none;
+}
+.sl-markdown-content starlight-file-tree ul {
+  margin-block: 0;
+  margin-inline-start: 0.5rem;
+  padding: 0 0 0 0.125rem;
+  border-inline-start: 1px solid var(--sl-color-gray-5);
+}
+.sl-markdown-content starlight-file-tree > ul {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.sl-markdown-content starlight-file-tree li {
+  margin: 0.125rem 0;
+  padding: 0;
+}
+.sl-markdown-content starlight-file-tree > ul > li:first-child {
+  margin-top: 0;
+}
+.sl-markdown-content starlight-file-tree details {
+  margin: 0;
+  padding: 0 0 0 1.5rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }

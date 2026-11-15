@@ -17,22 +17,28 @@ hero:
       icon: github
 ---
 
-import { CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
-import Pipeline from '../../../components/Pipeline.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import LandingFlow from '../../../components/LandingFlow.astro';
 
 <div class="landing-section">
 
-## Jeden przepływ, siedem faz
+## Jeden przepływ, od konfiguracji do review
 
-<p class="landing-lead">Każda faza to komenda slash, która zapisuje plik w <code>specs/&lt;feature&gt;/</code> i odczytuje wejście z dysku. Możesz czyścić czat między fazami i nic nie tracisz.</p>
+<p class="landing-lead">Konfigurację robisz raz, potem każda funkcja przechodzi tę samą pętlę. Każda komenda zapisuje plik w <code>specs/</code> i odczytuje wejście z dysku. Możesz czyścić czat między fazami i nic nie tracisz.</p>
 
-<Pipeline />
+<LandingFlow />
 
 </div>
 
-<div class="landing-section">
+<div class="landing-section landing-why">
+
+<div class="why-intro">
 
 ## Dlaczego SDD
+
+<p class="landing-lead">Specyfikacja jest źródłem prawdy, kod jest jej konsekwencją.</p>
+
+</div>
 
 <div class="why">
 
@@ -43,6 +49,7 @@ import Pipeline from '../../../components/Pipeline.astro';
 Claude przygotowuje plan w Plan Mode, a Ty go zatwierdzasz, zanim powstanie jakakolwiek linia kodu. To najtańszy moment na poprawienie złego kierunku.
 
 </div>
+
 <div>
 
 ### Własny implementator
@@ -50,6 +57,7 @@ Claude przygotowuje plan w Plan Mode, a Ty go zatwierdzasz, zanim powstanie jaka
 `/sdd:implement` przekazuje każde zadanie do skilla, agenta lub komendy, które skonfigurujesz, albo buduje je w sesji. Framework zarządza myśleniem, nie pisaniem.
 
 </div>
+
 <div>
 
 ### Weryfikacja względem specu
@@ -57,6 +65,7 @@ Claude przygotowuje plan w Plan Mode, a Ty go zatwierdzasz, zanim powstanie jaka
 Testy, `spec-verifier` i Twoje własne sprawdzenia działają równolegle; `reviewer` zwraca **READY** lub **NOT READY** i odhacza kryteria akceptacji.
 
 </div>
+
 <div>
 
 ### Dowolny układ, dowolny stack
@@ -69,9 +78,22 @@ Jedna aplikacja, monorepo lub kilka repozytoriów. Projekty webowe, backendowe i
 
 </div>
 
-<div class="landing-section">
+<div class="landing-section landing-start">
+
+<div class="start-copy">
 
 ## Start w dwie minuty
+
+<ol class="start-steps">
+  <li><strong>Zainstaluj</strong> plugin z marketplace.</li>
+  <li><strong>Zainicjuj</strong> projekt komendą <code>/sdd:doctor init</code>.</li>
+  <li><strong>Uzupełnij konstytucję</strong> komendą <code>/sdd:constitution</code>: stack i reguły.</li>
+  <li><strong>Uruchom przepływ</strong> na pierwszej funkcji.</li>
+</ol>
+
+</div>
+
+<div class="start-code">
 
 <Tabs>
   <TabItem label="Claude Code">
@@ -92,6 +114,7 @@ Następnie w swoim projekcie:
 
 ```text title="claude"
 /sdd:doctor init
+/sdd:constitution
 /sdd:spec feat user can reset password via email
 /sdd:clarify
 /sdd:plan
@@ -102,17 +125,19 @@ Następnie w swoim projekcie:
 
 </div>
 
+</div>
+
 <div class="landing-section">
 
 ## Przeglądaj
 
-<CardGrid>
-  <LinkCard title="Szybki start" description="Zainicjuj projekt i dostarcz pierwszą funkcję." href="/spec-driven-development/pl/getting-started/quick-start/" />
-  <LinkCard title="Koncepcje" description="Zadania, cykl statusów, projekty, izolacja." href="/spec-driven-development/pl/concepts/workflow/" />
-  <LinkCard title="Referencja komend" description="Wszystkie 11 komend slash, po jednej stronie na komendę." href="/spec-driven-development/pl/commands/overview/" />
-  <LinkCard title="capabilities.yml" description="Każdy klucz, wartość i domyślna wartość." href="/spec-driven-development/pl/configuration/capabilities/" />
-  <LinkCard title="Przykład end-to-end" description="Funkcja resetu hasła od init do PR." href="/spec-driven-development/pl/guides/example/" />
-  <LinkCard title="sdd-board" description="Panel boczny w aplikacji Desktop pokazujący stan każdego specu." href="/spec-driven-development/pl/board/overview/" />
-</CardGrid>
+<nav class="explore" aria-label="Przeglądaj">
+  <a href="/spec-driven-development/pl/getting-started/quick-start/" class="primary"><strong>Szybki start</strong><span>Zainicjuj projekt i dostarcz pierwszą funkcję.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/pl/concepts/workflow/"><strong>Koncepcje</strong><span>Zadania, cykl statusów, projekty, izolacja.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/pl/commands/overview/"><strong>Referencja komend</strong><span>Wszystkie 11 komend slash, po jednej stronie na komendę.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/pl/configuration/capabilities/"><strong>capabilities.yml</strong><span>Każdy klucz, wartość i domyślna wartość.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/pl/guides/example/"><strong>Przykład end-to-end</strong><span>Funkcja resetu hasła od init do PR.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <a href="/spec-driven-development/pl/board/overview/"><strong>sdd-board</strong><span>Panel boczny w aplikacji Desktop pokazujący stan każdego specu.</span><svg class="go" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+</nav>
 
 </div>
