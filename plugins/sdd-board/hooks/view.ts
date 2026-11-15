@@ -413,7 +413,7 @@ function section(el: any, ctx: { cols: number; rich: boolean }, title: string, n
   })
 }
 
-// Read-only view of what the SDD commands will use: capabilities.md with defaults filled in, and the
+// Read-only view of what the SDD commands will use: capabilities.yml with defaults filled in, and the
 // per-project commands from constitution section 2. Editing goes through /sdd:capabilities.
 export function renderConfig(el: any, ctx: ConfigCtx) {
   const { Box, Text, Button, Svg } = el
@@ -424,7 +424,7 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
     return Box({
       flexDirection: 'column', rowGap: 1, padding: 'sm',
       children: [
-        Text({ weight: 'semibold', children: ['specs/capabilities.md not found'] }),
+        Text({ weight: 'semibold', children: ['specs/capabilities.yml not found'] }),
         Text({ dimColor: true, wrap: 'wrap', children: ['Run the setup to create it, then configure it.'] }),
         Button({ key: 'cfg-init', label: 'Init SDD in this project', variant: 'primary', onPress: () => ctx.actions.run('sdd:doctor', 'init') }),
       ],
@@ -436,7 +436,7 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
     Box({
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', columnGap: 2,
       children: [
-        Box({ flexDirection: 'column', children: [Text({ weight: 'medium', size: 'heading', children: ['SDD configuration'] }), Text({ mono: true, dimColor: true, size: 'caption', children: ['specs/capabilities.md'] })] }),
+        Box({ flexDirection: 'column', children: [Text({ weight: 'medium', size: 'heading', children: ['SDD configuration'] }), Text({ mono: true, dimColor: true, size: 'caption', children: [config.path] })] }),
         Box({
           flexDirection: 'row', columnGap: 1, alignItems: 'center',
           children: [
@@ -473,6 +473,19 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
       ),
     }),
   )
+
+  if (config.legacy) {
+    kids.push(
+      Box({
+        borderStyle: 'round', borderColor: 'warning', padding: 'md', flexDirection: 'column', rowGap: 1,
+        children: [
+          Text({ color: 'warning', weight: 'semibold', children: ['Old Markdown format'] }),
+          Text({ dimColor: true, wrap: 'wrap', size: 'footnote', children: ['This version reads specs/capabilities.yml. /sdd:doctor init moves your values there and removes the .md file.'] }),
+          Button({ key: 'cfg-migrate', label: 'Migrate with /sdd:doctor init', variant: 'primary', onPress: () => ctx.actions.run('sdd:doctor', 'init') }),
+        ],
+      }),
+    )
+  }
 
   if (!config.configured) {
     kids.push(

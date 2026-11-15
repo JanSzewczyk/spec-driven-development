@@ -1,6 +1,6 @@
 ---
 name: capabilities
-description: Configure specs/capabilities.md — who implements tasks, who runs branch/commit/PR, how /sdd:review verifies — from the skills, agents and plugins you have installed, then confirm each choice with you
+description: Configure specs/capabilities.yml — who implements tasks, who runs branch/commit/PR, how /sdd:review verifies — from the skills, agents and plugins you have installed, then confirm each choice with you
 allowed-tools: Bash, Read, Edit, Glob, Grep, AskUserQuestion, mcp__sdd__doctor_check
 argument-hint: "(optional: implementation | actions | review)"
 disable-model-invocation: true
@@ -8,9 +8,8 @@ disable-model-invocation: true
 
 # SDD Capabilities
 
-Fills the user-override sections of `specs/capabilities.md` (`## Implementation`, `## Actions`,
-`## Review`) from what the environment actually offers, then asks the user to confirm or correct
-every choice. Values and defaults: [references/capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md).
+Fills `implementation`, `actions` and `review` in `specs/capabilities.yml` from what the environment
+actually offers, then asks the user to confirm or correct every choice. Keys and defaults: [references/capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md).
 Nothing is written before the user has confirmed the draft.
 
 `$ARGUMENTS` limits the run to one section (`implementation`, `actions`, `review`); empty → all three.
@@ -18,8 +17,9 @@ Start with a task list (load, discover, draft, confirm, write, re-check) and kee
 
 ## 1. Load
 
-- `specs/capabilities.md` missing → STOP: "Run `/sdd:doctor init` first."
-- Read it whole. Note each project from `## Projects` (name, kind, stack) and the current value of
+- `specs/capabilities.yml` missing → STOP: "Run `/sdd:doctor init` first." (also when only the old
+  `specs/capabilities.md` exists: `init` migrates it).
+- Read it whole. Note each project from `projects` (name, kind, stack) and the current value of
   every key: a non-default value is a decision the user already made — show it as such in the draft
   and change it only when they say so.
 - `specs/constitution.md` §2 gives the project's check commands; they tell you what exists to verify with.
@@ -45,10 +45,10 @@ Match by description, not by name alone, and per project stack:
 
 | Section | Look for |
 |---|---|
-| `Implementation` | an agent or skill that **writes code** for the project's stack (a `*-developer`, `*-engineer`, a frontend/backend expert). Not reviewers, testers, planners |
-| `Actions` | skills/agents that create a branch, a commit, a pull request |
-| `Review` audit flow | skills/agents that **audit** code for the stack (accessibility, performance, security, framework rules) |
-| `Review` `checks:` | an agent that runs the app and tests behaviour (QA, e2e); only when the app can be started |
+| `implementation` | an agent or skill that **writes code** for the project's stack (a `*-developer`, `*-engineer`, a frontend/backend expert). Not reviewers, testers, planners |
+| `actions` | skills/agents that create a branch, a commit, a pull request |
+| `review` audit flow | skills/agents that **audit** code for the stack (accessibility, performance, security, framework rules) |
+| `review.checks` | an agent that runs the app and tests behaviour (QA, e2e); only when the app can be started |
 
 A candidate that fits more than one project's stack is offered per project; one that fits none is dropped.
 
@@ -61,10 +61,10 @@ For each section build a proposal with a one-line reason per value, and mark con
 - **Gap** — nothing fits, or the choice depends on how the team works.
 
 Defaults are valid answers: no fitting implementer → `default: in-session`; no git-action tooling →
-leave `branch:` / `commit:` / `pr:` empty; never invent a name that was not discovered.
+leave `actions.branch` / `commit` / `pr` at `null`; never invent a name that was not discovered.
 
-Show the whole draft as one block — the section lines exactly as they would be written, each with
-its reason beneath — and say which candidates were found but are not enabled.
+Show the whole draft as one YAML block — the keys exactly as they would be written, each with
+its reason beneath as a comment — and say which candidates were found but are not enabled.
 
 ## 4. Confirm and fill the gaps
 
@@ -78,7 +78,10 @@ proposed lines).
    - several implementers fit one project, or none fits and the user may have one outside the
      scan (ask for its name, then check it exists);
    - whether `publish` should be `ask` or `off`, and whether `tests` may be `skip`;
-   - whether a QA/e2e `checks:` entry should run on every review, given what it costs;
+   - `implementation.isolation`: `none` (this session implements and commits each task) or
+     `worktree:` (a sub-session, worktree and branch per task). Ask `merge` (`pr` / `auto`) and
+     `parallel` only after the user chose `worktree:`; they go under it;
+   - whether a QA/e2e `review.checks` entry should run on every review, given what it costs;
    - a project with no check commands in constitution §2 — say that `tests: run` has nothing to run there;
    - a candidate that is installed but not enabled — enable it first, or leave it out.
 3. Ask only what the scan cannot settle; a **Clear** value is not re-asked unless the user chose
@@ -87,14 +90,13 @@ proposed lines).
 
 ## 5. Write
 
-- Edit only the lines below `## Implementation`, `## Actions` and `## Review` that hold values;
-  keep headings, the `<!-- user-override -->` markers, the explanatory comments, every other
-  section and every line the user did not change byte-for-byte. A section missing from the file is
-  added from the template in its usual order.
+- Edit only the values under `implementation`, `actions` and `review`; keep the comments, `format`,
+  `projects`, `generated` and every line the user did not change byte-for-byte. A section missing
+  from the file is added from the template in its usual order. Two-space indentation.
 - One value per key, grammar exactly as in the reference (`skill:<name>`, `agent:<name>`,
-  `command:<shell>`, `in-session`; per-project lines `<project>: <value>`). Unknown keys stay untouched,
-  and so do `commit`, `isolation`, `merge`, `parallel` (under `## Implementation`) and `ci` (under
-  `## Review`): they are settings, not flows.
+  `command:<shell>`, `in-session`; per project under `implementation.projects` / `review.projects`,
+  `<project>: <value>`; `review.checks` as a list). Unknown keys stay untouched, and so does
+  `review.ci` unless the user asked: it is about CI, not about who does a step.
 - Print one line per section: changed / unchanged.
 
 ## 6. Re-check

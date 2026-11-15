@@ -429,7 +429,34 @@ test('mid-run, a later task still shows what it waits on', async ($, on) => {
   await ui.unmount()
 })
 
-const CAPS = `# Project Capabilities
+const CAPS = `format: 3
+
+projects:
+  - name: api
+    kind: backend
+    path: apps/api
+    stack: Python
+
+implementation:
+  default: in-session
+  projects:
+    api: agent:python-developer
+  isolation: none
+
+actions:
+  branch: null
+  commit: null
+  pr: null
+
+review:
+  tests: run
+  publish: ask
+  default: auto
+  checks: []
+`
+
+// The same configuration in the format-2 Markdown file.
+const LEGACY_CAPS = `# Project Capabilities
 
 ## Projects
 
@@ -441,21 +468,6 @@ const CAPS = `# Project Capabilities
 <!-- user-override -->
 default: in-session
 api: agent:python-developer
-
-## Actions
-
-<!-- user-override -->
-branch:
-commit:
-pr:
-
-## Review
-
-<!-- user-override -->
-tests: run
-publish: ask
-default: auto
-checks:
 `
 
 const CONSTITUTION = `# Constitution
@@ -468,7 +480,7 @@ const CONSTITUTION = `# Constitution
 `
 
 test('the tab bar has a Config button that opens the configuration pane', async ($, on) => {
-  const stub = stubProject($, on, true, { files: { 'specs/capabilities.md': CAPS, 'specs/constitution.md': CONSTITUTION } })
+  const stub = stubProject($, on, true, { files: { 'specs/capabilities.yml': CAPS, 'specs/constitution.md': CONSTITUTION } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   await ui.press({ key: 'open-config' })
@@ -477,7 +489,7 @@ test('the tab bar has a Config button that opens the configuration pane', async 
 })
 
 test('the configuration pane shows set values, defaults and commands', async ($, on) => {
-  const filled = stubProject($, on, true, { files: { 'specs/capabilities.md': CAPS, 'specs/constitution.md': CONSTITUTION } })
+  const filled = stubProject($, on, true, { files: { 'specs/capabilities.yml': CAPS, 'specs/constitution.md': CONSTITUTION } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'python-developer' })).toBeDefined()
@@ -496,16 +508,28 @@ test('the configuration pane shows set values, defaults and commands', async ($,
 })
 
 test('the configuration pane flags a project that is all defaults', async ($, on) => {
-  const bare = CAPS.replace('api: agent:python-developer\n', '')
-  stubProject($, on, true, { files: { 'specs/capabilities.md': bare, 'specs/constitution.md': CONSTITUTION } })
+  const bare = CAPS.replace('    api: agent:python-developer\n', '')
+  stubProject($, on, true, { files: { 'specs/capabilities.yml': bare, 'specs/constitution.md': CONSTITUTION } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'Everything is at its default' })).toBeDefined()
   await ui.unmount()
 })
 
+test('the configuration pane reads a legacy capabilities.md and offers the migration', async ($, on) => {
+  const stub = stubProject($, on, true, { files: { 'specs/capabilities.md': LEGACY_CAPS, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'python-developer' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Old Markdown format' })).toBeDefined()
+  await ui.press({ key: 'cfg-migrate' })
+  await stub.clock.settle()
+  expect(stub.ran).toEqual(['sdd:doctor init'])
+  await ui.unmount()
+})
+
 test('on Desktop the configuration pane draws tiles and row separators', async ($, on) => {
-  stubProject($, on, true, { files: { 'specs/capabilities.md': CAPS, 'specs/constitution.md': CONSTITUTION } })
+  stubProject($, on, true, { files: { 'specs/capabilities.yml': CAPS, 'specs/constitution.md': CONSTITUTION } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'desktop' })
   expect(await ui.find({ type: 'Text', text: 'customised' })).toBeDefined()

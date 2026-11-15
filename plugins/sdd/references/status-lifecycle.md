@@ -8,7 +8,7 @@ Read this when a step sets a `**Status:**` or a task `status:`.
 | `plan.md` | `draft` → `tasks-ready` → `in-progress` → `done` | `/sdd:plan` → `/sdd:tasks` → `/sdd:implement` (first task) → `/sdd:review` (READY) |
 | task in `tasks.md` | `draft` → `in-progress` → `review` → `done` | `/sdd:tasks` → `/sdd:implement` (hand-over, then the implementer reports done) → `/sdd:review` (READY) |
 
-While a task runs in its own worktree (`isolation: worktree`, see `/sdd:implement`), its block in
+While a task runs in its own worktree (`isolation: worktree:`, see `/sdd:implement`), its block in
 `tasks.md` also holds `branch: <spec-branch>--<EPIC>-T<n>` and, with `merge: pr`, `pr: <number or URL>`;
 both are removed when the task is merged and set to `review`. Only the orchestrating session edits
 `tasks.md`; the documentation (spec, plan, tasks) is committed by `/sdd:tasks`, the statuses by `/sdd:review`, never per task.

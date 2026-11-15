@@ -25,15 +25,16 @@ background; otherwise one after another.
 
 ### 2. Pick the flow
 
-Read the `## Implementation` section of `specs/capabilities.md`. The line for the task's project
-wins over `default`; the values and how each is handed over are in
-[capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md) (`in-session` → step 4).
+Read `implementation` in `specs/capabilities.yml` (only the old `specs/capabilities.md` → STOP:
+"Run `/sdd:doctor init` to migrate it."). `implementation.projects.<project>` wins over
+`implementation.default`; the values and how each is handed over are in
+[capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md) (`in-session` → step 4). Nothing
+set → `in-session`.
 
-No section, no matching line → `in-session`. The keys `commit`, `isolation`, `merge` and `parallel`
-(same file) are not flows: `isolation: worktree` → follow
-[isolation.md](references/isolation.md) for steps 3–5 instead of handing tasks over in place
-(each task runs in its own worktree and branch; the references cover launching, merging and waiting
-for PRs). Everything below applies to both modes.
+`implementation.isolation` is not a flow. `worktree:` → follow [isolation.md](references/isolation.md)
+for steps 3–5 instead of handing tasks over in place (each task runs in its own sub-session, worktree
+and branch, and commits there; the reference covers launching, merging and waiting for PRs).
+`none` (default) → this session hands over and commits each task. Everything below applies to both.
 
 **Ids.** `**Epic:**` in `tasks.md` + the task heading give the full id `<EPIC>-T<n>`. No `**Epic:**`
 line → STOP: "Run `/sdd:tasks` (or `/sdd:doctor init`) to assign an epic id."
@@ -41,10 +42,9 @@ line → STOP: "Run `/sdd:tasks` (or `/sdd:doctor init`) to assign an epic id."
 ### 3. Commit the documentation, then build the brief
 
 **Documentation commit.** `/sdd:tasks` already committed the spec, plan and tasks. When `specs/<slug>/`
-still has uncommitted changes (edits made after it, or `/sdd:tasks` ran with `commit: off`) and
-`commit: task` → commit them now, before any status is set or any task starts: `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`, via the `commit`
-action or `git add -- specs/<slug>/`. A worktree or sub-session only sees what is committed.
-`commit: off` → skip; `/sdd:review` commits everything at the end.
+still has uncommitted changes (edits made after it) → commit them now, before any status is set or
+any task starts: `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`, via
+`actions.commit` or `git add -- specs/<slug>/`. A worktree or sub-session only sees what is committed.
 
 The task is self-contained only by reference, so inline what it points to:
 
@@ -62,7 +62,7 @@ The task is self-contained only by reference, so inline what it points to:
 `spec.md` and `plan.md` `**Status:**` → `in-progress`); `review` when the implementer reports done,
 otherwise leave it and show what is missing.
 
-**Sibling repositories.** For a project marked `(repo)` follow
+**Sibling repositories.** For a project with `repo: true` follow
 [sibling-repos.md](${CLAUDE_PLUGIN_ROOT}/references/sibling-repos.md) before the first edit there.
 
 ### 4. In-session implementation
@@ -73,10 +73,11 @@ with the code, and run the project's checks from §2 until they pass.
 
 ### 5. Commit
 
-`commit: task` (default; `off` → skip this step and leave the work uncommitted for `/sdd:review`):
+With `isolation: none` this session commits every task; with `worktree:` the sub-session does (see
+[isolation.md](references/isolation.md)).
 
 - **After each finished task** (status `review`), commit only that task's files — never `specs/`,
-  never `git add -A`. Use the `commit` action from `## Actions` (`skill:` / `agent:` / `command:`);
+  never `git add -A`. Use `actions.commit` (`skill:` / `agent:` / `command:`);
   unset → `git add -- <files>` and a Conventional Commits message `<type>(<slug>): <task title>`.
   Add the trailer `Task: <EPIC>-T<n>` (several commits per task are fine, each carries it).
 - Check it landed: `git log -1 --format='%(trailers:key=Task,valueonly)'`; empty (a skill rewrote the

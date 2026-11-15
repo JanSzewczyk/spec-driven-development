@@ -20,8 +20,8 @@ business specification: no implementation code, no frameworks or libraries.
 
 ### 1. Branch
 
-Create a git branch for this feature with the `branch` action from `## Actions` in
-`specs/capabilities.md` (`skill:` / `agent:` / `command:`; give it the type and the description).
+Create a git branch for this feature with `actions.branch` from
+`specs/capabilities.yml` (`skill:` / `agent:` / `command:`; give it the type and the description).
 Unset → use a branch-creating skill the session has, else run `git checkout -b <type>/<slug>`
 (`slug`: kebab-case, `[a-z0-9-]`, max 50 chars). Then read the real name:
 
@@ -31,7 +31,7 @@ git branch --show-current
 
 `feature_slug` = that name without its prefix up to the first `/` (the whole name when it has
 none), lowercased, `[a-z0-9-]` only. Only this repository (the **spec repo**,
-where `specs/` lives) gets the branch now; when `specs/capabilities.md` lists projects in sibling
+where `specs/` lives) gets the branch now; when `specs/capabilities.yml` lists projects in sibling
 repositories, `/sdd:implement` creates the same branch name there when it first edits that repo.
 
 ### 2. Folder + spec

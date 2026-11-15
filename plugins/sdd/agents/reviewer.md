@@ -46,7 +46,7 @@ non-critical audit findings — `/sdd:review` may let the user accept them. **Ne
 failing test, an unmet AC, a non-goal violation, a failed extra check, a critical
 security/accessibility violation.
 
-Exclude the `Generated / out-of-band paths` globs from every diff you read.
+Exclude the `generated` globs from every diff you read.
 
 ## `review.md`
 

@@ -1,10 +1,10 @@
 # Isolated tasks: one worktree and branch per task
 
-Read this when `isolation: worktree` is set in `## Implementation` of `specs/capabilities.md`.
+Read this when `implementation.isolation` in `specs/capabilities.yml` is `worktree:`.
 `/sdd:implement` then **orchestrates**: every task runs in its own sub-session (or agent) on its own
 branch cut from the SDD branch; this session stays on the SDD branch and writes no code.
-Keys (defaults in [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md)): `merge: pr | auto`,
-`parallel: <n>`.
+Options under `isolation.worktree` (defaults in [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md)):
+`merge: pr | auto`, `parallel: <n>`. Each sub-session commits its task on its own branch.
 
 One checkout holds one branch, so tasks that run at once need a worktree each; sequential tasks get
 one too, so this session never changes branch. Worktrees do not protect two tasks that edit the same
@@ -20,7 +20,7 @@ first is merged.
     asking." Options: "Go" / "Stop".
   - `merge: pr` — "`<branch>` will be pushed and every task opens a PR into it; you merge them."
     Options: "Go" / "Stop". Push `<branch>` with `git push -u origin <branch>` after the answer.
-- `(repo)` projects (sibling repositories) are not isolated: run their tasks in place on the feature
+- `repo: true` projects (sibling repositories) are not isolated: run their tasks in place on the feature
   branch, one at a time, as in [sibling-repos.md](${CLAUDE_PLUGIN_ROOT}/references/sibling-repos.md).
 
 ## Run the ready tasks
@@ -41,7 +41,7 @@ Start at most `parallel` at once. For each:
 4. The brief is the usual self-contained brief plus: work only on this branch; commit with the
    `Task: <EPIC>-T<n>` trailer; never edit anything under `specs/`; return the changed files, the
    test result and any unmet AC. `merge: auto` → do not push. `merge: pr` → push the branch and open
-   a PR into the SDD branch titled `<EPIC>-T<n>: <task title>` (the `pr` action from `## Actions`,
+   a PR into the SDD branch titled `<EPIC>-T<n>: <task title>` (`actions.pr`,
    else `gh pr create --base <spec-branch>`), and return its URL.
 
 Only this session writes `tasks.md`; sub-sessions never touch `specs/`, so merges never conflict

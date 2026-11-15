@@ -16,7 +16,7 @@ From the prompt:
 - the diff definition: a base commit; the changes are `git diff <base>` plus the untracked files
   (`git ls-files --others --exclude-standard`) — SDD commits only at the end, so the work is mostly
   uncommitted. Several repositories: one base per repo (`git -C <repo> …`).
-- the `Generated / out-of-band paths` globs: exclude them from the diff and never flag them.
+- the `generated` globs: exclude them from the diff and never flag them.
 
 ## Steps
 
@@ -29,7 +29,7 @@ From the prompt:
 5. **Drift:**
    - spec → plan: every AC has a counterpart in the plan; the plan adds nothing beyond the spec
    - plan → tasks: every planned file appears in a task's `files`; each task names a `project` from
-     `specs/capabilities.md` `## Projects`; its `acceptance` ids exist in the spec; `depends_on`
+     `projects` of `specs/capabilities.yml`; its `acceptance` ids exist in the spec; `depends_on`
      points at existing tasks, without cycles
    - tasks → code: tasks with `status: review|done` have their declared `files` changed; no changed
      file is covered by no task

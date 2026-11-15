@@ -20,7 +20,7 @@ satisfy. You plan and describe; you do not implement and you do not choose agent
 - the feature folder `specs/<current>/`: from `$ARGUMENTS`, else the spec whose `**Branch:**`
   equals `git branch --show-current` (none → list the specs and ask); read its `plan.md` and
   `spec.md` (the AC ids)
-- `specs/capabilities.md`: the `## Projects` section, `commit:` under `## Implementation` and the `commit` action under `## Actions` (step 5)
+- `specs/capabilities.yml`: `projects` and `actions.commit` (step 5)
 - `tasks.md`, when it already exists (a re-run after the plan or the spec changed)
 
 ### 2. Decompose
@@ -65,7 +65,7 @@ their `T<n>` headings; the full id of a task is `<EPIC>-T<n>` (`ULOG-7f3a-T3`). 
 ## Epic: <feature_title>
 
 ### T1: <title>
-project: <name from `## Projects`; `root` in a single-app repo>
+project: <name from `projects`; `root` in a single-app repo>
 status: draft
 depends_on: []
 acceptance: AC1, AC3
@@ -95,13 +95,12 @@ independent tasks with overlapping `files`.
 
 Set `plan.md` `**Status:**` → `tasks-ready` with Edit (unless already later).
 
-**Commit the documentation** (`commit:` under `## Implementation` is `task`, the default; `off` → skip
-and say the files stay uncommitted). The spec, plan and tasks are the whole documentation of the
-feature, and nothing earlier commits them:
+**Commit the documentation.** The spec, plan and tasks are the whole documentation of the feature,
+and nothing earlier commits them:
 
 - `git status --short -- specs/<slug>/` is empty → nothing to commit.
 - Otherwise stage `specs/<slug>/` only (never `git add -A`, never other paths) and commit it with the
-  `commit` action from `## Actions` (`skill:` / `agent:` / `command:`); unset → `git add -- specs/<slug>/`
+  `actions.commit` (`skill:` / `agent:` / `command:`); unset → `git add -- specs/<slug>/`
   and `git commit`. Message `docs(<slug>): add spec, plan and tasks` (a re-run: `docs(<slug>): update tasks`),
   trailer `Epic: <EPIC>`. Check it landed with `git log -1 --format='%(trailers:key=Epic,valueonly)'`;
   empty (a skill rewrote the message) → `git commit --amend --trailer 'Epic: <EPIC>'`.

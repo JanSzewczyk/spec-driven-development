@@ -1,0 +1,32 @@
+format: 3
+
+projects:
+  - name: web
+    kind: web
+    path: apps/web
+    stack: TypeScript, Next.js; pnpm
+  - name: api
+    kind: backend
+    path: apps/api
+    stack: Python 3.13, FastAPI; uv
+
+implementation:
+  default: in-session
+  projects:
+    api: agent:python-developer
+  isolation: none
+
+actions:
+  branch: null
+  commit: skill:create-commit
+  pr: null
+
+review:
+  tests: run
+  publish: ask
+  default: auto
+  checks: [agent:qa]
+  ci: on
+
+generated:
+  - "**/uv.lock"

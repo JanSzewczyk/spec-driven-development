@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/JanSzewczyk/spec-driven-development/sdd--v{{sdd_version}}/plugins/sdd/schemas/capabilities.schema.json
+# SDD configuration. Keys and values: references/capabilities.md in the sdd plugin.
+# `projects` is rewritten by /sdd:doctor init; everything else is yours and is never overwritten.
+format: 3
+
+projects: []
+# - name: web                 # one entry per project; a single-app repo has one, `root`
+#   kind: app
+#   path: apps/web            # `.` for the repo root
+#   stack: Next.js 15, TS, Vitest (pnpm)
+#   repo: true                # only for a sibling repository checked out next to this one
+
+implementation:
+  default: in-session         # who implements a task: skill:<name> | agent:<name> | command:<shell> | in-session
+  projects: {}                # per project, e.g. `api: agent:python-developer`
+  isolation: none             # this session implements and commits every task
+  # isolation:                # or: each task in its own sub-session, worktree and branch
+  #   worktree:
+  #     merge: pr             # pr: a PR per task, a human merges | auto: rebase + fast-forward
+  #     parallel: 3           # tasks running at once
+
+actions:                      # who runs a git action: skill:<name> | agent:<name> | command:<shell>
+  branch: null                # null: the session uses git and gh
+  commit: null
+  pr: null
+
+review:
+  tests: run                  # run | skip
+  publish: ask                # ask: confirm the commit and PR after READY | off
+  default: auto               # audit flow: auto (by stack) | skill:<name> | agent:<name>
+  projects: {}                # per project, e.g. `web: skill:react-review`
+  checks: []                  # run on every review, e.g. [agent:qa]
+  ci: null                    # on | off: the sdd-check GitHub workflow (/sdd:doctor init asks)
+
+generated:                    # globs left out of every diff and never flagged
+  - "**/*.generated.*"
+  - "**/generated/**"
+  - "**/__snapshots__/**"
+  - "**/*.snap"
+  - "**/pnpm-lock.yaml"
+  - "**/package-lock.json"
+  - "**/yarn.lock"
+  - "**/uv.lock"
+  - "**/poetry.lock"
+  - "**/pubspec.lock"
+  - "**/Podfile.lock"
