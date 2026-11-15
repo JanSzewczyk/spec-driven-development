@@ -24,13 +24,10 @@ let cmdOpen: string[] | null = null
 let docView: { slug: string; kind: string } | null = null
 let isClosedByUser = false
 
+// null only when the file does not exist; a read that fails throws, so scan() keeps its last good state.
 async function readText($: any, path: string): Promise<string | null> {
-  try {
-    if (!(await $.fs.exists(path))) return null
-    return String(await $.fs.read(path))
-  } catch {
-    return null
-  }
+  if (!(await $.fs.exists(path))) return null
+  return String(await $.fs.read(path))
 }
 
 async function modifiedOf($: any, path: string): Promise<number> {
@@ -59,12 +56,15 @@ async function runCommand($: any, command: string, args: string): Promise<void> 
   }
 }
 
-// Reads specs/ and rebuilds the feature list. Returns true when anything changed.
+// Reads specs/ and rebuilds the feature list. Returns true when anything changed. A scan that fails
+// part-way (a read refused or timing out while a skill is running) changes nothing: the panel keeps
+// showing the last good data instead of falling back to the "not set up" card.
 async function scan($: any): Promise<boolean> {
   const found: Feature[] = []
-  let any = false
+  let any: boolean
+  let cfg: Config | null = null
   try {
-    any = await $.fs.exists('specs')
+    any = !!(await $.fs.exists('specs'))
     if (any) {
       const entries: any[] = await $.fs.list('specs')
       for (const entry of entries) {
@@ -87,9 +87,11 @@ async function scan($: any): Promise<boolean> {
           modified,
         })
       }
+      const caps = await readText($, 'specs/capabilities.md')
+      if (caps !== null) cfg = effectiveConfig(caps, await readText($, 'specs/constitution.md'))
     }
   } catch {
-    // keep what we have
+    return false
   }
   let next = branch
   try {
@@ -97,13 +99,6 @@ async function scan($: any): Promise<boolean> {
     if (r.exitCode === 0) next = String(r.stdout).trim()
   } catch {
     // not a git repo: keep the branch we had
-  }
-  let cfg: Config | null = null
-  try {
-    const caps = await readText($, 'specs/capabilities.md')
-    if (caps !== null) cfg = effectiveConfig(caps, await readText($, 'specs/constitution.md'))
-  } catch {
-    // the panel shows "not found"
   }
   const sig = JSON.stringify([any, next, found, cfg])
   const isChanged = sig !== signature
@@ -166,7 +161,8 @@ export function register(on) {
   on('tool.call', { tool: ['Edit', 'Write'] }, async ($, e, next) => {
     const result = await next(e)
     try {
-      if (typeof e.file_path === 'string' && e.file_path.includes('/specs/')) {
+      // A subagent's cwd can differ from the session's, so only the main conversation scans here.
+      if (e.agentId === undefined && typeof e.file_path === 'string' && e.file_path.includes('/specs/')) {
         if (await scan($)) $.ui.invalidate('ui.render')
       }
     } catch {
@@ -178,7 +174,7 @@ export function register(on) {
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
     try {
-      if (/git\s+(checkout|switch|branch)/.test(String(e.command)) && (await scan($))) $.ui.invalidate('ui.render')
+      if (e.agentId === undefined && /git\s+(checkout|switch|branch)/.test(String(e.command)) && (await scan($))) $.ui.invalidate('ui.render')
     } catch {
       // the poll will catch up
     }
