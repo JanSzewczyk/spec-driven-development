@@ -1,21 +1,23 @@
 ---
+import Diagram from "./Diagram.astro";
 const pl = Astro.currentLocale === "pl";
 const t = pl
-  ? { orch: "Orkiestrator", wt: "Worktree", merge: "PR lub rebase", sdd: "Gałąź SDD", next: "Odblokowane zadania startują", par: "równolegle" }
-  : { orch: "Orchestrator", wt: "Worktree", merge: "PR or rebase", sdd: "SDD branch", next: "Unblocked tasks start", par: "in parallel" };
+  ? { orch: "Orkiestrator", wt: "Worktree", merge: "PR lub rebase", sdd: "Gałąź SDD", next: "Odblokowane zadania startują", par: "równolegle", alt: "Orkiestrator uruchamia zadania w osobnych worktree, a wyniki wracają do gałęzi SDD przez PR lub rebase" }
+  : { orch: "Orchestrator", wt: "Worktree", merge: "PR or rebase", sdd: "SDD branch", next: "Unblocked tasks start", par: "in parallel", alt: "The orchestrator runs tasks in separate worktrees; results return to the SDD branch by PR or rebase" };
+const nodes = [
+  { x: 130, y: 10, w: 220, h: 58, kind: "cmd", lines: [{ t: t.orch, s: "title" }, { t: "/sdd:implement all", s: "mono" }] },
+  { x: 10, y: 130, w: 218, h: 58, lines: [{ t: `${t.wt} T1`, s: "title" }, { t: "spec-branch--EPIC-T1", s: "mono" }] },
+  { x: 252, y: 130, w: 218, h: 58, lines: [{ t: `${t.wt} T2`, s: "title" }, { t: "spec-branch--EPIC-T2", s: "mono" }] },
+  { x: 130, y: 268, w: 220, h: 46, kind: "ok", lines: [{ t: t.sdd, s: "title" }] },
+  { x: 100, y: 352, w: 280, h: 46, kind: "cmd", align: "middle", lines: [{ t: t.next, s: "title" }] },
+];
+const edges = [
+  { pts: [[240, 68], [240, 99], [119, 99], [119, 130]] },
+  { pts: [[240, 68], [240, 99], [361, 99], [361, 130]] },
+  { pts: [[119, 188], [119, 228], [240, 228], [240, 268]], noArrow: true },
+  { pts: [[361, 188], [361, 228], [240, 228], [240, 268]] },
+  { pts: [[240, 314], [240, 352]] },
+];
 ---
 
-<div class="fx">
-  <div class="fx-col" style="max-width:40rem">
-    <div class="fx-node fx-cmd"><b>{t.orch}</b><code>/sdd:implement all</code></div>
-    <div class="fx-down" data-label={t.par}></div>
-    <div class="fx-row">
-      <div class="fx-node"><b>{t.wt} T1</b><code>spec-branch--EPIC-T1</code></div>
-      <div class="fx-node"><b>{t.wt} T2</b><code>spec-branch--EPIC-T2</code></div>
-    </div>
-    <div class="fx-down" data-label={t.merge}></div>
-    <div class="fx-node fx-ok"><b>{t.sdd}</b></div>
-    <div class="fx-down"></div>
-    <div class="fx-node fx-cmd"><b>{t.next}</b></div>
-  </div>
-</div>
+<Diagram width={480} height={410} nodes={nodes} edges={edges} labels={[{ x: 250, y: 94, t: t.par }, { x: 250, y: 252, t: t.merge }]} alt={t.alt} maxWidth={480} />

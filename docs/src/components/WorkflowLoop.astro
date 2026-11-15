@@ -1,32 +1,32 @@
 ---
+import Diagram from "./Diagram.astro";
 const pl = Astro.currentLocale === "pl";
 const t = pl
-  ? { setup: "setup, spec, clarify, plan", human: "Człowiek recenzuje plan.md", impl: "/sdd:implement T1", ask: "flow skonfigurowany?", yes: "tak", no: "nie", hand: "Przekaż zadanie do skonfigurowanego flow", ses: "Zaimplementuj w sesji", ver: "spec-verifier + reviewer + Twoje sprawdzenia", ready: "READY", notReady: "NOT READY", ship: "commit + PR", retro: "opcjonalnie", back: "wraca do /sdd:implement" }
-  : { setup: "setup, spec, clarify, plan", human: "Human reviews plan.md", impl: "/sdd:implement T1", ask: "flow configured?", yes: "yes", no: "no", hand: "Hand the task to the configured flow", ses: "Implement in the session", ver: "spec-verifier + reviewer + your checks", ready: "READY", notReady: "NOT READY", ship: "commit + PR", retro: "optional", back: "back to /sdd:implement" };
+  ? { setup: "setup, spec, clarify, plan", human: "Człowiek recenzuje plan.md", ask: "flow skonfigurowany?", yes: "tak", no: "nie", hand: "Przekaż zadanie do", hand2: "skonfigurowanego flow", ses: "Zaimplementuj w sesji", ver: "spec-verifier + reviewer + Twoje sprawdzenia", ship: "commit + PR", retro: "opcjonalnie", blk: "Napraw blokery", back: "powtórz zadanie", alt: "Przepływ SDD: od setupu do review, z pętlą powrotną przy NOT READY" }
+  : { setup: "setup, spec, clarify, plan", human: "Human reviews plan.md", ask: "flow configured?", yes: "yes", no: "no", hand: "Hand the task to", hand2: "the configured flow", ses: "Implement in the session", ver: "spec-verifier + reviewer + your checks", ship: "commit + PR", retro: "optional", blk: "Fix the blockers", back: "re-run the task", alt: "SDD flow: from setup to review, looping back on NOT READY" };
+const nodes = [
+  { x: 70, y: 10, w: 300, h: 56, kind: "cmd", lines: [{ t: "/sdd:doctor … /sdd:plan", s: "cmd" }, { t: t.setup }] },
+  { x: 70, y: 100, w: 300, h: 44, kind: "human", lines: [{ t: t.human, s: "title" }] },
+  { x: 70, y: 178, w: 300, h: 40, kind: "cmd", lines: [{ t: "/sdd:tasks", s: "cmd" }] },
+  { x: 70, y: 252, w: 300, h: 56, kind: "cmd", lines: [{ t: "/sdd:implement T1", s: "cmd" }, { t: t.ask }] },
+  { x: 10, y: 372, w: 200, h: 66, lines: [{ t: t.yes, s: "tag" }, { t: t.hand, s: "title" }, { t: t.hand2, s: "title" }] },
+  { x: 230, y: 372, w: 200, h: 66, lines: [{ t: t.no, s: "tag" }, { t: t.ses, s: "title" }] },
+  { x: 70, y: 480, w: 300, h: 56, kind: "cmd", lines: [{ t: "/sdd:review", s: "cmd" }, { t: t.ver }] },
+  { x: 10, y: 590, w: 200, h: 70, kind: "ok", lines: [{ t: "READY", s: "tag" }, { t: t.ship, s: "title" }, { t: `/sdd:retro · ${t.retro}`, s: "mono" }] },
+  { x: 230, y: 590, w: 200, h: 70, kind: "bad", lines: [{ t: "NOT READY", s: "tag" }, { t: t.blk, s: "title" }, { t: t.back }] },
+];
+const edges = [
+  { pts: [[220, 66], [220, 100]] },
+  { pts: [[220, 144], [220, 178]] },
+  { pts: [[220, 218], [220, 252]] },
+  { pts: [[220, 308], [220, 336], [110, 336], [110, 372]] },
+  { pts: [[220, 308], [220, 336], [330, 336], [330, 372]] },
+  { pts: [[110, 438], [110, 459], [220, 459], [220, 480]] },
+  { pts: [[330, 438], [330, 459], [220, 459], [220, 480]] },
+  { pts: [[220, 536], [220, 563], [110, 563], [110, 590]] },
+  { pts: [[220, 536], [220, 563], [330, 563], [330, 590]] },
+  { pts: [[430, 625], [452, 625], [452, 280], [370, 280]], dashed: true },
+];
 ---
 
-<div class="fx">
-  <div class="fx-col">
-    <div class="fx-node fx-cmd"><code>/sdd:doctor … /sdd:plan</code><small>{t.setup}</small></div>
-    <div class="fx-down"></div>
-    <div class="fx-node fx-human"><b>{t.human}</b></div>
-    <div class="fx-down"></div>
-    <div class="fx-node fx-cmd"><code>/sdd:tasks</code></div>
-    <div class="fx-down"></div>
-    <div class="fx-node fx-cmd"><code>{t.impl}</code><small>{t.ask}</small></div>
-    <div class="fx-down"></div>
-    <div class="fx-row">
-      <div class="fx-node"><span class="fx-tag">{t.yes}</span><b>{t.hand}</b></div>
-      <div class="fx-node"><span class="fx-tag">{t.no}</span><b>{t.ses}</b></div>
-    </div>
-    <div class="fx-down"></div>
-    <div class="fx-node fx-cmd"><code>/sdd:review</code><small>{t.ver}</small></div>
-    <div class="fx-down"></div>
-    <div class="fx-row">
-      <div class="fx-node fx-ok">
-        <span class="fx-tag">{t.ready}</span><b>{t.ship}</b><small><code>/sdd:retro</code> · {t.retro}</small>
-      </div>
-      <div class="fx-node fx-bad"><span class="fx-tag">{t.notReady}</span><small>{t.back}</small></div>
-    </div>
-  </div>
-</div>
+<Diagram width={462} height={680} nodes={nodes} edges={edges} alt={t.alt} maxWidth={480} />

@@ -1,0 +1,114 @@
+---
+/* Static SVG diagram renderer: nodes with text lines, orthogonal rounded edges, labels.
+   Colours come from page CSS (see styles/flow.css), so it follows the theme with no JS. */
+type Kind = "plain" | "cmd" | "human" | "ok" | "bad";
+type Line = { t: string; s?: "tag" | "title" | "sub" | "mono" | "cmd" };
+export interface DNode {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind?: Kind;
+  lines: Line[];
+  align?: "start" | "middle";
+}
+export interface DEdge {
+  pts: [number, number][];
+  dashed?: boolean;
+  noArrow?: boolean;
+}
+export interface DLabel {
+  x: number;
+  y: number;
+  t: string;
+  anchor?: "start" | "middle" | "end";
+}
+interface Props {
+  width: number;
+  height: number;
+  nodes: DNode[];
+  edges?: DEdge[];
+  labels?: DLabel[];
+  frames?: { x: number; y: number; w: number; h: number; title: string }[];
+  alt: string;
+  maxWidth?: number;
+  variant?: string;
+}
+const { width, height, nodes, edges = [], labels = [], frames = [], alt, maxWidth, variant } = Astro.props as Props;
+
+const LH: Record<string, number> = { tag: 15, title: 19, sub: 17, mono: 17, cmd: 19 };
+function rounded(pts: [number, number][], r = 8) {
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1];
+    const [cx, cy] = pts[i];
+    const [nx, ny] = pts[i + 1];
+    const l1 = Math.hypot(cx - px, cy - py);
+    const l2 = Math.hypot(nx - cx, ny - cy);
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    const ax = cx - ((cx - px) / l1) * rr;
+    const ay = cy - ((cy - py) / l1) * rr;
+    const bx = cx + ((nx - cx) / l2) * rr;
+    const by = cy + ((ny - cy) / l2) * rr;
+    d += ` L${ax} ${ay} Q${cx} ${cy} ${bx} ${by}`;
+  }
+  const last = pts[pts.length - 1];
+  return d + ` L${last[0]} ${last[1]}`;
+}
+let h = 0;
+for (const ch of alt) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+const uid = "m" + h.toString(36);
+---
+
+<figure class:list={["fx", variant]} style={maxWidth ? `--fx-max:${maxWidth}px` : undefined}>
+  <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={alt} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id={uid} viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 1.5 8.5 5 1 8.5" class="fx-head" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+      </marker>
+    </defs>
+    {
+      frames.map((f) => (
+        <g class="fx-frame">
+          <rect x={f.x} y={f.y} width={f.w} height={f.h} rx="10"></rect>
+          <text x={f.x + 14} y={f.y + 20}>{f.title}</text>
+        </g>
+      ))
+    }
+    {
+      edges.map((e) => (
+        <path class:list={["fx-edge", { dashed: e.dashed }]} d={rounded(e.pts)} marker-end={e.noArrow ? undefined : `url(#${uid})`}></path>
+      ))
+    }
+    {
+      nodes.map((n) => {
+        const total = n.lines.reduce((a, l) => a + LH[l.s ?? "sub"], 0);
+        let y = n.y + (n.h - total) / 2;
+        const mid = n.align === "middle";
+        const tx = mid ? n.x + n.w / 2 : n.x + 14;
+        return (
+          <g class={`fx-n ${n.kind ?? "plain"}`}>
+            <rect x={n.x} y={n.y} width={n.w} height={n.h} rx="8"></rect>
+            {n.lines.map((l) => {
+              const s = l.s ?? "sub";
+              const ty = y + LH[s] * 0.75;
+              y += LH[s];
+              return (
+                <text x={tx} y={ty} class={`t-${s}`} text-anchor={mid ? "middle" : "start"}>
+                  {l.t}
+                </text>
+              );
+            })}
+          </g>
+        );
+      })
+    }
+    {
+      labels.map((l) => (
+        <text class="fx-label" x={l.x} y={l.y} text-anchor={l.anchor ?? "start"}>
+          {l.t}
+        </text>
+      ))
+    }
+  </svg>
+</figure>

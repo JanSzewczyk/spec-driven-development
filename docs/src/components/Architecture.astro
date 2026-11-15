@@ -1,27 +1,20 @@
 ---
+import Diagram from "./Diagram.astro";
 const pl = Astro.currentLocale === "pl";
 const t = pl
-  ? { fw: "Framework: główna sesja", impl: "Flow implementacji", implSub: "Twój skill, agent lub komenda albo sama sesja", ver: "Agenci weryfikacji", verSub: "spec-verifier · reviewer · Twoje sprawdzenia", brief: "brief na zadanie", agent: "narzędzie Agent", from: "z" }
-  : { fw: "The framework: main session", impl: "Implementation flow", implSub: "your skill, agent or command, or the session itself", ver: "Verification agents", verSub: "spec-verifier · reviewer · your own checks", brief: "brief per task", agent: "Agent tool", from: "from" };
+  ? { fw: "Framework: główna sesja", impl: "Flow implementacji", i1: "Twój skill, agent lub komenda", i2: "albo sama sesja", ver: "Agenci weryfikacji", v1: "spec-verifier · reviewer", v2: "Twoje sprawdzenia", brief: "brief na zadanie", agent: "narzędzie Agent", alt: "Framework w głównej sesji przekazuje zadania do Twojego flow implementacji i weryfikację do agentów" }
+  : { fw: "The framework: main session", impl: "Implementation flow", i1: "Your skill, agent or command", i2: "or the session itself", ver: "Verification agents", v1: "spec-verifier · reviewer", v2: "your own checks", brief: "brief per task", agent: "Agent tool", alt: "The framework in the main session hands tasks to your implementation flow and verification to agents" };
 const chain = ["constitution", "spec", "clarify", "plan", "tasks", "hand-off", "review"];
+const nodes = [
+  ...chain.map((c, i) => ({ x: 14, y: 48 + i * 58, w: 150, h: 34, kind: "cmd", align: "middle", lines: [{ t: c, s: "mono" }] })),
+  { x: 230, y: 292, w: 210, h: 78, lines: [{ t: t.brief, s: "tag" }, { t: t.impl, s: "title" }, { t: t.i1 }, { t: t.i2 }] },
+  { x: 230, y: 392, w: 210, h: 78, kind: "ok", lines: [{ t: t.agent, s: "tag" }, { t: t.ver, s: "title" }, { t: t.v1 }, { t: t.v2 }] },
+];
+const edges = [
+  ...chain.slice(0, -1).map((_, i) => ({ pts: [[89, 82 + i * 58], [89, 106 + i * 58]] })),
+  { pts: [[164, 354], [197, 354], [197, 331], [230, 331]] },
+  { pts: [[164, 412], [197, 412], [197, 431], [230, 431]] },
+];
 ---
 
-<div class="fx">
-  <p class="fx-cap" style="text-align:left">{t.fw}</p>
-  <ol class="fx-chain">
-    {chain.map((c) => <li><span class="fx-node fx-cmd">{c}</span></li>)}
-  </ol>
-  <div style="height:1rem"></div>
-  <div class="fx-row">
-    <div class="fx-node">
-      <span class="fx-tag">hand-off · {t.brief}</span>
-      <b>{t.impl}</b>
-      <small>{t.implSub}</small>
-    </div>
-    <div class="fx-node fx-ok">
-      <span class="fx-tag">review · {t.agent}</span>
-      <b>{t.ver}</b>
-      <small>{t.verSub}</small>
-    </div>
-  </div>
-</div>
+<Diagram width={450} height={490} nodes={nodes} edges={edges} frames={[{ x: 4, y: 8, w: 170, h: 428, title: t.fw.length > 24 ? "main session" : t.fw }]} alt={t.alt} maxWidth={470} />
