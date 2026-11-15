@@ -1,0 +1,49 @@
+---
+title: sdd-board
+description: Claude Code Desktop side panel for SDD status.
+sidebar:
+  label: Overview
+---
+
+import { Card, CardGrid, Steps, Aside } from '@astrojs/starlight/components';
+
+An optional companion mod for **Claude Code Desktop** that shows where each SDD feature stands. It only **reads** `specs/` and never writes to it. Needs Claude Code 2.1.287+; installing it installs `sdd` too.
+
+```text
+/plugin install sdd-board@spec-driven-development
+/sdd-dashboard
+```
+
+The panel opens by itself when the project has `specs/`, in a window at least 144 columns wide, unless you opened it once. Try it without installing: `claude --plugin-dir plugins/sdd-board`.
+
+## What it shows
+
+<CardGrid>
+  <Card title="Current" icon="rocket">
+    The active spec (from the git branch, one you pinned, or the newest in progress): status, a pipeline stepper, a readiness checklist, the next `/sdd:*` command with a **Put in prompt** button, task progress and list, and buttons that open `spec`, `plan`, `tasks`, `review`.
+  </Card>
+  <Card title="All" icon="list-format">
+    Every spec with its phase and task progress, filterable. **Show** pins one as current.
+  </Card>
+  <Card title="⚙ Config" icon="setting">
+    Read-only: projects, effective `capabilities.yml` values (set vs default), per-project commands from constitution §2, plus buttons for `/sdd:capabilities` and `/sdd:doctor check`.
+  </Card>
+  <Card title="+ New spec" icon="add-document">
+    Puts `/sdd:spec feat ` in the prompt at any time, even while another feature is in progress.
+  </Card>
+</CardGrid>
+
+- **No SDD in the project:** only a setup card. **Init SDD in this project** runs `/sdd:doctor init`; it is the only button that runs a command, all others just fill the prompt.
+- **Live:** refreshes after Claude writes under `specs/`, after a branch switch, after each turn, and every 4 s for edits made elsewhere.
+- **Rendering:** SVG in Desktop and VS Code, text in the terminal.
+
+## How it picks the next step
+
+| On disk | Next |
+|---|---|
+| spec `draft` | `/sdd:clarify` |
+| spec `clarified` | `/sdd:plan` |
+| spec `planned`, no `tasks.md` | `/sdd:tasks` |
+| tasks exist, some not implemented | `/sdd:implement T<n>` for the first unfinished task whose dependencies are done |
+| every task in `review` or `done` | `/sdd:review` |
+| spec `done` or review verdict READY | nothing, open the PR |

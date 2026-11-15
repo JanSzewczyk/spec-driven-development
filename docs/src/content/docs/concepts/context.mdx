@@ -1,0 +1,24 @@
+---
+title: Context management
+description: How SDD keeps sessions small and cheap.
+---
+
+import { CardGrid, Card, Aside } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="1. Per-task briefs" icon="document">
+    The implementer receives only its task, the acceptance criteria and plan sections it names, never the whole feature.
+  </Card>
+  <Card title="2. Sub-agents for large reads" icon="magnifier">
+    The codebase survey, reference sources and verification run in sub-agents and return summaries.
+  </Card>
+  <Card title="3. Fresh chat per task" icon="add-document">
+    Open a new session between tasks; `tasks.md` status is the handover document.
+  </Card>
+</CardGrid>
+
+Every phase command re-reads its inputs from disk (`spec.md`, `plan.md`, `tasks.md`, `capabilities.yml`), so `/clear` between `plan → tasks → implement → review` loses nothing.
+
+<Aside type="caution" title="Keep generated files out">
+Regenerated clients, mocks and schemas balloon context and trigger false out-of-scope findings. Declare them under `generated` in [`capabilities.yml`](/spec-driven-development/configuration/capabilities/) and they are left out of every diff.
+</Aside>

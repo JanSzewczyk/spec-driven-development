@@ -1,0 +1,20 @@
+---
+title: Anti-patterns
+description: Common failure modes when adopting SDD.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+| ❌ Don't | Why | Instead |
+|---|---|---|
+| Skip `/sdd:clarify` "because I know what I want" | Open questions almost always surface real gaps | Run it; accept the proposed answers you agree with |
+| Skip review of `plan.md` | Claude can hallucinate architecture on unusual stacks | Read it before `/sdd:tasks` |
+| Run unrelated tasks in one chat | Context bloats, hallucinations rise | One task per session |
+| `git commit` by hand instead of `/sdd:review` | Bypasses `spec-verifier`, `reviewer` and AC ticking | Let review commit |
+| Put code or tech details in `spec.md` | The spec is a business document | Put them in `plan.md` |
+| Bloat `CLAUDE.md` | Above ~2,500 tokens Claude starts ignoring the bottom | Shard per module |
+| Use `--dangerously-skip-permissions` in production | A hallucinated bash command can destroy your system | Keep permissions on |
+| Implement without a spec | SDD works only if every feature has `spec.md` first | `/sdd:spec` first |
+| Run Opus for mechanical phases | Decomposition and drift checks don't need the top tier | Sonnet for `spec`, `tasks`, `analyze` |
+| Drip-feed feedback | Ten "move this 2px" turns each reprocess the whole context | Batch into one message per round |
+| Pull generated diffs into the loop | Regenerated clients and mocks balloon context and cause false out-of-scope findings | List them under `generated` |
