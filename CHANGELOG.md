@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] — 2026-11-15
+
+`sdd` releases are now tagged `v<version>` instead of `sdd--v<version>`.
+
+### Changed
+
+- `scripts/release.sh` creates the `v<version>` tag itself and treats an existing `sdd--v<version>` tag as already released. Older `sdd--v` tags and their Releases are unchanged.
+- The `sdd-check` workflow template and the `capabilities.yml` `$schema` comment pin to `v<version>`.
+
 ## [0.9.2 sdd-board] — 2026-11-15
 
 `sdd-board` goes to 0.9.2.
