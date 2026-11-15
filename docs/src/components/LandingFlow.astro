@@ -237,48 +237,6 @@ const groups = [
       scale 0.15s;
   }
 
-  /* The flow draws itself as it scrolls in: each row's connector grows down to the next
-     node, then the node and its text settle. Without scroll timelines the rows just show. */
-  @media (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      li::before {
-        transform-origin: top;
-        animation: grow linear both;
-        animation-timeline: view();
-        animation-range: entry 30% cover 35%;
-      }
-      .node {
-        animation: node-in linear both;
-        animation-timeline: view();
-        animation-range: entry 10% entry 70%;
-      }
-      .title,
-      .note,
-      .writes {
-        animation: settle linear both;
-        animation-timeline: view();
-        animation-range: entry 15% entry 85%;
-      }
-      @keyframes grow {
-        from {
-          transform: scaleY(0);
-        }
-      }
-      @keyframes node-in {
-        from {
-          opacity: 0;
-          scale: 0.6;
-        }
-      }
-      @keyframes settle {
-        from {
-          opacity: 0;
-          translate: -8px 0;
-        }
-      }
-    }
-  }
-
   /* One row per phase: node, name and command, what it does, file it writes */
   @media (min-width: 44rem) {
     a {
