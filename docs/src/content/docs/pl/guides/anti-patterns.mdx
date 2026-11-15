@@ -1,0 +1,20 @@
+---
+title: Antywzorce
+description: Typowe błędy przy wdrażaniu SDD.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+| ❌ Nie rób | Dlaczego | Zamiast tego |
+|---|---|---|
+| Pomijanie `/sdd:clarify` „bo wiem, czego chcę" | Otwarte pytania prawie zawsze ujawniają prawdziwe luki | Uruchom; przyjmij proponowane odpowiedzi, z którymi się zgadzasz |
+| Pomijanie review `plan.md` | Claude potrafi zahalucynować architekturę na nietypowych stackach | Przeczytaj przed `/sdd:tasks` |
+| Niepowiązane zadania w jednym czacie | Kontekst puchnie, halucynacji przybywa | Jedno zadanie na sesję |
+| Ręczny `git commit` zamiast `/sdd:review` | Omija `spec-verifier`, `reviewer` i odhaczanie AC | Pozwól review zacommitować |
+| Kod lub szczegóły techniczne w `spec.md` | Spec jest dokumentem biznesowym | Umieść je w `plan.md` |
+| Rozdęty `CLAUDE.md` | Powyżej ~2500 tokenów Claude zaczyna ignorować dół | Podziel na moduły |
+| `--dangerously-skip-permissions` na produkcji | Zahalucynowana komenda bash może zniszczyć system | Zostaw uprawnienia włączone |
+| Implementacja bez specu | SDD działa tylko, jeśli każda funkcja ma najpierw `spec.md` | Najpierw `/sdd:spec` |
+| Opus do faz mechanicznych | Dekompozycja i kontrola rozjazdów nie potrzebują najwyższego modelu | Sonnet dla `spec`, `tasks`, `analyze` |
+| Dokarmianie uwagami po kropelce | Dziesięć tur „przesuń to o 2 px" za każdym razem przetwarza cały kontekst | Zbieraj w jedną wiadomość na rundę |
+| Wciąganie wygenerowanych diffów do pętli | Regenerowane klienty i mocki rozdymają kontekst i dają fałszywe zgłoszenia poza zakresem | Wymień je w `generated` |

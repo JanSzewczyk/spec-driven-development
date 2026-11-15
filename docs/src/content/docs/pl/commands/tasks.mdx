@@ -1,0 +1,33 @@
+---
+title: /sdd:tasks
+description: Dzieli plan na samodzielne zadania.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Dzieli `plan.md` na **samodzielne zadania** pod jednym Epikiem. Format: [Zadania i przekazanie pracy](/spec-driven-development/pl/concepts/tasks/).
+
+## Reguły, których przestrzega
+
+- **Jeden Epic na funkcję.** Zadanie to ticket: jeden projekt, spójny kawałek zachowania, zwykle od kilku godzin do dnia. Nigdy warstwa ani mikrokrok. Testy należą do zadania, które dostarcza zachowanie.
+- **Pełne pokrycie.** Każde kryterium akceptacji jest pokryte zadaniem, a każde zadanie służy co najmniej jednemu kryterium.
+- **Współdzielone kontrakty to osobne zadanie** (schemat, z którego generowane są klienty, współdzielone typy, migracja). Konsumenci od niego zależą.
+- **`depends_on`** tylko tam, gdzie zadanie potrzebuje wyniku innego lub dotyka tych samych plików.
+- **Bez kopii** planu ani specu: zadania odwołują się do id AC i sekcji planu.
+- **Bez agentów, modeli i tagów TDD** w zadaniach. To, kto implementuje, jest konfiguracją, a nie treścią.
+
+## Co zapisuje
+
+<Steps>
+
+1. `**Epic:** <LETTERS>-<4 hex>` w nagłówku, raz (zachowywany przy ponownych uruchomieniach); zadania stają się `<EPIC>-T<n>`.
+2. Zadania, zakończone linią `Order:` w stylu `T1 → T2 ∥ T3 → T4`.
+3. Commit `specs/<slug>/` jako `docs(<slug>): add spec, plan and tasks` z trailerem `Epic:`, dzięki czemu dokumentacja jest w gitcie przed startem jakiegokolwiek zadania i widoczna dla worktree.
+
+</Steps>
+
+<Aside type="note">
+Ponowne uruchomienie po zmianie planu zachowuje id i status każdego zadania. Rozpoczęte zadanie ze zmienionym zakresem wraca do `draft`.
+</Aside>
+
+**Dalej:** [`/sdd:implement`](/spec-driven-development/pl/commands/implement/)

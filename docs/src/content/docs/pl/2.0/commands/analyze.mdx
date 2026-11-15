@@ -1,0 +1,23 @@
+---
+title: /sdd:analyze
+description: Kontrola rozjazdu między specem, planem, zadaniami i kodem, tylko do odczytu.
+slug: pl/2.0/commands/analyze
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Uruchamiaj kiedy chcesz. Uruchamia `spec-verifier` jednokrotnie na diffie funkcji i raportuje w kilku liniach:
+
+| Wynik | Znaczenie |
+|---|---|
+| **Met** | Kryterium akceptacji zaimplementowane i pokryte. |
+| **Pending** | Jego zadanie nie jest jeszcze zaimplementowane. |
+| **Gap** | Zaimplementowane, ale niepokryte przez spec ani zadanie. |
+
+Plus ustalenia z `file:line` i kolejną komendą dla każdego.
+
+Przydatne w trakcie funkcji, po zmianie specu i przed [`/sdd:review`](/spec-driven-development/pl/2.0/commands/review/).
+
+<Aside type="note">
+  Tylko do odczytu: nigdy nie edytuje plików i nie uruchamia testów.
+</Aside>

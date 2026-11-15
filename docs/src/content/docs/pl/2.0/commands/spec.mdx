@@ -1,0 +1,28 @@
+---
+title: /sdd:spec
+description: Tworzy gałąź funkcji i szkielet specu.
+slug: pl/2.0/commands/spec
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+```text
+/sdd:spec <type> <description>
+/sdd:spec feat user can reset password via email
+```
+
+`<type>` to `feat`, `fix`, `chore`, `refactor` lub `docs` (Conventional Commits; domyślnie `feat`). Przykład tworzy `feat/user-can-reset-password-via-email`.
+
+<Steps>
+  1. Tworzy gałąź przez `actions.branch` (skill, agent lub komenda), w przeciwnym razie skill do gałęzi, który ma sesja, a w ostateczności `git checkout -b <type>/<slug>`.
+  2. Odczytuje prawdziwą nazwę gałęzi; `feature_slug` to część po pierwszym `/`.
+  3. Generuje `specs/<feature_slug>/spec.md` z `specs/template.md`, wpisując prawdziwą nazwę w `**Branch:**`. Wypełnia tylko Summary.
+</Steps>
+
+<Aside type="caution" title="Tylko biznes">
+  Spec nie zawiera kodu ani szczegółów stacku technologicznego. Te należą do `plan.md`.
+</Aside>
+
+Wymaga `specs/template.md`; w przeciwnym razie zatrzymuje się z komunikatem „Run `/sdd:doctor init` first".
+
+**Dalej:** [`/sdd:clarify`](/spec-driven-development/pl/2.0/commands/clarify/)

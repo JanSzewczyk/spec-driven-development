@@ -3,8 +3,18 @@ interface Props {
   compact?: boolean;
 }
 const { compact = false } = Astro.props;
-const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-const steps = [
+const locale = Astro.currentLocale === "pl" ? "pl" : "en";
+const base = import.meta.env.BASE_URL.replace(/\/$/, "") + (locale === "pl" ? "/pl" : "");
+const pl = {
+  constitution: ["Constitution", "Stack, reguły i WHAT NOT TO DO"],
+  spec: ["Specify", "Gałąź i spec wyłącznie biznesowy"],
+  clarify: ["Clarify", "Do 5 pytań z proponowanymi odpowiedziami"],
+  plan: ["Plan", "Decyzje, zakres i ryzyka, w Plan Mode"],
+  tasks: ["Tasks", "Samodzielne tickety w stylu Jiry"],
+  implement: ["Implement", "Przekazanie do Twojego flow"],
+  review: ["Review", "Werdykt: READY lub NOT READY"],
+};
+const base_steps = [
   { cmd: "constitution", label: "Constitution", note: "Stack, rules and WHAT NOT TO DO", href: "/commands/constitution/" },
   { cmd: "spec", label: "Specify", note: "Branch and a business-only spec", href: "/commands/spec/" },
   { cmd: "clarify", label: "Clarify", note: "Up to 5 questions with proposed answers", href: "/commands/clarify/" },
@@ -13,6 +23,7 @@ const steps = [
   { cmd: "implement", label: "Implement", note: "Hand-off to your own flow", href: "/commands/implement/" },
   { cmd: "review", label: "Review", note: "Verdict: READY or NOT READY", href: "/commands/review/" },
 ];
+const steps = base_steps.map((s) => (locale === "pl" ? { ...s, label: pl[s.cmd][0], note: pl[s.cmd][1] } : s));
 ---
 
 <ol class:list={["pipeline", { compact }]}>

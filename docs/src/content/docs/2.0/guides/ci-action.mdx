@@ -1,0 +1,43 @@
+---
+title: sdd-check GitHub Action
+description: Run the doctor rules in CI of any repository that uses SDD.
+slug: 2.0/guides/ci-action
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The same rules as `/sdd:doctor check`, in CI, so a framework change (a new `capabilities.yml` key, a new `tasks.md` field) is caught where nobody runs the doctor.
+
+* Checks 4–6 (git, tooling, sibling repos) are **not** judged in CI.
+* The job summary lists what is missing, which checks failed, and that `/sdd:doctor init` repairs them.
+* `/sdd:doctor init` offers to write the workflow for you.
+
+```yaml title=".github/workflows/sdd-check.yml"
+name: SDD Check 🧭
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * 1"   # weekly: catches drift after a plugin update
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sdd:
+    name: SDD Artifacts 🧭
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check SDD specs, plans and capabilities 🧭
+        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@sdd--v2.0.1
+        # Inputs: path, fail-on (fail | warn), node-version.
+```
+
+<Aside type="note">
+  The action runs the rules from the ref it is pinned to, so the repository vendors nothing. `init` pins it to the installed sdd version and moves the pin on upgrade.
+</Aside>

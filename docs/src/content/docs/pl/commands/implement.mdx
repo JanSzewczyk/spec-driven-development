@@ -1,0 +1,27 @@
+---
+title: /sdd:implement
+description: Przekaż zadania do swojego flow implementacji.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+```text
+/sdd:implement T2        # jedno zadanie
+/sdd:implement all       # każde gotowe zadanie
+```
+
+**Dyspozytor**, nie implementator. Sprawdza `depends_on`, buduje brief, przekazuje zadanie do flow skonfigurowanego w [`capabilities.yml`](/spec-driven-development/pl/configuration/capabilities/) (`skill:`, `agent:`, `command:` lub `in-session`) i śledzi status.
+
+| Zachowanie | Szczegóły |
+|---|---|
+| Równoległość | Niezależne zadania mogą trafić razem do flow w tle; w przeciwnym razie jedno po drugim. |
+| Sąsiednie repo | Najpierw dba o to, by gałąź funkcji istniała w tym repozytorium. |
+| Weryfikacja | **Sam nie uruchamia testów**: robi to implementator, a [`/sdd:review`](/spec-driven-development/pl/commands/review/) weryfikuje. |
+| Commity | Commituje dokumentację, którą `/sdd:tasks` zostawiło niezacommitowaną, przed pierwszym zadaniem, a potem pliki każdego ukończonego zadania z trailerem `Task: <EPIC>-T<n>`. |
+| Izolacja | Z `isolation: worktree:` orkiestruje sub-sesje. Zobacz [Izolowane zadania](/spec-driven-development/pl/concepts/isolation/). |
+
+<Aside type="tip">
+Otwieraj świeżą sesję na zadanie. Status w `tasks.md` jest dokumentem przekazania, więc nic się nie gubi.
+</Aside>
+
+**Dalej:** [`/sdd:review`](/spec-driven-development/pl/commands/review/)

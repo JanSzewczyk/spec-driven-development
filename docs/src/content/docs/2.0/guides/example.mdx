@@ -1,0 +1,124 @@
+---
+title: End-to-end example
+description: A password-reset feature, from init to PR.
+slug: 2.0/guides/example
+---
+
+import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Feature: **"User can reset password via email"**, across an API, a web app and a mobile app.
+
+<Steps>
+  1. **Initialize**
+
+     ```text
+     /sdd:doctor init       # detects projects and commands
+     /sdd:doctor check      # ✅ READY (7/7)
+     /sdd:constitution      # stack, commands, rules with rationale
+     ```
+
+  2. **Specify**
+
+     ```text
+     /sdd:spec feat user can reset password via email
+     ```
+
+     Creates branch `feat/user-can-reset-password-via-email` and `specs/user-can-reset-password-via-email/spec.md`. You fill in user stories, acceptance criteria (AC1: token valid for 30 min, AC2: rate-limited to 3 attempts …) and edge cases (unknown email: silent success).
+
+  3. **Clarify**
+
+     ```text
+     /sdd:clarify
+     ```
+
+     Claude asks: should expired tokens return 410 or 401? Is the rate limit per IP, per email, or both? What if SMTP delivery fails, retry or fail loud? You answer; the spec is updated.
+
+  4. **Plan** (Shift+Tab for Plan Mode)
+
+     ```text
+     /sdd:plan
+     ```
+
+     `plan.md` gets a data model (`User`, `PasswordResetToken`), a component diagram, the API surface (`POST /actions/resetPassword`), an 8-file change list and the code to reuse. **Read it and correct anything wrong.**
+
+  5. **Tasks**
+
+     ```text
+     /sdd:tasks
+     ```
+
+     One Epic: the shared contract first, then API, web and mobile.
+
+     <Tabs>
+       <TabItem label="T1 · api">
+         ```markdown
+         ### T1: Reset API (contract + endpoints)
+         project: api
+         status: draft
+         depends_on: []
+         acceptance: AC1, AC2, AC3
+         plan: Contracts › reset API; File-by-file › api
+         scope:
+         - request/confirm schemas exposed in OpenAPI
+         - endpoints, token storage, expiry (30 min), same response for unknown e-mails
+         files: apps/api/app/auth/*
+         ```
+       </TabItem>
+
+       <TabItem label="T2 · web">
+         ```markdown
+         ### T2: Reset password screen (web)
+         project: web
+         status: draft
+         depends_on: [T1]
+         acceptance: AC1, AC4
+         …
+         ```
+       </TabItem>
+
+       <TabItem label="Order">
+         ```text
+         Order: T1 → T2 ∥ T3 → T4
+         ```
+
+         `T3` is the mobile screen in `../mobile-app`; `T4` is the end-to-end test that depends on `T1` and `T2`.
+       </TabItem>
+     </Tabs>
+
+  6. **Implement**
+
+     ```text
+     /sdd:implement all
+     ```
+
+     * `T1` goes to the flow configured for `api` (here `agent:python-developer`).
+     * `T2` and `T3` start once `T1` is done: `web` uses `skill:my-web-flow`, `mobile` falls back to `in-session`.
+     * `T4` follows when `T1` and `T2` are done.
+
+     Each task flips to `review` when its implementer reports done, and its files are committed with a `Task:` trailer. Nothing is verified yet.
+
+  7. **Review**
+
+     ```text
+     /sdd:review
+     ```
+
+     * In parallel: tests 23/23; `spec-verifier`: all 4 AC met, no drift; your `qa` check: `PASS`.
+     * `reviewer`: constitution rules respected, stack audits pass.
+     * The 4 AC are ticked in `spec.md`; verdict **READY**; you confirm.
+     * Commit `feat(user-can-reset-password-via-email): <Summary of spec.md>`; PR opened referencing the spec.
+</Steps>
+
+## Typical timeline
+
+| Step | Time |
+|---|---|
+| `/sdd:doctor init` | 30 s |
+| `/sdd:spec` | 1 min plus your edits |
+| `/sdd:clarify` | 5 min |
+| `/sdd:plan` | 3 min |
+| Human review of `plan.md` | 5–10 min |
+| `/sdd:tasks` | 1 min |
+| `/sdd:implement` | depends on your flow |
+| `/sdd:review` | 5 min |
+| **Total** | **~2–4 h** for a medium feature |

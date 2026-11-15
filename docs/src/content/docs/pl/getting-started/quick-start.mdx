@@ -1,0 +1,106 @@
+---
+title: Szybki start
+description: Zainicjuj projekt i dostarcz pierwszą funkcję.
+---
+
+import { Steps, Aside, FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
+import Pipeline from '../../../../components/Pipeline.astro';
+
+<Pipeline compact />
+
+## 1. Zainicjuj projekt
+
+<Steps>
+
+1. Otwórz projekt docelowy w Claude Code i uruchom:
+
+   ```text
+   /sdd:doctor init
+   ```
+
+   Wykrywa Twoje projekty i ich komendy, a następnie tworzy:
+
+   <FileTree>
+   - specs/
+     - constitution.md źródło prawdy, edytuj go jako następny
+     - template.md baza dla nowych specyfikacji
+     - capabilities.yml projekty + flow, akcje, review
+   </FileTree>
+
+2. Potwierdź, że wszystko jest na miejscu:
+
+   ```text
+   /sdd:doctor check     # 7/7
+   ```
+
+3. *(Opcjonalnie)* Wybierz implementatora, akcje git i sprawdzenia review spośród zainstalowanych skilli i agentów:
+
+   ```text
+   /sdd:capabilities
+   ```
+
+4. Uzupełnij reguły i komendy stacku:
+
+   ```text
+   /sdd:constitution
+   ```
+
+</Steps>
+
+<Aside type="note">
+`CLAUDE.md` w katalogu głównym projektu nigdy nie jest czytany ani zapisywany przez SDD. Źródłem prawdy jest `specs/constitution.md`.
+</Aside>
+
+## 2. Zbuduj funkcję
+
+<Steps>
+
+1. **Specify.** Tworzy gałąź i szkielet specu:
+
+   ```text
+   /sdd:spec feat user can reset password via email
+   ```
+
+2. **Clarify.** Odpowiedz na maksymalnie 5 pytań; spec zostanie zaktualizowany:
+
+   ```text
+   /sdd:clarify
+   ```
+
+3. **Plan.** Najpierw przełącz się na Plan Mode (Shift+Tab). Zatwierdzenie dialogu zapisuje `plan.md`; przeczytaj go uważnie:
+
+   ```text
+   /sdd:plan
+   ```
+
+4. **Tasks.** Jeden Epic, samodzielne zadania, zacommitowane do gita:
+
+   ```text
+   /sdd:tasks
+   ```
+
+5. **Implement.** Jedno zadanie lub wszystkie, przekazane do Twojego flow:
+
+   ```text
+   /sdd:implement all
+   ```
+
+6. **Review.** Werdykt, odhaczone kryteria akceptacji, commit i PR:
+
+   ```text
+   /sdd:review
+   ```
+
+7. *(Opcjonalnie)* **Retro.** Zamień powtarzalne błędy w reguły konstytucji:
+
+   ```text
+   /sdd:retro
+   ```
+
+</Steps>
+
+<Aside type="tip">
+Każda faza odczytuje wejście z dysku, więc `/clear` między fazami niczego nie traci.
+</Aside>
+
+Cały przebieg z prawdziwym outputem zobaczysz w [przykładzie end-to-end](/spec-driven-development/pl/guides/example/).

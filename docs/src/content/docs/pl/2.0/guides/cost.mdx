@@ -1,0 +1,30 @@
+---
+title: Koszty i dobór modeli
+description: Który model uruchamiać w której fazie.
+slug: pl/2.0/guides/cost
+---
+
+import { Aside, Badge } from '@astrojs/starlight/components';
+
+Największą dźwignią kosztów jest **to, który model uruchamia którą fazę**. Komenda slash nie może przełączyć modelu sesji, więc to wskazówka operacyjna.
+
+| Faza | Model | Dlaczego |
+|---|---|---|
+| `/sdd:constitution`, `/sdd:clarify`, `/sdd:plan`, `/sdd:review` | <Badge text="Opus" variant="danger" /> | Wymagają osądu: ujęcie problemu, architektura i końcowa bramka. Tanio dopracować tu, drogo naprawiać dalej. |
+| `/sdd:spec`, `/sdd:tasks` | <Badge text="Sonnet" variant="note" /> | Mechaniczne: gałąź i wypełniony szablon; dekompozycja zatwierdzonego planu. |
+| `/sdd:analyze` | dowolny | Deleguje do `spec-verifier` (Sonnet). |
+| `/sdd:implement` | wybór Twojego flow | Framework tylko przekazuje. |
+
+## Agenci mają własny poziom
+
+| Agent | Model |
+|---|---|
+| `reviewer` | <Badge text="Opus" variant="danger" /> |
+| `spec-verifier` | <Badge text="Sonnet" variant="note" /> |
+| `codebase-surveyor` | <Badge text="Haiku" variant="success" /> |
+
+Działają na własnym poziomie niezależnie od modelu sesji.
+
+<Aside type="tip" title="Trzymaj duże wyniki poza główną pętlą">
+  Agenci weryfikacji wykluczają globy `generated` z każdego diffu. `/sdd:plan` wyciąga źródła referencyjne (makiety, specyfikacje API, ADR-y) **raz** w sub-agencie i zapisuje w `plan.md` to, co ważne. Duże skany kodu zwracają tylko podsumowanie.
+</Aside>

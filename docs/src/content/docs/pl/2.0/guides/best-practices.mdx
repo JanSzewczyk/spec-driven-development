@@ -1,0 +1,27 @@
+---
+title: Dobre praktyki
+description: Trzynaście zasad, by wycisnąć z SDD jak najwięcej.
+slug: pl/2.0/guides/best-practices
+---
+
+## Zapisuj
+
+* **Rób pracę weryfikowalną.** `acceptance` każdego zadania wskazuje mierzalne kryteria; `/sdd:review` weryfikuje względem nich. W swoim flow implementacji domyślnie stawiaj na test-first.
+* **Konstytucja to DLACZEGO.** Każda reguła WHAT NOT TO DO ma `**Why:**` (i odniesienie do incydentu, jeśli dotyczy). Po każdym błędzie Claude dopisz wniosek. Bez uzasadnienia reguły stają się folklorem i są łamane ponownie.
+* **Trzymaj spec i kod w zgodzie.** Gdy zmieniasz kod ręcznie, zaktualizuj spec. Uruchamiaj okresowo `/sdd:analyze`.
+* **CLAUDE.md per moduł.** Główny na reguły przekrojowe, po jednym na aplikację lub pakiet na resztę, każdy szczupły i wskazujący na `specs/constitution.md`. Framework ich nie dotyka.
+
+## Review w odpowiednich momentach
+
+* **Plan Mode dla /sdd:plan.** Claude nie może modyfikować plików podczas eksploracji; zatwierdzenie planu go zapisuje. Nie dla `/sdd:clarify`, które zapisuje do specu.
+* **Czytaj plan.md.** Zawsze, przed `/sdd:tasks`. Najtańszy moment na korektę kursu.
+* **Korzystaj z Clarify.** Pytania przed planowaniem ujawniają luki, które pochłonęłyby cykle implementacji.
+* **Jedna gałąź na funkcję.** `/sdd:spec` to wymusza, z nazewnictwem Conventional Commits.
+
+## Utrzymuj sesje małe i tanie
+
+* **Dziel duże specy.** Nigdy nie przekazuj implementatorowi gigantycznego PRD. Epic → Task; każdy implementator dostaje tylko brief swojego zadania.
+* **Sub-agenci do dużych odczytów.** Nie grepuj 50 plików w głównej sesji; odbierz podsumowanie.
+* **Nowy czat na zadanie.** `/clear` między fazami i nowa sesja na zadanie. Status w `tasks.md` jest przekazaniem.
+* **Różnicuj modele.** Opus do faz wymagających osądu, Sonnet do mechanicznych. Zobacz [Koszty](/spec-driven-development/pl/2.0/guides/cost/).
+* **Zbieraj uwagi.** Poprawki wizualne i QA oraz naprawy NOT READY zbieraj w jedną wiadomość na rundę; każda tura przetwarza cały kontekst.

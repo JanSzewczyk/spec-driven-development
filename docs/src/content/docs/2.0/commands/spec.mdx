@@ -1,0 +1,28 @@
+---
+title: /sdd:spec
+description: Create the feature branch and the spec skeleton.
+slug: 2.0/commands/spec
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+```text
+/sdd:spec <type> <description>
+/sdd:spec feat user can reset password via email
+```
+
+`<type>` is `feat`, `fix`, `chore`, `refactor` or `docs` (Conventional Commits; `feat` when omitted). The example creates `feat/user-can-reset-password-via-email`.
+
+<Steps>
+  1. Creates the branch with `actions.branch` (a skill, agent or command), else a branch skill the session has, else `git checkout -b <type>/<slug>`.
+  2. Reads the real branch name; `feature_slug` is the part after the first `/`.
+  3. Generates `specs/<feature_slug>/spec.md` from `specs/template.md` with the real name in `**Branch:**`. Only the Summary is filled.
+</Steps>
+
+<Aside type="caution" title="Business only">
+  The spec holds no code and no tech-stack details. Those belong in `plan.md`.
+</Aside>
+
+Needs `specs/template.md`; otherwise it stops with "Run `/sdd:doctor init` first".
+
+**Next:** [`/sdd:clarify`](/spec-driven-development/2.0/commands/clarify/)

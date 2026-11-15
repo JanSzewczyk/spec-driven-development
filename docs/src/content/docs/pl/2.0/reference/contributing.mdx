@@ -1,0 +1,33 @@
+---
+title: Współtworzenie
+description: Konfiguracja środowiska i sposób zmiany pluginów.
+slug: pl/2.0/reference/contributing
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+Zachowanie żyje w **promptach Markdown**: treść każdego `skills/<name>/SKILL.md` i `agents/*.md` to zestaw instrukcji wykonywanych przez Claude. Jedyny kod to TypeScript: mod rejestrujący `doctor_check` oraz reguły i parsery w `shared/sdd-core/`.
+
+<Steps>
+  1. Zrób fork i gałąź z nazewnictwem Conventional Commits (`git checkout -b feat/new-check`).
+  2. Zmień plugin (`plugins/sdd/skills/`, `agents/`, `references/`, `skills/doctor/templates/`) lub panel (`plugins/sdd-board/hooks/`). Wspólny TypeScript jest w `shared/sdd-core/`; potem uruchom `scripts/sync-core.sh`.
+  3. Uruchom `claude plugin test` w obu pluginach, a potem przećwicz doctora na świeżym projekcie (`check` → `init` → `check`).
+  4. Zaktualizuj README i tę dokumentację oraz podbij wersję zmienionego pluginu (`plugin.json`, `marketplace.json`, dla `sdd` badge w README) wraz z sekcją w `CHANGELOG.md`.
+  5. Otwórz PR. Plugin Checks odrzuci go przy rozjeździe manifestów lub dokumentacji, zmienionym pluginie bez podbicia wersji, pluginie, który się nie ładuje lub nie instaluje, nieudanym audycie skilla, rozjechanej kopii `hooks/core/` lub nieprzechodzącym teście.
+  6. Po merge workflow wydania taguje nową wersję `sdd` i tworzy GitHub Release. `sdd-board` nie jest tagowany.
+</Steps>
+
+<Aside type="caution">
+  Nigdy nie taguj ręcznie.
+</Aside>
+
+## Praca nad tą stroną
+
+```bash
+cd docs
+npm install
+npm run dev      # http://localhost:4321/spec-driven-development/
+npm run build
+```
+
+Strony są w `docs/src/content/docs/` (polskie w `docs/src/content/docs/pl/`), sidebar w `docs/astro.config.mjs`. Pełna mapa „co gdzie zmieniać" jest w [CLAUDE.md](https://github.com/JanSzewczyk/spec-driven-development/blob/main/CLAUDE.md).

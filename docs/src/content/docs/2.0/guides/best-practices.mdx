@@ -1,0 +1,27 @@
+---
+title: Best practices
+description: Thirteen rules for getting the most out of SDD.
+slug: 2.0/guides/best-practices
+---
+
+## Write it down
+
+* **Make work verifiable.** Every task's `acceptance` points to measurable criteria; `/sdd:review` verifies against them. Default to test-first in your implementation flow.
+* **The constitution is the WHY.** Each WHAT NOT TO DO rule carries a `**Why:**` (and an incident reference when applicable). After every Claude mistake, append the lesson. Without rationale, rules become folklore and get re-broken.
+* **Keep spec and code in sync.** When you change code by hand, update the spec. Run `/sdd:analyze` periodically.
+* **A CLAUDE.md per module.** Root for cross-cutting rules, one per app or package for the rest, each lean and pointing at `specs/constitution.md`. The framework never touches them.
+
+## Review at the right moments
+
+* **Plan Mode for /sdd:plan.** Claude cannot modify files while exploring; approving the plan saves it. Not for `/sdd:clarify`, which writes into the spec.
+* **Read plan.md.** Always, before `/sdd:tasks`. The cheapest moment to correct course.
+* **Embrace Clarify.** Questions before planning surface gaps that would burn implementation cycles.
+* **One branch per feature.** `/sdd:spec` enforces it, with Conventional Commits naming.
+
+## Keep sessions small and cheap
+
+* **Shard large specs.** Never hand a giant PRD to an implementer. Epic → Task; each implementer gets only its task's brief.
+* **Sub-agents for large reads.** Don't grep 50 files in the main session; receive a summary.
+* **Fresh chat per task.** `/clear` between phases and open a new session per task. `tasks.md` status is the handover.
+* **Tier your models.** Opus for judgement phases, Sonnet for mechanical ones. See [Cost](/spec-driven-development/2.0/guides/cost/).
+* **Batch feedback.** Collect visual and QA tweaks and NOT READY fixes into one message per round; each turn reprocesses the full context.

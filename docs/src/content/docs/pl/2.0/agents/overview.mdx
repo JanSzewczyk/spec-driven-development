@@ -1,0 +1,68 @@
+---
+title: Agenci
+description: "Trzech sub-agentów: dwóch weryfikuje, jeden bada kod."
+slug: pl/2.0/agents/overview
+---
+
+import { Badge, Aside } from '@astrojs/starlight/components';
+
+Komendy wywołują agentów przez narzędzie Agent; nigdy nie wywołujesz ich bezpośrednio. Implementacja to dowolny skonfigurowany przez Ciebie flow.
+
+| Agent | Model | Rola |
+|---|---|---|
+| [`spec-verifier`](#spec-verifier) | <Badge text="Sonnet" variant="note" /> | Czyta diff względem dokumentacji. Nigdy nie pisze kodu ani nie ocenia jakości. |
+| [`reviewer`](#reviewer) | <Badge text="Opus" variant="danger" /> | Końcowy audyt. Decyduje o READY lub NOT READY. |
+| [`codebase-surveyor`](#codebase-surveyor) | <Badge text="Haiku" variant="success" /> | Mapuje kod przed planem. Maksymalnie 30 linii. |
+
+## spec-verifier
+
+Jedno odczytanie diffu funkcji względem dokumentacji: każde kryterium akceptacji (spełnione lub nie, z dowodem), naruszenia non-goals, zmiany poza zakresem, rozjazdy między `spec.md`, `plan.md`, `tasks.md` i kodem oraz kompletność każdego zadania.
+
+**Wywoływany przez** [`/sdd:review`](/spec-driven-development/pl/2.0/commands/review/) i [`/sdd:analyze`](/spec-driven-development/pl/2.0/commands/analyze/). **Wynik:** JSON.
+
+```json
+{
+  "satisfied": true,
+  "ac": [{"id": "AC1", "status": "met", "evidence": "src/auth/reset.py:42"}],
+  "non_goal_violations": [],
+  "out_of_scope": [{"file": "src/Header.tsx", "summary": "unrelated logo change"}],
+  "drift": [{"layer": "plan→tasks", "detail": "plan.md L67 names packages/sms/twilio.ts, no task creates it"}],
+  "tasks": [{"id": "T1", "status": "complete", "unmet_ac": []}]
+}
+```
+
+<Aside type="caution" title="Ścisłe limity">
+  **Nigdy** nie pisze kodu, **nigdy** nie sugeruje poprawek i **nigdy** nie ocenia jakości kodu. To zadanie `reviewer`.
+</Aside>
+
+## reviewer
+
+Końcowy audyt jakości przed PR.
+
+**Wywoływany przez** `/sdd:review`, który przekazuje wyniki testów oraz wyniki `spec-verifier` i dodatkowych sprawdzeń. Sam nie uruchamia ponownie zestawu testów ani nie startuje sub-agentów.
+
+1. Czyta wyniki testów (każda porażka oznacza NOT READY).
+2. Sprawdza pokrycie względem celów w konstytucji §6.
+3. Sprawdza diff względem każdej reguły **WHAT NOT TO DO**, jedna linia na regułę.
+4. Uruchamia skille audytowe skonfigurowane dla każdego dotkniętego projektu lub, z `auto`, wybiera te, które sesja ma dla danego stacku.
+5. Zapisuje `specs/<slug>/review.md` z werdyktem.
+
+**Nigdy** nie zwraca READY, jeśli test nie przechodzi, `spec-verifier` nie jest usatysfakcjonowany, dodatkowe sprawdzenie nie powiodło się lub istnieje krytyczne naruszenie bezpieczeństwa albo dostępności.
+
+**Wynik:** JSON `{verdict: "READY" | "NOT_READY", blockers: [...], warnings: [...]}`.
+
+## codebase-surveyor
+
+Mapa projektów dotkniętych funkcją, tylko do odczytu, aby [`/sdd:plan`](/spec-driven-development/pl/2.0/commands/plan/) wykorzystał to, co już istnieje.
+
+| Sekcja | Zawartość |
+|---|---|
+| `Structure` | Jak zbudowany jest każdy projekt. |
+| `Conventions` | Konwencje nazewnictwa i testów. |
+| `Reuse` | `path`: co robi. |
+
+Maksymalnie 30 linii na uruchomienie. Zamiast zgadywać, pisze „none found". Nie przeszukuje źródeł referencyjnych linkowanych w specu; `/sdd:plan` czyta je raz we własnym sub-agencie.
+
+<Aside type="tip" title="Własne sprawdzenia">
+  Wizualne lub funkcjonalne sprawdzenia działającej aplikacji (agent QA lub UI) są Twoje: dodaj je do `review.checks`.
+</Aside>

@@ -1,0 +1,113 @@
+---
+title: Spec-Driven Development for Claude Code
+description: The spec is the source of truth, code is its consequence. A
+  canonical flow from constitution to review.
+template: splash
+hero:
+  tagline: Stop vibe coding. Write the spec, confirm the plan, hand self-contained
+    tasks to your own implementation flow, and let a final review check the
+    result against the acceptance criteria.
+  actions:
+    - text: Get started
+      link: /spec-driven-development/2.0/getting-started/installation/
+      icon: rocket
+    - text: See the flow
+      link: /spec-driven-development/2.0/concepts/workflow/
+      variant: secondary
+    - text: GitHub
+      link: https://github.com/JanSzewczyk/spec-driven-development
+      variant: minimal
+      icon: github
+slug: "2.0"
+---
+
+import { CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+import Pipeline from '../../../components/Pipeline.astro';
+
+<div class="landing-section">
+  ## One flow, seven phases
+
+  <p class="landing-lead">Each phase is a slash command that writes a file under <code>specs/\<feature>/</code> and re-reads its inputs from disk. Clear the chat between phases and lose nothing.</p>
+
+  <Pipeline />
+</div>
+
+<div class="landing-section">
+  ## Why SDD
+
+  <div class="why">
+    <div>
+      ### Plan before code
+
+      Claude drafts the plan in Plan Mode and you approve it before a single line is written. The cheapest moment to fix a wrong turn.
+    </div>
+
+    <div>
+      ### Bring your own implementer
+
+      `/sdd:implement` hands each task to a skill, agent or command you configure, or builds it in the session. The framework manages the thinking, not the typing.
+    </div>
+
+    <div>
+      ### Verified against the spec
+
+      Tests, `spec-verifier` and your own checks run in parallel; `reviewer` returns **READY** or **NOT READY** and ticks the acceptance criteria.
+    </div>
+
+    <div>
+      ### Any layout, any stack
+
+      Single app, monorepo or several repositories. Web, backend and mobile projects side by side. No fixed list of stacks.
+    </div>
+  </div>
+</div>
+
+<div class="landing-section">
+  ## Start in two minutes
+
+  <Tabs>
+    <TabItem label="Claude Code">
+      ```text
+      /plugin marketplace add JanSzewczyk/spec-driven-development
+      /plugin install sdd@spec-driven-development
+      ```
+    </TabItem>
+
+    <TabItem label="Shell">
+      ```bash
+      claude plugin marketplace add JanSzewczyk/spec-driven-development
+      claude plugin install sdd@spec-driven-development
+      ```
+    </TabItem>
+  </Tabs>
+
+  Then, in your project:
+
+  ```text title="claude"
+  /sdd:doctor init
+  /sdd:spec feat user can reset password via email
+  /sdd:clarify
+  /sdd:plan
+  /sdd:tasks
+  /sdd:implement all
+  /sdd:review
+  ```
+</div>
+
+<div class="landing-section">
+  ## Explore
+
+  <CardGrid>
+    <LinkCard title="Quick start" description="Initialize a project and ship a first feature." href="/spec-driven-development/getting-started/quick-start/" />
+
+    <LinkCard title="Concepts" description="Tasks, status lifecycle, projects, isolation." href="/spec-driven-development/concepts/workflow/" />
+
+    <LinkCard title="Command reference" description="All 11 slash commands, one page each." href="/spec-driven-development/commands/overview/" />
+
+    <LinkCard title="capabilities.yml" description="Every key, value and default." href="/spec-driven-development/configuration/capabilities/" />
+
+    <LinkCard title="End-to-end example" description="A password-reset feature from init to PR." href="/spec-driven-development/guides/example/" />
+
+    <LinkCard title="sdd-board" description="Desktop side panel showing where each spec stands." href="/spec-driven-development/board/overview/" />
+  </CardGrid>
+</div>

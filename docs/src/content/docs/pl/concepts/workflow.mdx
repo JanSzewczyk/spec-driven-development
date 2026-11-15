@@ -1,0 +1,61 @@
+---
+title: Przepływ SDD
+description: Fazy, co robi każda komenda i jak się łączą.
+---
+
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import Pipeline from '../../../../components/Pipeline.astro';
+
+<Pipeline />
+
+```mermaid
+flowchart TD
+    A[/sdd:doctor init/] --> B[/sdd:constitution/]
+    B --> C[/sdd:spec feat user login/]
+    C --> D[/sdd:clarify/]
+    D --> E[/sdd:plan w Plan Mode/]
+    E --> F[Człowiek recenzuje plan.md]
+    F --> G[/sdd:tasks/]
+    G --> H[/sdd:implement T1/]
+    H --> I{flow skonfigurowany?}
+    I -->|tak| K[Przekaż zadanie do<br/>skonfigurowanego flow]
+    I -->|nie| J[Zaimplementuj w sesji]
+    J --> M[/sdd:review/]
+    K --> M
+    M --> P[spec-verifier + reviewer + Twoje sprawdzenia]
+    P -->|READY| Q[commit + PR]
+    Q --> R[/sdd:retro, opcjonalnie/]
+    P -->|NOT READY| H
+```
+
+## Faza po fazie
+
+| Faza | Komenda | Co się dzieje | Zapisuje |
+|---|---|---|---|
+| **Constitution** | [`/sdd:constitution`](/spec-driven-development/pl/commands/constitution/) | Stack, konwencje, **WHAT NOT TO DO** z uzasadnieniem, filozofia testów. | `constitution.md` |
+| **Specify** | [`/sdd:spec`](/spec-driven-development/pl/commands/spec/) | Gałąź i spec wyłącznie biznesowy. | `spec.md` |
+| **Clarify** | [`/sdd:clarify`](/spec-driven-development/pl/commands/clarify/) | Znajduje luki, zadaje do 5 pytań z proponowanymi odpowiedziami. | `spec.md` |
+| **Plan** | [`/sdd:plan`](/spec-driven-development/pl/commands/plan/) | Decyzje, kontrakty, zmiany plik po pliku, ryzyka. Plan Mode. | `plan.md` |
+| **Tasks** | [`/sdd:tasks`](/spec-driven-development/pl/commands/tasks/) | Samodzielne zadania w stylu Jiry pod jednym Epikiem. | `tasks.md` + commit |
+| **Implement** | [`/sdd:implement`](/spec-driven-development/pl/commands/implement/) | Brief na zadanie, przekazany do Twojego flow. Nie weryfikuje. | commity zadań |
+| **Review** | [`/sdd:review`](/spec-driven-development/pl/commands/review/) | Testy, verifier, sprawdzenia, potem READY lub NOT READY. | `review.md` + PR |
+| **Retro** | [`/sdd:retro`](/spec-driven-development/pl/commands/retro/) | Błędy zamieniają się w reguły konstytucji. | konstytucja §5 |
+| **Analyze** | [`/sdd:analyze`](/spec-driven-development/pl/commands/analyze/) | Kontrola rozjazdu między specem, planem, zadaniami i kodem. | nic |
+
+<Aside type="tip" title="Trzy punkty kontrolne człowieka">
+Decydujesz przy **Clarify** (odpowiedzi), **Plan** (zatwierdzenie dialogu) i **Review** (potwierdzenie commita i PR). Wszystko pomiędzy jest mechaniczne.
+</Aside>
+
+## Jak części do siebie pasują
+
+```mermaid
+flowchart LR
+    subgraph F[Framework: główna sesja]
+      direction TB
+      c[constitution] --> s[spec] --> cl[clarify] --> p[plan] --> t[tasks] --> h[hand-off] --> r[review]
+    end
+    h -- brief na zadanie --> I[Flow implementacji<br/>Twój skill, agent lub komenda<br/>albo sama sesja]
+    r -- narzędzie Agent --> V[Agenci weryfikacji<br/>spec-verifier · reviewer<br/>Twoje sprawdzenia]
+```
+
+Implementacja celowo leży poza frameworkiem: wskazujesz `/sdd:implement` flow, którego już używasz.

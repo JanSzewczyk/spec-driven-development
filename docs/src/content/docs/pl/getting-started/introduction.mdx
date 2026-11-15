@@ -1,0 +1,42 @@
+---
+title: Wprowadzenie
+description: Czym jest SDD, jaki problem rozwiązuje i co dostajesz.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Vibe coding (luźny prompt, AI zgaduje, iteracja metodą prób i błędów) sprawdza się w demach, a w produkcji się sypie: każda poprawka coś psuje, luk w bezpieczeństwie przybywa, kod staje się nie do utrzymania.
+
+**SDD odwraca to podejście.** Specyfikacja jest źródłem prawdy; kod jest jej mechaniczną konsekwencją. Claude czyta i potwierdza plan, zanim powstanie jakakolwiek linia kodu, a końcowe review sprawdza wynik względem kryteriów akceptacji, zanim cokolwiek trafi do commita.
+
+## Vibe coding vs SDD
+
+| | Vibe coding | SDD |
+|---|---|---|
+| **Punkt wyjścia** | Niejasny prompt | Zrecenzowany spec z kryteriami akceptacji |
+| **Projekt** | Niejawny, w głowie modelu | `plan.md`, zatwierdzony przez Ciebie w Plan Mode |
+| **Jednostki pracy** | Jeden długi czat | Samodzielne zadania, jedno na sesję |
+| **„Gotowe" znaczy** | „Wygląda dobrze" | Każde kryterium akceptacji zweryfikowane |
+| **Wnioski** | Zapomniane | Zapisane w konstytucji |
+
+## Co framework robi, a czego nie
+
+| | |
+|---|---|
+| **Zarządza** | Researchem, specem, planem, samodzielnymi zadaniami, przekazaniem pracy i końcowym audytem. |
+| **Zostawia Tobie** | Samą implementację. Wskaż `/sdd:implement` skill, agenta lub komendę, których już używasz. |
+
+## Co jest w pudełku
+
+| Element | Co | Rola |
+|---|---|---|
+| **11 skilli** | Komendy slash, uruchamiane tylko przez Ciebie | `doctor`, `constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `retro`, `analyze`, `capabilities` |
+| **3 agenty** | Sub-agenty wywoływane przez komendy | [`spec-verifier`](/spec-driven-development/pl/agents/overview/#spec-verifier), [`reviewer`](/spec-driven-development/pl/agents/overview/#reviewer), [`codebase-surveyor`](/spec-driven-development/pl/agents/overview/#codebase-surveyor) |
+| **1 mod** | Rejestruje narzędzie `doctor_check` | Napędza `/sdd:doctor check` |
+| **sdd-board** | Opcjonalny panel Desktop | [Pokazuje, na jakim etapie jest każdy spec](/spec-driven-development/pl/board/overview/) |
+
+<Aside type="note" title="Zbudowane na">
+[GitHub Spec Kit](https://github.com/github/spec-kit) (kanoniczne fazy), BMAD Method (sharding, sub-agenci z rolami), Amazon Kiro (generowanie Mermaid), OpenSpec (lekkie CLI dla kodu legacy) oraz komendach slash, Plan Mode i agentach Claude Code.
+</Aside>
+
+Dalej: [zainstaluj plugin](/spec-driven-development/pl/getting-started/installation/).

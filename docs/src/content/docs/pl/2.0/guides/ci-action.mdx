@@ -1,0 +1,43 @@
+---
+title: GitHub Action sdd-check
+description: Uruchamiaj reguły doctora w CI każdego repozytorium korzystającego z SDD.
+slug: pl/2.0/guides/ci-action
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Te same reguły co `/sdd:doctor check`, ale w CI, aby zmiana we frameworku (nowy klucz `capabilities.yml`, nowe pole `tasks.md`) była wychwycona tam, gdzie nikt nie uruchamia doctora.
+
+* Sprawdzenia 4–6 (git, narzędzia, sąsiednie repo) **nie** są oceniane w CI.
+* Podsumowanie joba wymienia, czego brakuje, które sprawdzenia nie przeszły i że naprawia je `/sdd:doctor init`.
+* `/sdd:doctor init` proponuje zapisanie workflow za Ciebie.
+
+```yaml title=".github/workflows/sdd-check.yml"
+name: SDD Check 🧭
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * 1"   # co tydzień: wyłapuje rozjazd po aktualizacji pluginu
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sdd:
+    name: SDD Artifacts 🧭
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check SDD specs, plans and capabilities 🧭
+        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@sdd--v2.0.1
+        # Inputs: path, fail-on (fail | warn), node-version.
+```
+
+<Aside type="note">
+  Action uruchamia reguły z ref, do którego jest przypięta, więc repozytorium niczego nie vendoruje. `init` przypina ją do zainstalowanej wersji sdd i przesuwa przypięcie przy aktualizacji.
+</Aside>

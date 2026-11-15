@@ -98,7 +98,7 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 | A `capabilities.yml` key or value | `shared/sdd-core/capabilities.schema.json` (+ `capabilities.ts` / `check.ts` for rules a schema cannot express), then `scripts/sync-core.sh`; `skills/doctor/templates/capabilities.yml.template`, the key table in `references/capabilities.md`; `node scripts/check-capabilities.ts` checks they agree; a migration in `init.md` when an old value changes |
 | What the Desktop panel shows or how it derives the next step | `plugins/sdd-board/hooks/{model,view,svg}.ts` (logic, drawing); `register.ts` holds only hooks and `$` calls |
 | How `specs/` files are parsed (panel and doctor) | `shared/sdd-core/parse.ts`, with a test in `plugins/sdd-board/tests/`, then `scripts/sync-core.sh` |
-| The documentation site | `docs/` (Astro Starlight, pages in `docs/src/content/docs/`, sidebar in `docs/astro.config.mjs`); `cd docs && npm run build`. Deployed to GitHub Pages by `.github/workflows/docs.yml` |
+| The documentation site | `docs/` (Astro Starlight, pages in `docs/src/content/docs/`, sidebar in `docs/astro.config.mjs`); `cd docs && npm run build`. Deployed to GitHub Pages by `.github/workflows/docs.yml`. English is the root locale, Polish mirrors it in `docs/src/content/docs/pl/` (same file names; update both). Versions: `src/content/docs/` is the latest, each archived release is a snapshot folder (`2.0/`, `pl/2.0/`) made by `starlight-versions` when its slug is added to `versions` in `astro.config.mjs`; never edit a snapshot by hand |
 
 <!-- BEGIN:plugin-dev -->
 ## Plugin development

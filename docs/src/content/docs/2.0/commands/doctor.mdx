@@ -1,0 +1,40 @@
+---
+title: /sdd:doctor
+description: Preflight audit and project setup.
+slug: 2.0/commands/doctor
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+```text
+/sdd:doctor [check|init]
+```
+
+<Tabs>
+  <TabItem label="check">
+    The default. **Report only**, with ✅ / ⚠️ / ❌ per check. Run by the `doctor_check` tool; without mods the skill does the checks itself.
+
+    | # | Check |
+    |---|---|
+    | 1 | `specs/constitution.md` present and valid |
+    | 2 | `specs/template.md` present |
+    | 3 | `specs/capabilities.yml` valid: YAML and values well-formed, `skill:` / `agent:` names installed, not left at defaults |
+    | 4 | git and `gh` |
+    | 5 | Tooling per project, including `command:` values |
+    | 6 | Sibling repositories |
+    | 7 | Every feature under `specs/`: statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist |
+  </TabItem>
+
+  <TabItem label="init">
+    **Bootstraps and repairs.** Creates missing files (constitution, template, capabilities), detects the projects and their `test`, `coverage`, `typecheck` and `lint` commands.
+
+    * **Idempotent:** a re-run rewrites only `projects` in `capabilities.yml`.
+    * **The update path:** it first reads the `check` findings and repairs every one tagged `fix: init` (a format-2 `capabilities.md` migrated to YAML, misplaced keys, `format`, epic ids in old `tasks.md`, an outdated workflow), then re-checks.
+    * Asks whether to add the [`sdd-check` workflow](/spec-driven-development/2.0/guides/ci-action/).
+    * Never touches the project-root `CLAUDE.md`.
+  </TabItem>
+</Tabs>
+
+<Aside type="tip">
+  Run `check` after every plugin update. A new `capabilities.yml` key or `tasks.md` field shows up as a finding that `init` repairs.
+</Aside>

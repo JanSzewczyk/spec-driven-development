@@ -1,0 +1,20 @@
+---
+title: /sdd:clarify
+description: Domknij luki w specu przed planowaniem.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Uzupełnia szkielet utworzony przez `/sdd:spec`, więc ręczna edycja jest opcjonalna.
+
+Claude czyta `spec.md`, znajduje luki (puste sekcje, niejednoznaczne wymagania, nietestowalne kryteria akceptacji) i zadaje **do 5 pytań**, każde z proponowaną odpowiedzią, którą możesz po prostu przyjąć. Odpowiedzi trafiają prosto do specu. To, na co nie odpowiesz, zostaje w *Open questions*; uruchom ponownie, jeśli luki pozostają.
+
+<Aside type="tip" title="Nie pomijaj">
+Otwarte pytania prawie zawsze ujawniają prawdziwe luki, które inaczej pochłonęłyby cykle implementacji.
+</Aside>
+
+<Aside type="caution">
+Nie uruchamiaj w Plan Mode: komenda zapisuje do `spec.md`, a Plan Mode to blokuje.
+</Aside>
+
+**Dalej:** [`/sdd:plan`](/spec-driven-development/pl/commands/plan/)

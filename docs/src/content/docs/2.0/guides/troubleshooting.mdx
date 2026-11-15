@@ -1,0 +1,53 @@
+---
+title: Troubleshooting
+description: Symptoms, causes and fixes.
+slug: 2.0/guides/troubleshooting
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<details>
+  <summary><strong>"Run /sdd:doctor init first"</strong> when running <code>/sdd:spec</code></summary>
+
+  `specs/template.md` is missing. Run `/sdd:doctor init`.
+</details>
+
+<details>
+  <summary><strong>A command cannot find the feature</strong></summary>
+
+  No `spec.md` has your current branch in its `**Branch:**` line, usually because the branch was renamed. Switch to the spec's branch, or fix the `**Branch:**` line.
+</details>
+
+<details>
+  <summary><strong>/sdd:implement does not use my flow</strong></summary>
+
+  There is no `implementation.projects` entry for that project, so it falls back to `default` (`in-session`). Add `<project>: skill:<name>`, `agent:<name>` or `command:<shell>` under `implementation.projects`, or set `implementation.default`.
+</details>
+
+<details>
+  <summary><strong>spec-verifier returns satisfied: true for incomplete code</strong></summary>
+
+  The acceptance criteria are too vague. Rewrite them to be measurable (`input X → output Y`).
+</details>
+
+<details>
+  <summary><strong>/sdd:plan works without Plan Mode</strong></summary>
+
+  Plan Mode is recommended, not required. The plan is written directly and the command stops for you to read it. Enable Plan Mode (Shift+Tab) for safety.
+</details>
+
+<details>
+  <summary><strong>Only specs/capabilities.md exists</strong></summary>
+
+  It was written by SDD before 2.0. `/sdd:doctor init` migrates it to `capabilities.yml`.
+</details>
+
+<details>
+  <summary><strong>/sdd:doctor does a manual check</strong></summary>
+
+  Mods do not run in WSL or under `--safe-mode`, so the `doctor_check` tool is missing and the skill does the checks itself. Use a supported environment or accept the fallback.
+</details>
+
+<Aside type="tip">
+  Run `/sdd:doctor check` first. Most problems show up there, and `/sdd:doctor init` repairs the ones tagged `fix: init`.
+</Aside>
