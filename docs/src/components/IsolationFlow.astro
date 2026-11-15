@@ -1,0 +1,21 @@
+---
+const pl = Astro.currentLocale === "pl";
+const t = pl
+  ? { orch: "Orkiestrator", wt: "Worktree", merge: "PR lub rebase", sdd: "Gałąź SDD", next: "Odblokowane zadania startują", par: "równolegle" }
+  : { orch: "Orchestrator", wt: "Worktree", merge: "PR or rebase", sdd: "SDD branch", next: "Unblocked tasks start", par: "in parallel" };
+---
+
+<div class="fx">
+  <div class="fx-col" style="max-width:40rem">
+    <div class="fx-node fx-cmd"><b>{t.orch}</b><code>/sdd:implement all</code></div>
+    <div class="fx-down" data-label={t.par}></div>
+    <div class="fx-row">
+      <div class="fx-node"><b>{t.wt} T1</b><code>spec-branch--EPIC-T1</code></div>
+      <div class="fx-node"><b>{t.wt} T2</b><code>spec-branch--EPIC-T2</code></div>
+    </div>
+    <div class="fx-down" data-label={t.merge}></div>
+    <div class="fx-node fx-ok"><b>{t.sdd}</b></div>
+    <div class="fx-down"></div>
+    <div class="fx-node fx-cmd"><b>{t.next}</b></div>
+  </div>
+</div>

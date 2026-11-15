@@ -1,0 +1,27 @@
+---
+const pl = Astro.currentLocale === "pl";
+const t = pl
+  ? { fw: "Framework: główna sesja", impl: "Flow implementacji", implSub: "Twój skill, agent lub komenda albo sama sesja", ver: "Agenci weryfikacji", verSub: "spec-verifier · reviewer · Twoje sprawdzenia", brief: "brief na zadanie", agent: "narzędzie Agent", from: "z" }
+  : { fw: "The framework: main session", impl: "Implementation flow", implSub: "your skill, agent or command, or the session itself", ver: "Verification agents", verSub: "spec-verifier · reviewer · your own checks", brief: "brief per task", agent: "Agent tool", from: "from" };
+const chain = ["constitution", "spec", "clarify", "plan", "tasks", "hand-off", "review"];
+---
+
+<div class="fx">
+  <p class="fx-cap" style="text-align:left">{t.fw}</p>
+  <ol class="fx-chain">
+    {chain.map((c) => <li><span class="fx-node fx-cmd">{c}</span></li>)}
+  </ol>
+  <div style="height:1rem"></div>
+  <div class="fx-row">
+    <div class="fx-node">
+      <span class="fx-tag">hand-off · {t.brief}</span>
+      <b>{t.impl}</b>
+      <small>{t.implSub}</small>
+    </div>
+    <div class="fx-node fx-ok">
+      <span class="fx-tag">review · {t.agent}</span>
+      <b>{t.ver}</b>
+      <small>{t.verSub}</small>
+    </div>
+  </div>
+</div>

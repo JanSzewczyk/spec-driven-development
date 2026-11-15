@@ -4,6 +4,7 @@ description: Opt-in worktree isolation, one sub-session per task.
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+import IsolationFlow from '../../../components/IsolationFlow.astro';
 
 By default (`isolation: none`) the session implements and commits each task itself. Opt in per project in `capabilities.yml`:
 
@@ -19,14 +20,7 @@ implementation:
 
 With it, the session running `/sdd:implement all` only **orchestrates**. Every ready task runs in its own sub-session (Desktop) or isolated agent, in its own worktree, on branch `<spec-branch>--<EPIC>-T<n>` cut from the SDD branch. Sub-sessions never touch `specs/`; only the orchestrator writes `tasks.md`.
 
-```mermaid
-flowchart TD
-    O[Orchestrator<br/>/sdd:implement all] --> A[Worktree T1<br/>spec-branch--EPIC-T1]
-    O --> B[Worktree T2<br/>spec-branch--EPIC-T2]
-    A -->|PR or rebase| M[SDD branch]
-    B -->|PR or rebase| M
-    M --> N[Unblocked tasks start]
-```
+<IsolationFlow />
 
 ## Merge modes
 

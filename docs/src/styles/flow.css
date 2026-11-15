@@ -1,0 +1,219 @@
+/* Diagram primitives (.fx-*): nodes, connectors, branches. No JS, themed from Starlight tokens. */
+.fx {
+  --fx-surface: var(--sl-color-gray-7);
+  --fx-line: var(--sl-color-gray-5);
+  display: grid;
+  gap: 0;
+  margin: 1.5rem 0;
+  padding: 1.5rem 1.25rem;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  background: var(--fx-surface);
+}
+:root[data-theme="light"] .fx {
+  --fx-surface: #fff;
+  --fx-line: #c4c4c4;
+}
+.fx :is(div, span, code, small, ol, ul, li, p, svg) {
+  margin-top: 0 !important;
+}
+.fx-col {
+  width: 100%;
+  max-width: 34rem;
+  margin-inline: auto;
+  display: grid;
+  justify-items: stretch;
+}
+
+/* Node */
+.fx-node {
+  --c: var(--sl-color-gray-3);
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--c) 10%, var(--fx-surface));
+  color: var(--sl-color-white);
+  font-size: var(--sl-text-sm);
+  line-height: 1.4;
+  min-width: 0;
+}
+.fx-node b {
+  font-weight: 600;
+}
+.fx-node code {
+  background: none;
+  padding: 0;
+  border: 0;
+  color: var(--c);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.fx-node small {
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
+}
+.fx-node .fx-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--c);
+}
+.fx-cmd {
+  --c: var(--sl-color-text-accent);
+}
+.fx-human {
+  --c: var(--sl-color-orange);
+}
+.fx-ok {
+  --c: var(--sl-color-green);
+}
+.fx-bad {
+  --c: var(--sl-color-red, #ef4444);
+}
+:root[data-theme="light"] .fx-human {
+  --c: #b45309;
+}
+:root[data-theme="light"] .fx-ok {
+  --c: #047857;
+}
+:root[data-theme="light"] .fx-bad {
+  --c: #b91c1c;
+}
+
+/* Connectors */
+.fx-down {
+  position: relative;
+  height: 1.6rem;
+  width: 2px;
+  margin-inline: auto;
+  background: var(--fx-line);
+}
+.fx-down::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--fx-line);
+  border-bottom: 2px solid var(--fx-line);
+  transform: translateX(-50%) rotate(45deg);
+}
+.fx-down[data-label]::before {
+  content: attr(data-label);
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: var(--sl-color-gray-3);
+  white-space: nowrap;
+}
+
+/* Row of parallel siblings */
+.fx-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.fx-cap {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--sl-color-gray-3);
+  text-align: center;
+  padding: 0.35rem 0;
+}
+.fx-note {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+  text-align: center;
+  padding-top: 0.6rem;
+}
+.fx-note code {
+  background: none;
+  padding: 0;
+  color: var(--sl-color-text-accent);
+}
+
+/* Horizontal chain of chips */
+.fx-chain {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0;
+}
+.fx-chain > li {
+  display: flex;
+  align-items: center;
+}
+.fx-chain > li:not(:last-child)::after {
+  content: "";
+  width: 0.9rem;
+  height: 2px;
+  background: var(--fx-line);
+  margin-inline: 0.15rem;
+}
+.fx-chain .fx-node {
+  padding: 0.25rem 0.65rem;
+  font-family: var(--__sl-font-mono);
+  font-size: 0.8rem;
+}
+
+/* Columns joined by horizontal arrows (task waves) */
+.fx-waves {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 0;
+}
+.fx-wave {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  position: relative;
+  padding-right: 2rem;
+}
+.fx-wave:last-child {
+  padding-right: 0;
+}
+.fx-wave:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 0.35rem;
+  top: 2.4rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid var(--fx-line);
+  border-top: 2px solid var(--fx-line);
+  transform: rotate(45deg);
+}
+.fx-wave > .fx-cap {
+  text-align: left;
+  padding: 0 0 0.1rem;
+}
+
+@media (max-width: 40rem) {
+  .fx {
+    padding: 1.1rem 0.9rem;
+  }
+  .fx-row {
+    grid-template-columns: 1fr;
+  }
+  .fx-waves {
+    grid-template-columns: 1fr;
+    gap: 1.4rem;
+  }
+  .fx-wave {
+    padding-right: 0;
+  }
+  .fx-wave:not(:last-child)::after {
+    right: auto;
+    left: 1rem;
+    top: auto;
+    bottom: -1.15rem;
+    transform: rotate(135deg);
+  }
+}
