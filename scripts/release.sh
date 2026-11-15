@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Tags the main plugin's (sdd) version when it has no tag yet and creates a GitHub Release for every
-# `sdd--v<version>` tag that has none. Other plugins (sdd-board) are versioned in their manifests
+# Tags the main plugin's (sdd) version `v<version>` when it has no tag yet and creates a GitHub
+# Release for every `v<version>` tag that has none. Tags before 2.0.3 are `sdd--v<version>` and stay. Other plugins (sdd-board) are versioned in their manifests
 # only: no tag, no Release. Run by .github/workflows/release.yml on merge to main.
-# Usage: scripts/release.sh                         tag (claude plugin tag --push) and release
+# Usage: scripts/release.sh                         tag (git tag -a + push) and release
 #        scripts/release.sh --dry-run               print what would happen, change nothing
 #        scripts/release.sh --notes <name> <ver>    print that version's CHANGELOG.md section
 # CHANGELOG heading: `## [<ver>]` for the main plugin (sdd).
@@ -30,29 +30,37 @@ fi
 dry_run=false
 [[ "${1:-}" == "--dry-run" ]] && dry_run=true
 
-# 1. Tag the main plugin when its current version has no tag. `claude plugin tag` checks that
-#    plugin.json and the marketplace entry agree and fails otherwise.
+# 1. Tag the main plugin when its current version has no tag. The repo ships one tagged plugin, so
+#    the tag is a plain `v<version>` (`claude plugin tag` only makes `<name>--v<version>`). The
+#    manifest and the marketplace entry must agree, as `claude plugin tag` would check.
 dir="plugins/$main_plugin"
 manifest="$dir/.claude-plugin/plugin.json"
 name="$(jq -r .name "$manifest")"
 version="$(jq -r .version "$manifest")"
-tag="$name--v$version"
+market_version="$(jq -r --arg n "$name" '.plugins[] | select(.name == $n) | .version' .claude-plugin/marketplace.json)"
+if [[ "$version" != "$market_version" ]]; then
+  echo "::error::$name version differs: plugin.json $version, marketplace.json $market_version"
+  exit 1
+fi
+tag="v$version"
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   echo "tag exists: $tag"
+elif git rev-parse -q --verify "refs/tags/$name--$tag" >/dev/null; then
+  echo "tag exists: $name--$tag (legacy name)"
 elif $dry_run; then
-  claude plugin tag "$dir" --dry-run -m "$name v%s"
+  echo "would tag: $tag ($(git rev-parse --short HEAD))"
 else
-  claude plugin tag "$dir" --push -m "$name v%s"
+  git tag -a "$tag" -m "$name v$version"
+  git push origin "refs/tags/$tag"
   echo "tagged: $tag"
 fi
 
-# 2. Create a Release for every sdd tag without one, oldest version first so the newest ends up
-#    as Latest.
+# 2. Create a Release for every v<version> tag without one, oldest version first so the newest ends
+#    up as Latest.
 while read -r tag; do
   [[ -z "$tag" ]] && continue
-  name="${tag%--v*}"
-  version="${tag##*--v}"
-  [[ -f "plugins/$name/.claude-plugin/plugin.json" ]] || { echo "skip $tag: no plugin '$name'"; continue; }
+  name="$main_plugin"
+  version="${tag#v}"
   if ! $dry_run && gh release view "$tag" >/dev/null 2>&1; then
     echo "release exists: $tag"
     continue
@@ -68,4 +76,4 @@ while read -r tag; do
     gh release create "$tag" --verify-tag --title "$name v$version" --notes "$body"
     echo "released: $tag"
   fi
-done < <(git tag -l "$main_plugin--v*" --sort=version:refname)
+done < <(git tag -l "v[0-9]*" --sort=version:refname)

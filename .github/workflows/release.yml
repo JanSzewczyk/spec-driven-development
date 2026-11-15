@@ -1,7 +1,7 @@
 name: Release 🚀
 
-# Tags `sdd--v<version>` when the sdd version merged to main has no tag
-# (`claude plugin tag`, which checks plugin.json against marketplace.json) and creates a GitHub
+# Tags `v<version>` when the sdd version merged to main has no tag
+# (checking plugin.json against marketplace.json) and creates a GitHub
 # Release for every such tag that has none, with notes from CHANGELOG.md. sdd-board is versioned
 # in its manifest only: no tag, no Release. The version itself is bumped by hand in the pull
 # request (checked by Plugin Checks); this workflow only publishes it.
