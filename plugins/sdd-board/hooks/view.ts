@@ -152,7 +152,7 @@ function progress(el: any, ctx: Ctx, f: Feature) {
   const rows: any[] = []
   if (c.total > 0) {
     const done = c.done + c.review
-    rows.push(Text({ weight: 'semibold', children: ['Tasks ' + done + '/' + c.total + (c.done ? ' · ' + c.done + ' done' : '')] }))
+    rows.push(Text({ weight: 'semibold', children: ['Tasks ' + done + '/' + c.total + (c.done ? ' · ' + c.done + ' done' : '') + (f.epic ? ' · ' + f.epic : '')] }))
     rows.push(
       rich(ctx.surface)
         ? wide(el, Svg({ alt: done + ' of ' + c.total + ' tasks implemented', width: fullWidth(ctx), height: 8, source: progressSvg(c, fullWidth(ctx)) }))
@@ -177,6 +177,7 @@ function taskList(el: any, ctx: Ctx, f: Feature) {
           Text({ mono: true, dimColor: true, children: [t.id] }),
           Text({ wrap: 'truncate-end', children: [t.title] }),
           Text({ dimColor: true, wrap: 'truncate-end', children: [t.project] }),
+          ...(t.pr ? [Text({ color: 'permission', wrap: 'truncate-end', children: ['PR ' + t.pr] })] : t.branch ? [Text({ dimColor: true, wrap: 'truncate-end', children: [t.branch] })] : []),
           ...(waits.length ? [Text({ dimColor: true, wrap: 'truncate-end', children: ['waits on ' + waits.join(', ')] })] : []),
         ],
       })

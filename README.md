@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -168,7 +168,7 @@ Verify the install:
 claude plugin list | grep sdd
 ```
 
-You should see `sdd@1.2.0`. Once installed, the plugin's 11 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
+You should see `sdd@1.3.0`. Once installed, the plugin's 11 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
 
 ### 📊 Install sdd-board (optional)
 
@@ -327,11 +327,31 @@ The file keeps references (AC ids, plan sections) instead of copies. When you ru
    Values: `skill:<name>`, `agent:<name>`, `command:<shell>` (brief on stdin) or `in-session`.
 3. It builds the **brief**: the task, the text of its acceptance criteria, the plan sections, the project's commands and the constitution rules that apply, and a definition of done.
 4. It hands the brief to the flow. The implementer writes tests and code and runs the project's checks. `in-session` means the session itself does that, loading the skills and docs it has for the stack.
-5. Status: `draft` → `in-progress` → `review`. Nothing is committed.
+5. Status: `draft` → `in-progress` → `review`. With `commit: task` (default) it commits the task's files with the trailer `Task: <EPIC>-T<n>`; `/sdd:review` commits what is left (statuses, `review.md`) and opens the PR.
 
 Verification is a separate step: `/sdd:review` judges the outcome against the spec.
 
 Every command finds the feature by the `**Branch:**` line of its `spec.md`, so the branch may be named by any branch skill. Acceptance criteria ids (`AC1`, `AC2` …) never change once written: tasks, `spec-verifier` and the board refer to them. Re-running `/sdd:tasks` after the plan changes updates `tasks.md` and keeps each task's id and status.
+
+**Ids.** `tasks.md` carries `**Epic:** ULOG-7f3a` (slug letters + 4 hex, assigned once, unique across specs). A task's full id is `<EPIC>-T<n>` (`ULOG-7f3a-T3`); it goes into the `Task:` trailer of every commit and into the task branch name. `git log --grep 'Task: ULOG-7f3a-T3'` finds the work.
+
+### 🌿 Isolated tasks (opt-in)
+
+```markdown
+## Implementation
+default: in-session
+commit: task
+isolation: worktree   # none (default) | worktree
+merge: pr             # pr (default) | auto
+parallel: 3
+```
+
+With `isolation: worktree` the session running `/sdd:implement all` only orchestrates: every ready task runs in its own sub-session (Desktop) or isolated agent, in its own worktree, on `<spec-branch>--<EPIC>-T<n>` cut from the SDD branch. Sub-sessions never touch `specs/`; only the orchestrator writes `tasks.md`.
+
+- `merge: pr` — human in the loop: each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task, the board shows "waiting for merge"). You merge; running `/sdd:implement all` again checks the PRs and starts the tasks they unblock.
+- `merge: auto` — the orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation.
+
+Dependent tasks start only after their dependencies are merged. Projects in sibling repositories run in place. Details: [isolation.md](plugins/sdd/skills/implement/references/isolation.md).
 
 ### 🔁 Status lifecycle
 
@@ -401,7 +421,39 @@ api: agent:python-developer
 Preflight audit and auto-setup. **7 checks** (run by the `doctor_check` tool; without mods the skill falls back to doing them itself): specs/constitution.md, specs/template.md, specs/capabilities.md valid (values well-formed, `skill:` / `agent:` names installed, not left at the defaults), git + gh, tooling per project (including `command:` values), sibling repositories, and every feature under `specs/` (statuses, unique branch and AC ids, task fields, dependencies without cycles, acceptance ids that exist). The list is in [`plugins/sdd/references/formats.md`](plugins/sdd/references/formats.md).
 
 - `check` (default) — report only, statuses ✅/⚠️/❌
-- `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. Never touches the project-root `CLAUDE.md`.
+- `init` — bootstrap missing files (constitution, template, capabilities), detect the projects and their test/coverage/typecheck/lint commands. Idempotent: re-running it preserves `<!-- user-override -->` sections in `capabilities.md`. It is also the **update path**: it first reads the `check` findings and repairs every one tagged `fix: init` (new `capabilities.md` keys, the format marker, epic ids in old `tasks.md`, an outdated workflow), then re-checks. It asks whether to add the `sdd-check` workflow. Never touches the project-root `CLAUDE.md`.
+
+#### ✅ `sdd-check` GitHub Action
+
+The same rules as `check`, in CI of any repository that uses SDD, so a change in the framework (a new `capabilities.md` key, a new `tasks.md` field) is caught where nobody runs the doctor. Checks 4–6 (git, tooling, sibling repos) are not judged in CI. The job summary is a short report: what is missing, which checks failed, and that `/sdd:doctor init` repairs them. `/sdd:doctor init` offers to write this workflow (`.github/workflows/sdd-check.yml`):
+
+```yaml
+name: SDD Check 🧭
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * 1"   # weekly: catches drift after a plugin update, with no PR open
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sdd:
+    name: SDD Artifacts 🧭
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: Check SDD specs, plans and capabilities 🧭
+        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@main
+        # Inputs: path, fail-on (fail | warn), node-version.
+```
+
+The action runs the rules from the ref it is pinned to, so the repository vendors nothing.
 
 ### 📜 `/sdd:constitution`
 
@@ -448,21 +500,22 @@ Phase 4 — Tasks. Split `plan.md` into a list of **self-contained tasks** (form
 - **A contract shared between projects is its own task** (a schema the web and mobile clients are generated from, shared types, a migration); consumers depend on it.
 - **`depends_on`** only where a task needs another's result or touches the same files.
 - **No copies of the plan or the spec** — tasks refer to AC ids and plan sections.
+- **Epic id.** Writes `**Epic:** <LETTERS>-<4 hex>` into the header once (kept on re-runs); tasks are `<EPIC>-T<n>`.
 - Does not choose agents or models and writes no code; ends with a one-line `Order:` such as `T1 → T2 ∥ T3 → T4`.
 
 ### 🔨 `/sdd:implement <task-id | all>`
 
-Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.md` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies.
+Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.md` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies. With `commit: task` it commits `specs/<slug>/` before the first task and each finished task's files with a `Task: <EPIC>-T<n>` trailer. With `isolation: worktree` it orchestrates sub-sessions instead (see [Isolated tasks](#-isolated-tasks-opt-in)).
 
 ### 🔍 `/sdd:review`
 
 Phase 6 — the only verification gate, judging the result against the acceptance criteria and the project's rules:
 
-1. In parallel: the test suite once (`test`/`coverage` from `specs/constitution.md` §2), `spec-verifier` over the whole feature diff (committed, uncommitted and untracked, against the merge base), and every extra check you configured (see below)
+1. In parallel: the test suite once (`test`/`coverage` from `specs/constitution.md` §2), `spec-verifier` over the whole feature diff (the per-task commits, uncommitted and untracked changes, against the merge base), and every extra check you configured (see below)
 2. `reviewer` gets all results, checks the diff against each **WHAT NOT TO DO** rule of the constitution, runs the domain audits and writes `specs/<slug>/review.md` with the verdict READY / NOT READY
 3. When every blocker is one you may accept (an out-of-scope change, a constitution rule, a non-critical audit finding), you are asked once: fix them, or accept them with a reason — accepted items go under `## Accepted` in `review.md` and are not raised again. Failing tests, unmet acceptance criteria, non-goal violations and failed checks cannot be accepted
 4. Whatever the verdict: acceptance criteria are ticked `[x]` / unticked in `spec.md`, and tasks with unmet criteria go back to `in-progress`
-5. READY: shows the commit title, PR title and file list and asks (`publish: ask`); then commits and opens the PR with the `commit` / `pr` actions from `capabilities.md`, or with git and `gh` when none is set
+5. READY: shows the commit title, PR title and file list and asks (`publish: ask`); then commits what is left (statuses, `review.md`) and opens the PR with the `commit` / `pr` actions from `capabilities.md`, or with git and `gh` when none is set
 6. NOT READY: concrete blockers, each unmet criterion with the task to re-run (`/sdd:implement T3`)
 
 Configure it in `specs/capabilities.md`:
@@ -668,7 +721,7 @@ Order: T1 → T2 ∥ T3 → T4
 - `T2` and `T3` start once `T1` is done: `web` uses `skill:my-web-flow`, `mobile` falls back to `in-session`.
 - `T4` follows when `T1` and `T2` are done.
 
-Each task flips to `review` when its implementer reports done; nothing is verified or committed here.
+Each task flips to `review` when its implementer reports done; nothing is verified here; with `commit: task` each task's files are committed with its `Task:` trailer.
 
 ### 🔍 Review
 
@@ -730,9 +783,11 @@ spec-driven-development/                    # or your own forked plugin path
 ├── .claude-plugin/
 │   └── marketplace.json                   # marketplace: sdd + sdd-board
 ├── .github/workflows/
-│   └── plugin-checks.yml                  # CI: manifest/docs drift, version bumps, load/install, skill audit, plugin tests
+│   └── plugin-checks.yml                  # CI: manifest/docs drift, version bumps, load/install, skill audit, plugin tests, sdd-check action
+├── actions/sdd-check/                     # GitHub Action: runs the doctor rules in another repository (action.yml, run.ts)
+├── tests/fixtures/                        # sdd-ok / sdd-broken projects the action's CI job runs on
 ├── README.md / CLAUDE.md / CONTRIBUTING.md / CHANGELOG.md / LICENSE
-├── shared/sdd-core/                       # TypeScript used by both plugins: parse.ts, formats.ts, check.ts
+├── shared/sdd-core/                       # TypeScript used by both plugins and the action: parse.ts, formats.ts, check.ts, gather.ts
 ├── scripts/sync-core.sh                   # copies shared/sdd-core into each plugin (a mod imports only its own files)
 └── plugins/
     ├── sdd-board/                         # Desktop side panel (mod), requires sdd

@@ -1,0 +1,41 @@
+name: SDD Check 🧭
+description: >
+  Check that the Spec-Driven Development artifacts of a repository (specs/constitution.md,
+  capabilities.md, every spec, plan and tasks file) match the SDD version this action is pinned to:
+  the same rules as /sdd:doctor check. Fails the job on errors, annotates the files, and writes a
+  short report to the job summary: what is missing, which checks failed and what
+  /sdd:doctor init repairs. Runs the rules from the ref the action is pinned to, so the calling
+  repository vendors nothing.
+
+inputs:
+  path:
+    description: Root of the repository, relative to the workspace.
+    default: "."
+  fail-on:
+    description: Lowest finding level that fails the job, `fail` or `warn`.
+    default: "fail"
+  node-version:
+    description: Node.js version the script runs on (must run TypeScript natively).
+    default: "26"
+
+outputs:
+  verdict:
+    description: READY, PARTIAL or NOT_READY.
+    value: ${{ steps.check.outputs.verdict }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js 🟢
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Check SDD artifacts 🧭
+      id: check
+      shell: bash
+      env:
+        SCRIPT: ${{ github.action_path }}/run.ts
+        ROOT: ${{ inputs.path }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: node "$SCRIPT" --path "$ROOT" --fail-on "$FAIL_ON"

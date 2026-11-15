@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0 sdd-board] — 2026-11-15
+
+`sdd-board` goes to 0.8.0.
+
+### Added
+
+- The Current tab shows the epic id, a task's PR or branch, and a "waiting for merge" next step (`/sdd:implement all`) while task PRs are open.
+
+## [1.3.0] — 2026-11-15
+
+`sdd` goes to 1.3.0.
+
+### Added
+
+- **Epic and task ids.** `tasks.md` carries `**Epic:** <LETTERS>-<4 hex>`, assigned once by `/sdd:tasks`; a task's full id is `<EPIC>-T<n>`. The doctor validates format and uniqueness; `init` assigns ids to existing specs.
+- **Commit per task.** `/sdd:implement` commits `specs/<slug>/` before the first task and each finished task with a `Task: <EPIC>-T<n>` trailer (`commit: task`, default; `commit: off` keeps the old behavior). `/sdd:review` commits what is left.
+- **Isolated tasks** (`isolation: worktree`, opt-in): `/sdd:implement` orchestrates one sub-session, worktree and branch per task. `merge: pr` opens a PR per task and waits for a human to merge; `merge: auto` rebases and fast-forwards. New `## Implementation` keys `commit`, `isolation`, `merge`, `parallel`.
+- **`sdd-check` GitHub Action** (`actions/sdd-check`): runs the doctor rules in other repositories and writes a short report (what is missing, which checks failed, what `/sdd:doctor init` repairs). `/sdd:doctor init` asks whether to add the workflow (`ci: on|off` in `## Review`).
+
+### Changed
+
+- **`/sdd:implement` now commits by default** (`commit: task`). Set `commit: off` under `## Implementation` to leave the work uncommitted for `/sdd:review`.
+- `/sdd:doctor init` is the update path: it repairs every finding tagged `fix: init` (format marker `<!-- sdd-format: 2 -->`, new keys, epic ids, an outdated workflow).
+- Reading a project moved to `shared/sdd-core/gather.ts`, shared by the `doctor_check` tool and the action.
+
 ## [0.7.0 sdd-board] — 2026-11-15
 
 `sdd-board` goes to 0.7.0.

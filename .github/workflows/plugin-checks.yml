@@ -81,3 +81,26 @@ jobs:
       - name: Test sdd-board 🧪
         run: claude plugin test
         working-directory: plugins/sdd-board
+
+  # Not managed by /plugin-setup: the sdd-check action, run on fixtures from this checkout.
+  sdd-action:
+    name: SDD Check Action 🧭
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 📚
+        uses: actions/checkout@v7
+      - name: A consistent project passes 🧭
+        uses: ./actions/sdd-check
+        with:
+          path: tests/fixtures/sdd-ok
+      - name: A broken project fails 🧭
+        id: broken
+        continue-on-error: true
+        uses: ./actions/sdd-check
+        with:
+          path: tests/fixtures/sdd-broken
+      - name: Check the broken project was reported 🔍
+        if: steps.broken.outcome != 'failure'
+        run: |
+          echo "::error::sdd-check should fail on tests/fixtures/sdd-broken (outcome=${{ steps.broken.outcome }})"
+          exit 1

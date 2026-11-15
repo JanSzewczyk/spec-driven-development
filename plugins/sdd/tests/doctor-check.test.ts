@@ -1,5 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 import { commandOf, effectiveConfig, needs, parseCapabilities, parseCommandTable, runChecks } from '../hooks/core/check.ts'
+import { gather } from '../hooks/core/gather.ts'
+import type { Io } from '../hooks/core/gather.ts'
+import { parseEpicId, parseTasks } from '../hooks/core/parse.ts'
 import type { Snapshot } from '../hooks/core/check.ts'
 
 const CONSTITUTION = `# Project Constitution
@@ -22,6 +25,8 @@ const CONSTITUTION = `# Project Constitution
 `
 
 const CAPABILITIES = `# Project Capabilities
+
+<!-- sdd-format: 2 -->
 
 ## Projects
 
@@ -48,6 +53,7 @@ pr:
 tests: run
 publish: ask
 default: auto
+ci: on
 checks: agent:qa
 
 ## Generated / out-of-band paths
@@ -94,6 +100,9 @@ x
 
 const TASKS = `# Tasks: Login
 
+**Spec:** \`specs/login/spec.md\`  **Plan:** \`specs/login/plan.md\`
+**Epic:** LOG-7f3a
+
 ## Epic: Login
 
 ### T1: API
@@ -117,6 +126,8 @@ files: apps/web/*
 
 function snapshot(over: Partial<Snapshot> = {}): Snapshot {
   return {
+    mode: 'session',
+    workflow: '# sdd-workflow: 1\nname: SDD Check\n',
     constitution: CONSTITUTION,
     template: TEMPLATE,
     capabilities: CAPABILITIES,
@@ -317,4 +328,95 @@ test('effectiveConfig shows set values and defaults per project', () => {
   expect(c.configured).toBe(true)
   expect(c.generated).toBe(1)
   expect(c.commands.length).toBe(2)
+})
+
+test('capabilities: new Implementation keys are validated and are not project names', () => {
+  const caps = CAPABILITIES.replace('default: in-session\n', 'default: in-session\ncommit: task\nisolation: worktree\nmerge: pr\nparallel: 2\n')
+  expect(texts(runChecks(allTools(snapshot({ capabilities: caps }))), 3)).toEqual([])
+  const bad = CAPABILITIES.replace('default: in-session\n', 'default: in-session\nisolation: sideways\nparallel: 0\n')
+  const t = texts(runChecks(allTools(snapshot({ capabilities: bad }))), 3).join('\n')
+  expect(t).toContain('"isolation: sideways" has an unknown value')
+  expect(t).toContain('"parallel: 0" has an unknown value')
+})
+
+test('capabilities: an old format marker, an unset ci and a missing or old workflow ask for init', () => {
+  const run = (over: Partial<Snapshot>) => runChecks(allTools(snapshot(over))).checks[2].findings
+  expect(run({ capabilities: CAPABILITIES.replace('<!-- sdd-format: 2 -->\n\n', '') }).find((f) => f.text.includes('format'))?.fix).toBe('init')
+  expect(run({ capabilities: CAPABILITIES.replace('ci: on\n', '') }).find((f) => f.text.includes('`ci:` is not set'))?.fix).toBe('init')
+  expect(run({ workflow: null }).find((f) => f.text.includes('is missing'))?.fix).toBe('init')
+  expect(run({ workflow: '# sdd-workflow: 0\n' }).find((f) => f.text.includes('older than the template'))?.fix).toBe('init')
+  expect(run({ capabilities: CAPABILITIES.replace('ci: on', 'ci: off'), workflow: null })).toEqual([])
+})
+
+test('features: epic id is required, well formed and unique', () => {
+  const t = (tasks: string, other = TASKS) => texts(runChecks(allTools(snapshot({ features: [
+    { slug: 'login', spec: SPEC, plan: PLAN, tasks, review: null },
+    { slug: 'logout', spec: SPEC.replace('feat/login', 'feat/logout'), plan: null, tasks: other, review: null },
+  ] }))), 7).join('\n')
+  expect(t(TASKS.replace('**Epic:** LOG-7f3a\n', ''), TASKS.replace('LOG-7f3a', 'OUT-1234'))).toContain('no `**Epic:**` id')
+  expect(t(TASKS.replace('LOG-7f3a', 'log-7F3A'), TASKS.replace('LOG-7f3a', 'OUT-1234'))).toContain('is not <LETTERS>-<4 hex>')
+  expect(t(TASKS)).toContain('epic id LOG-7f3a is also used by specs/login/')
+})
+
+test('features: task branch and pr are validated', () => {
+  const run = (extra: string, caps = CAPABILITIES) => texts(runChecks(allTools(snapshot({ capabilities: caps, features: [{ slug: 'login', spec: SPEC, plan: PLAN, tasks: TASKS.replace('status: draft\ndepends_on: []', 'status: in-progress\ndepends_on: []\n' + extra), review: null }] }))), 7).join('\n')
+  expect(run('branch: feat/login--LOG-7f3a-T1\npr: #12')).toBe('')
+  expect(run('branch: feat/other')).toContain('is not feat/login--LOG-7f3a-T1')
+  expect(run('pr: soon')).toContain('pr "soon" is not a pull request')
+  const isolated = CAPABILITIES.replace('default: in-session\n', 'default: in-session\nisolation: worktree\n')
+  expect(run('', isolated)).toContain('in-progress with isolation: worktree but no `branch:`')
+})
+
+test('parseEpicId and the task branch and pr fields', () => {
+  expect(parseEpicId(TASKS)).toBe('LOG-7f3a')
+  expect(parseEpicId('# Tasks\n## Epic: x\n')).toBe('')
+  const t = parseTasks(TASKS.replace('depends_on: []', 'depends_on: []\nbranch: feat/login--LOG-7f3a-T1\npr: https://github.com/o/r/pull/3'))
+  expect(t[0].branch).toBe('feat/login--LOG-7f3a-T1')
+  expect(t[0].pr).toBe('https://github.com/o/r/pull/3')
+  expect(t[1].branch).toBe('')
+})
+
+test('ci mode does not judge git, tools or sibling repositories', () => {
+  const r = runChecks(snapshot({ mode: 'ci', git: { isRepo: false, clean: false, gh: false, ghAuth: false }, paths: { 'apps/web': false } }))
+  expect(r.checks.slice(3, 6).map((c) => c.summary)).toEqual(['not checked in CI', 'not checked in CI', 'not checked in CI'])
+  expect(r.checks.slice(3, 6).every((c) => c.status === 'pass')).toBe(true)
+  expect(r.status).toBe('READY')
+})
+
+test('effectiveConfig lists the new Implementation keys and ci with their defaults', () => {
+  const c = effectiveConfig(CAPABILITIES, CONSTITUTION)
+  const impl = c.sections[0].entries
+  expect(impl.find((e) => e.key === 'isolation')).toEqual({ key: 'isolation', value: 'none', source: 'default' })
+  expect(impl.find((e) => e.key === 'merge')?.value).toBe('pr')
+  expect(impl.find((e) => e.key === 'parallel')?.value).toBe('3')
+  expect(c.sections[2].entries.find((e) => e.key === 'ci')).toEqual({ key: 'ci', value: 'on', source: 'set' })
+})
+
+function fakeIo(files: Record<string, string>): Io {
+  return {
+    async read(p) { return p in files ? files[p] : null },
+    async exists(p) { return p in files || Object.keys(files).some((k) => k.startsWith(p + '/')) },
+    async list(dir) {
+      const names = new Set<string>()
+      for (const k of Object.keys(files)) if (k.startsWith(dir + '/')) names.add(k.slice(dir.length + 1).split('/')[0])
+      return [...names].map((name) => ({ name, dir: !(dir + '/' + name in files) }))
+    },
+    async run() { throw new Error('ci mode must not run commands') },
+  }
+}
+
+test('gather in ci mode reads specs and the workflow without running anything', async () => {
+  const s = await gather(fakeIo({
+    'specs/constitution.md': CONSTITUTION,
+    'specs/template.md': TEMPLATE,
+    'specs/capabilities.md': CAPABILITIES,
+    'specs/login/spec.md': SPEC,
+    'specs/login/plan.md': PLAN,
+    'specs/login/tasks.md': TASKS,
+    '.github/workflows/sdd-check.yml': '# sdd-workflow: 1\n',
+  }), { mode: 'ci' })
+  expect(s.mode).toBe('ci')
+  expect(s.features.map((f) => f.slug)).toEqual(['login'])
+  expect(s.workflow).toContain('sdd-workflow')
+  expect(runChecks(s).status).toBe('READY')
 })

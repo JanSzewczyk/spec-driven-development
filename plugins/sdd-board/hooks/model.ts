@@ -7,6 +7,7 @@ export type Feature = {
   planStatus: string | null
   plan: PlanInfo | null
   tasks: Task[] | null
+  epic?: string // `**Epic:**` id from tasks.md; '' or absent in files written before epic ids
   review: Verdict | null
   modified: number
 }
@@ -88,9 +89,14 @@ export function derive(f: Feature): Derived {
   } else if (hasTasks) {
     idx = 4
     // First task not yet implemented whose dependencies are done; else the first unfinished one.
+    // A task with a pull request (merge: pr) is waiting for a human, not for the implementer.
     const open = tasks.filter((t) => !taskDone(t))
-    const ready = open.find((t) => blockedBy(t, tasks).length === 0) ?? open[0]
-    next = { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' }
+    const waiting = open.filter((t) => t.pr)
+    const working = open.filter((t) => !t.pr)
+    const ready = working.find((t) => blockedBy(t, tasks).length === 0) ?? working[0]
+    next = ready
+      ? { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' }
+      : { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + waiting.map((t) => t.pr).join(', ') + ' to be merged. Merge them, then resume: the next tasks start from there.' }
   } else if (status === 'planned' || f.planStatus !== null) {
     idx = 3
     next = { command: '/sdd:tasks', model: 'Sonnet', why: 'Split the plan into self-contained tasks.' }
@@ -142,10 +148,16 @@ export function gate(f: Feature): Gate | null {
     checks.push({ key: 'plan-questions', label: 'Plan questions resolved', ok: !!f.plan && f.plan.openItems === 0, hint: f.plan && f.plan.openItems ? plural(f.plan.openItems, 'item', 'items') + ' left' : undefined })
   } else if (verb === '/sdd:implement') {
     const tasks = f.tasks ?? []
-    const target = tasks.find((t) => t.id === command.split(' ')[1])
-    const waits = target ? blockedBy(target, tasks) : []
-    checks.push({ key: 'ac', label: 'Task has acceptance criteria', ok: !!target && target.acceptance.length > 0 })
-    checks.push({ key: 'deps', label: 'Dependencies implemented', ok: waits.length === 0, hint: waits.length ? 'waiting on ' + waits.join(', ') : undefined })
+    const arg = command.split(' ')[1]
+    if (arg === 'all') {
+      const prs = tasks.filter((t) => !taskDone(t) && t.pr)
+      checks.push({ key: 'merge', label: 'Task pull requests merged', ok: false, hint: prs.map((t) => t.id + ' ' + t.pr).join(', ') })
+    } else {
+      const target = tasks.find((t) => t.id === arg)
+      const waits = target ? blockedBy(target, tasks) : []
+      checks.push({ key: 'ac', label: 'Task has acceptance criteria', ok: !!target && target.acceptance.length > 0 })
+      checks.push({ key: 'deps', label: 'Dependencies implemented', ok: waits.length === 0, hint: waits.length ? 'waiting on ' + waits.join(', ') : undefined })
+    }
     questions()
   } else if (verb === '/sdd:review') {
     checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })

@@ -1,6 +1,6 @@
 // Pure rules behind `/sdd:doctor check`: everything takes already-read text and probe results, so
 // the same code runs in the doctor tool and in tests. No mods API in here.
-import { parsePlan, parseReview, parseSpec, parseTasks } from './parse.ts'
+import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from './parse.ts'
 import type { Task } from './parse.ts'
 import {
   ACTION_KEYS,
@@ -10,23 +10,35 @@ import {
   COMMAND_COLUMNS,
   COMMAND_COLUMN_ALIASES,
   CONSTITUTION_SECTIONS,
+  EPIC_ID,
   FLOW_VALUE,
+  IMPLEMENTATION_DEFAULTS,
+  IMPLEMENTATION_KEYS,
   OVERRIDE_MARKER,
   PLAN_STATUSES,
   REVIEW_KEYS,
   SPEC_STATUSES,
   SPEC_TEMPLATE_PLACEHOLDERS,
   SPEC_TEMPLATE_SECTIONS,
+  SDD_FORMAT,
+  SDD_FORMAT_MARKER,
   TASK_STATUSES,
+  WORKFLOW_MARKER,
+  WORKFLOW_PATH,
+  WORKFLOW_VERSION,
+  taskBranch,
 } from './formats.ts'
 import type { Level } from './formats.ts'
 
-export type Finding = { level: 'warn' | 'fail'; text: string }
+// fix: 'init' — `/sdd:doctor init` repairs it by itself; absent — the user has to change something.
+export type Finding = { level: 'warn' | 'fail'; text: string; fix?: 'init' | 'manual' }
 export type CheckResult = { id: number; name: string; status: Level; summary: string; findings: Finding[] }
 export type Verdict = 'READY' | 'PARTIAL' | 'NOT_READY'
 export type Project = { name: string; kind: string; path: string; stack: string; repo: boolean }
 export type CommandRow = { project: string; path: string; commands: Record<string, string> }
 export type FeatureFiles = { slug: string; spec: string | null; plan: string | null; tasks: string | null; review: string | null }
+// session: the doctor in a Claude Code session; ci: the sdd-check GitHub Action (no gh, tools, sibling repos or installed skills to probe).
+export type Mode = 'session' | 'ci'
 export type GitProbe = {
   isRepo: boolean
   clean: boolean | null // null: not a repository
@@ -34,6 +46,8 @@ export type GitProbe = {
   ghAuth: boolean | null // null: not probed (offline, or gh missing)
 }
 export type Snapshot = {
+  mode: Mode
+  workflow: string | null // .github/workflows/sdd-check.yml, null when absent
   constitution: string | null
   template: string | null
   capabilities: string | null
@@ -45,7 +59,7 @@ export type Snapshot = {
   tools: Record<string, boolean> // ToolNeed.key -> resolvable
   flows: Record<string, boolean | null> // `skill:<name>` / `agent:<name>` -> installed; null: could not be probed
 }
-export type Report = { status: Verdict; passed: number; total: number; projects: Project[]; checks: CheckResult[] }
+export type Report = { status: Verdict; mode: Mode; passed: number; total: number; projects: Project[]; checks: CheckResult[] }
 export type ToolNeed = { key: string; exe: string; dir: string | null; project: string }
 
 // ---------- text helpers ----------
@@ -215,6 +229,8 @@ export function effectiveConfig(capabilities: string, constitution: string | nul
     implementation.push(own ? { key: p.name, value: own, source: own === implDefault.value ? 'default' : 'set' } : { key: p.name, value: implDefault.value, source: 'default' })
   }
 
+  for (const k of Object.keys(IMPLEMENTATION_KEYS)) implementation.push(entry(k, impl.get(k), IMPLEMENTATION_DEFAULTS[k]))
+
   const act = get('Actions')
   const actions = ACTION_KEYS.map((k) => ({ key: k, value: act.get(k) || SESSION_GIT, source: (act.get(k) ? 'set' : 'default') as 'set' | 'default' }))
 
@@ -225,6 +241,7 @@ export function effectiveConfig(capabilities: string, constitution: string | nul
     const own = rev.get(p.name)
     if (own) review.push({ key: p.name, value: own, source: own === revDefault.value ? 'default' : 'set' })
   }
+  review.push(entry('ci', rev.get('ci'), 'unset'))
   const checks = (rev.get('checks') ?? '').split(',').map((x) => x.trim()).filter(Boolean)
   review.push({ key: 'checks', value: checks.length ? checks.join(', ') : 'none', source: checks.length ? 'set' : 'default' })
 
@@ -239,7 +256,7 @@ export function effectiveConfig(capabilities: string, constitution: string | nul
     commands: constitution ? (parseCommandTable(constitution) ?? []) : [],
     sections,
     generated,
-    configured: sections.some((sec) => sec.entries.some((e) => e.source === 'set')),
+    configured: sections.some((sec) => sec.entries.some((e) => e.source === 'set' && e.key !== 'ci')), // ci is about CI, not about who does a step
   }
 }
 
@@ -279,14 +296,14 @@ function finish(id: number, name: string, findings: Finding[], summary: string):
   return { id, name, status, summary, findings }
 }
 
-const warn = (text: string): Finding => ({ level: 'warn', text })
-const fail = (text: string): Finding => ({ level: 'fail', text })
+const warn = (text: string, fix?: Finding['fix']): Finding => (fix ? { level: 'warn', text, fix } : { level: 'warn', text })
+const fail = (text: string, fix?: Finding['fix']): Finding => (fix ? { level: 'fail', text, fix } : { level: 'fail', text })
 
 function checkConstitution(s: Snapshot): CheckResult {
   const name = 'specs/constitution.md'
   if (s.constitution === null) {
     const hint = s.legacy.includes('specs/_constitution.md') ? ' (found legacy specs/_constitution.md: `init` renames it)' : ''
-    return finish(1, name, [fail('missing' + hint + '. Run `/sdd:doctor init`')], '')
+    return finish(1, name, [fail('missing' + hint + '. Run `/sdd:doctor init`', 'init')], '')
   }
   const f: Finding[] = []
   const titles = headings(s.constitution).map((h) => h.title)
@@ -305,7 +322,7 @@ function checkTemplate(s: Snapshot): CheckResult {
   const name = 'specs/template.md'
   if (s.template === null) {
     const hint = s.legacy.includes('specs/_template.md') ? ' (found legacy specs/_template.md: `init` renames it)' : ''
-    return finish(2, name, [fail('missing' + hint + '. Run `/sdd:doctor init`')], '')
+    return finish(2, name, [fail('missing' + hint + '. Run `/sdd:doctor init`', 'init')], '')
   }
   const f: Finding[] = []
   const titles = headings(s.template).map((h) => h.title.toLowerCase())
@@ -319,29 +336,35 @@ function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult 
   const name = 'specs/capabilities.md'
   if (s.capabilities === null || caps === null) {
     const hint = s.legacy.includes('.claude/capabilities.md') ? ' (found legacy .claude/capabilities.md: `init` moves it)' : ''
-    return finish(3, name, [fail('missing' + hint + '. Run `/sdd:doctor init`')], '')
+    return finish(3, name, [fail('missing' + hint + '. Run `/sdd:doctor init`', 'init')], '')
   }
   const f: Finding[] = []
-  if (caps.legacyProjects) f.push(warn('section "Stack profile" is the old name of "Projects": run `/sdd:doctor init`'))
+  if (caps.legacyProjects) f.push(warn('section "Stack profile" is the old name of "Projects": run `/sdd:doctor init`', 'init'))
   for (const sec of CAPABILITIES_SECTIONS) {
     const present = sec === 'Projects' ? caps.sections.Projects !== undefined || caps.legacyProjects : caps.sections[sec] !== undefined
-    if (!present) f.push(warn(`section "${sec}" missing: run \`/sdd:doctor init\``))
+    if (!present) f.push(warn(`section "${sec}" missing: run \`/sdd:doctor init\``, 'init'))
   }
   for (const legacy of ['Specialist agents', 'Skills', 'Task type → routing rules', 'Custom routing rules']) {
-    if (caps.sections[legacy] !== undefined) f.push(warn(`legacy section "${legacy}" is no longer read: delete it`))
+    if (caps.sections[legacy] !== undefined) f.push(warn(`legacy section "${legacy}" is no longer read: delete it`, 'init'))
   }
   const projectsMarker = (caps.sections.Projects ?? []).join('\n')
-  if (caps.sections.Projects !== undefined && !projectsMarker.includes(AUTO_MARKER)) f.push(warn(`"Projects" lacks ${AUTO_MARKER}`))
+  if (caps.sections.Projects !== undefined && !projectsMarker.includes(AUTO_MARKER)) f.push(warn(`"Projects" lacks ${AUTO_MARKER}`, 'init'))
   for (const sec of CAPABILITIES_SECTIONS.slice(1)) {
     const body = (caps.sections[sec] ?? []).join('\n')
-    if (caps.sections[sec] !== undefined && !body.includes(OVERRIDE_MARKER)) f.push(warn(`"${sec}" lacks ${OVERRIDE_MARKER}`))
+    if (caps.sections[sec] !== undefined && !body.includes(OVERRIDE_MARKER)) f.push(warn(`"${sec}" lacks ${OVERRIDE_MARKER}`, 'init'))
   }
+  const format = Number(s.capabilities.match(SDD_FORMAT_MARKER)?.[1] ?? 0)
+  if (format < SDD_FORMAT) f.push(warn(`capabilities.md is at format ${format || '(no marker)'}, this version writes ${SDD_FORMAT}: run \`/sdd:doctor init\` to migrate`, 'init'))
   if (caps.projects.length === 0) f.push(warn('no project listed under "Projects"'))
   const names = new Set(caps.projects.map((p) => p.name))
 
   const impl = keyValues(caps.sections.Implementation ?? [])
   if (caps.sections.Implementation !== undefined && !impl.some(([k]) => k === 'default')) f.push(warn('Implementation: no `default:` line (falls back to in-session)'))
   for (const [k, v] of impl) {
+    if (IMPLEMENTATION_KEYS[k]) {
+      if (!IMPLEMENTATION_KEYS[k].test(v)) f.push(warn(`Implementation: "${k}: ${v}" has an unknown value`))
+      continue
+    }
     if (k !== 'default' && !names.has(k)) f.push(warn(`Implementation: "${k}" is not a listed project`))
     if (!FLOW_VALUE.test(v)) f.push(warn(`Implementation: "${k}: ${v}" is not skill:<name> | agent:<name> | command:<shell> | in-session`))
   }
@@ -363,6 +386,18 @@ function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult 
     } else {
       f.push(warn(`Review: unknown key "${k}"`))
     }
+  }
+
+  const implValue = (key: string) => impl.find(([k]) => k === key)?.[1] || IMPLEMENTATION_DEFAULTS[key]
+  const prAction = keyValues(caps.sections.Actions ?? []).some(([k, v]) => k === 'pr' && v !== '')
+  if (implValue('isolation') === 'worktree' && implValue('merge') === 'pr' && !prAction && s.git.gh === false) {
+    f.push(warn('Implementation: merge: pr needs `gh` (or a `pr` action under Actions) to open a pull request per task'))
+  }
+  const ci = (keyValues(caps.sections.Review ?? []).find(([k]) => k === 'ci') ?? [])[1]
+  if (ci === undefined || ci === '') f.push(warn('Review: `ci:` is not set (on | off): `/sdd:doctor init` asks whether to add the sdd-check GitHub workflow', 'init'))
+  else if (ci === 'on') {
+    if (s.workflow === null) f.push(warn(`Review: ci is on but ${WORKFLOW_PATH} is missing: run \`/sdd:doctor init\``, 'init'))
+    else if (Number(s.workflow.match(WORKFLOW_MARKER)?.[1] ?? 0) < WORKFLOW_VERSION) f.push(warn(`${WORKFLOW_PATH} is older than the template (version ${WORKFLOW_VERSION}): run \`/sdd:doctor init\``, 'init'))
   }
 
   for (const r of flowRefs(caps)) {
@@ -475,6 +510,8 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
   const f: Finding[] = []
   const projects = new Set((caps?.projects ?? []).map((p) => p.name))
   const branches = new Map<string, string>()
+  const epics = new Map<string, string>()
+  const isolated = new Map(keyValues(caps?.sections.Implementation ?? [])).get('isolation') === 'worktree'
   for (const ft of s.features) {
     const at = `specs/${ft.slug}/`
     let ids: string[] = []
@@ -497,6 +534,12 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
     }
     if (ft.tasks !== null) {
       const tasks = parseTasks(ft.tasks)
+      const epic = parseEpicId(ft.tasks)
+      const specBranch = ft.spec === null ? '' : parseSpec(ft.spec).branch
+      if (!epic) f.push(warn(`${at}tasks.md: no \`**Epic:**\` id: run \`/sdd:doctor init\` to assign one`, 'init'))
+      else if (!EPIC_ID.test(epic)) f.push(fail(`${at}tasks.md: epic id "${epic}" is not <LETTERS>-<4 hex> (ULOG-7f3a)`))
+      else if (epics.has(epic)) f.push(fail(`${at}tasks.md: epic id ${epic} is also used by specs/${epics.get(epic)}/`))
+      else epics.set(epic, ft.slug)
       if (tasks.length === 0) f.push(fail(`${at}tasks.md: no \`### T<n>:\` task`))
       const taskIds = new Set<string>()
       const blocks = ft.tasks.split(/^(?=###\s+T\d+)/m).slice(1)
@@ -513,6 +556,9 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
         if (t.acceptance.length === 0) f.push(fail(`${where}: no \`acceptance:\` ids`))
         for (const a of t.acceptance) if (ids.length > 0 && !ids.includes(a)) f.push(fail(`${where}: acceptance ${a} is not in spec.md`))
         for (const d of t.dependsOn) if (!tasks.some((o) => o.id === d)) f.push(fail(`${where}: depends_on ${d} does not exist`))
+        if (t.pr && !/^(?:#?\d+|https?:\/\/\S+)$/.test(t.pr)) f.push(fail(`${where}: pr "${t.pr}" is not a pull request number or URL`))
+        if (t.branch && epic && specBranch && t.branch !== taskBranch(specBranch, epic, t.id)) f.push(warn(`${where}: branch "${t.branch}" is not ${taskBranch(specBranch, epic, t.id)}`))
+        if (isolated && t.status === 'in-progress' && !t.branch) f.push(warn(`${where}: in-progress with isolation: worktree but no \`branch:\``))
         for (const field of ['scope', 'files']) if (!new RegExp('^' + field + ':', 'm').test(block)) f.push(warn(`${where}: no \`${field}:\``))
       })
       const cycle = cycleOf(tasks)
@@ -525,19 +571,22 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
   return finish(7, name, f, `${s.features.length} feature(s) consistent`)
 }
 
+const notInCi = (id: number, name: string): CheckResult => finish(id, name, [], 'not checked in CI')
+
 export function runChecks(s: Snapshot): Report {
   const caps = s.capabilities === null ? null : parseCapabilities(s.capabilities)
+  const ci = s.mode === 'ci'
   const checks = [
     checkConstitution(s),
     checkTemplate(s),
     checkCapabilities(s, caps),
-    checkGit(s, caps),
-    checkTooling(s, caps),
-    checkSiblings(s, caps),
+    ci ? notInCi(4, 'Git + gh') : checkGit(s, caps),
+    ci ? notInCi(5, 'Tooling') : checkTooling(s, caps),
+    ci ? notInCi(6, 'Sibling repositories') : checkSiblings(s, caps),
     checkFeatures(s, caps),
   ]
   const fails = checks.filter((c) => c.status === 'fail').length
   const warns = checks.filter((c) => c.status === 'warn').length
   const status: Verdict = fails >= 3 ? 'NOT_READY' : fails > 0 || warns > 0 ? 'PARTIAL' : 'READY'
-  return { status, passed: checks.filter((c) => c.status === 'pass').length, total: checks.length, projects: caps?.projects ?? [], checks }
+  return { status, mode: s.mode, passed: checks.filter((c) => c.status === 'pass').length, total: checks.length, projects: caps?.projects ?? [], checks }
 }

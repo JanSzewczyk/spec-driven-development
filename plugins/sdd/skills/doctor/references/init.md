@@ -5,8 +5,13 @@ templates from `${CLAUDE_PLUGIN_ROOT}/skills/doctor/templates/`. Print one statu
 artifact (created / skipped / merged). Never overwrite an existing `specs/constitution.md`,
 `specs/template.md`; never touch the root `CLAUDE.md`.
 
-## 0. Confirm roots
+## 0. Confirm roots and read the findings
 `pwd`; verify the templates directory is readable, else stop — the plugin looks broken.
+
+When `specs/` already exists, call `mcp__sdd__doctor_check` first (fallback: SKILL.md). Every
+finding with `fix: "init"` is repaired by the steps below; the others (`fix` absent) are the user's.
+`init` is therefore also the **update** path: after a plugin upgrade it brings an older project to
+the current artifact format.
 
 ## 1. Discover projects and tooling
 Read the repository; do not match a fixed list. SDD works on **projects**: units with their own
@@ -56,6 +61,13 @@ byte-for-byte). **Keep these exact headings — other commands match them.**
 - `## Implementation`, `## Actions`, `## Review`, `## Generated / out-of-band paths` —
   user-override. New file → `cp` [capabilities.md.template](../templates/capabilities.md.template), then Edit `## Projects`. Existing file → keep them;
   add each one that is missing from the template, in the template's order.
+- **Format marker.** `<!-- sdd-format: N -->` sits right below the title block. New file: the
+  template has it. Existing file: add or raise it to the template's number only **after** the
+  migrations of this run are done (steps 3 and 5); never lower it.
+- **New keys.** An existing `## Implementation` that lacks `commit`, `isolation`, `merge` or
+  `parallel` gets the template's lines appended (`commit: task`, `isolation: none`, `merge: pr`,
+  `parallel: 3`: today's behaviour plus per-task commits); values the user already set stay. Do not
+  add `ci:` here (step 6).
 - Legacy files: drop the old auto-generated `Specialist agents` and `Skills` sections and rename
   `Stack profile` → `Projects`. Leave `Task type → routing rules` and `Custom routing rules` as they
   are (user content, no longer read) and tell the user they can delete them.
@@ -76,5 +88,26 @@ otherwise do not touch `.claude/settings.json`. Make the one edit:
    (`../mobile-app`) not yet listed. Never remove or reorder entries; leave every other key as is.
 4. Write with 2-space indent and a trailing newline.
 
-## 5. Re-check
+## 5. Epic ids in existing specs
+Each `specs/*/tasks.md` without a `**Epic:**` line gets one, built exactly as in step 3 of
+`/sdd:tasks` (slug letters + 4 hex, unique across specs), inserted under the `**Spec:** … **Plan:** …`
+line. Leave everything else in the file as it is. Mention in the report that old commits carry no
+`Task:` trailers.
+
+## 6. CI workflow
+Ask with `AskUserQuestion`, unless `## Review` already has `ci: on` or `ci: off`, whether to add the
+`sdd-check` GitHub workflow: it runs the same rules as `check` on every pull request, on pushes to the
+default branch and weekly, and prints a short report of what is missing and what to repair with
+`/sdd:doctor init`. Options: "PR, push and weekly (Recommended)", "Pull requests only", "No".
+
+- Yes → `mkdir -p .github/workflows`, `cp` [sdd-check.yml.template](../templates/sdd-check.yml.template)
+  to `.github/workflows/sdd-check.yml` (for "Pull requests only" delete the `push:` and `schedule:`
+  blocks), set `ci: on` in `## Review`. The file exists with an older `# sdd-workflow: <n>` → replace it
+  with the template, keeping the user's trigger choice, and show the diff first.
+- No → set `ci: off` in `## Review`; write no workflow.
+
+The workflow is the only file `init` writes outside `specs/` and `.claude/`.
+
+## 7. Re-check
 Run `check` (the `mcp__sdd__doctor_check` tool, or the fallback in SKILL.md) and show the report.
+Every `fix: "init"` finding must be gone; list the ones that remain with what the user has to do.

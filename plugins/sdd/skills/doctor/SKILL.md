@@ -19,13 +19,13 @@ disable-model-invocation: true
 
 Mode comes from the user message: `check` (default; "audit", "is ready") reports only;
 `init` ("setup", "create", "fix") creates or repairs artifacts, then runs `check`.
-`init`: follow [references/init.md](references/init.md) — load it only for `init`, and start with a task list of its steps (roots, discover, seed, capabilities, sibling repos, re-check) kept current. Seed files it copies: [constitution](templates/constitution.md.template), [capabilities](templates/capabilities.md.template), [spec template](templates/specs/template.md).
+`init`: follow [references/init.md](references/init.md) — load it only for `init`, and start with a task list of its steps (roots and findings, discover, seed, capabilities, sibling repos, epic ids, CI workflow, re-check) kept current. Seed files it copies: [constitution](templates/constitution.md.template), [capabilities](templates/capabilities.md.template), [spec template](templates/specs/template.md), [sdd-check workflow](templates/sdd-check.yml.template).
 
 ## `check`
 
 Read-only. Call the `mcp__sdd__doctor_check` tool (add `offline: true` when the user says there is
 no network): it returns JSON `{status, passed, total, projects, checks: [{id, name, status, summary,
-findings: [{level, text}]}]}` for the 7 checks of [references/formats.md](${CLAUDE_PLUGIN_ROOT}/references/formats.md).
+findings: [{level, text, fix?}]}]}` for the 7 checks of [references/formats.md](${CLAUDE_PLUGIN_ROOT}/references/formats.md).
 Render it as the report below.
 
 Tool not available (mods are off: `--safe-mode`, `disableAllHooks`, WSL, Claude Code older than
@@ -49,6 +49,9 @@ Tool not available (mods are off: `--safe-mode`, `disableAllHooks`, WSL, Claude 
 ## Next steps
 - <one bullet per fix>
 ```
+
+A finding with `fix: "init"` is repaired by `/sdd:doctor init`; list those in one bullet
+("`/sdd:doctor init` repairs: …") and the others (the user's own changes) one bullet each.
 
 List only non-✅ rows (one line per finding in Detail) plus a one-line summary of the passed ones.
 Overall status is the tool's `status`.
