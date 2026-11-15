@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import mermaid from "astro-mermaid";
+import starlightChangelogs, { makeChangelogsSidebarLinks } from "starlight-changelogs";
 import starlightVersions from "starlight-versions";
 
 export default defineConfig({
@@ -45,6 +46,8 @@ export default defineConfig({
       plugins: [
         // `current` is the docs on main; each archived release is a folder src/content/docs/<slug>/.
         // To archive the next release, add { slug: "3.0" } to `versions` and start the dev server.
+        // Pages under /changelog/ come from the repository's CHANGELOG.md (see src/content.config.ts).
+        starlightChangelogs(),
         starlightVersions({ current: { label: "Latest" }, versions: [{ slug: "2.0", label: "v2.0" }] }),
       ],
       components: { SiteTitle: "./src/components/SiteTitle.astro", Footer: "./src/components/Footer.astro", Hero: "./src/components/Hero.astro" },
@@ -106,7 +109,12 @@ export default defineConfig({
         {
           label: "Reference",
           translations: { pl: "Referencja" },
-          items: ["reference/file-structure", "reference/design-decisions", "reference/contributing"],
+          items: [
+            "reference/file-structure",
+            "reference/design-decisions",
+            "reference/contributing",
+            ...makeChangelogsSidebarLinks([{ type: "all", base: "changelog", label: "Changelog" }]),
+          ],
         },
       ],
     }),
