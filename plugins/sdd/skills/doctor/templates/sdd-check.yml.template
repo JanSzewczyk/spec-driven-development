@@ -27,5 +27,5 @@ jobs:
       - name: Checkout code 📚
         uses: actions/checkout@v7
       - name: Check SDD specs, plans and capabilities 🧭
-        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@sdd--v{{sdd_version}}
+        uses: JanSzewczyk/spec-driven-development/actions/sdd-check@v{{sdd_version}}
         # Inputs: path, fail-on (fail | warn), node-version.

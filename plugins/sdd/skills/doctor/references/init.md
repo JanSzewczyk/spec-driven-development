@@ -63,7 +63,7 @@ included. Keys and values: [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/ca
   `stack`, and `repo: true` for a sibling repository. Replace only this key's block.
 - **Existing file** → keep it; add a missing top-level key from the template, in the template's
   order. Raise `format` to the template's number only after this run's migrations (steps 3 and 5);
-  never lower it. Point the `$schema` comment at `sdd--v<version>`.
+  never lower it. Point the `$schema` comment at `v<version>`.
 - **Migration from `specs/capabilities.md`** (format 2, only when the `.yml` is absent): start from
   the template and move every value the user set:
 
@@ -117,7 +117,7 @@ default branch and weekly, and prints a short report of what is missing and what
 - Yes → `mkdir -p .github/workflows`, `cp` [sdd-check.yml.template](../templates/sdd-check.yml.template)
   to `.github/workflows/sdd-check.yml`, replace `{{sdd_version}}` with `<version>` (for "Pull requests
   only" delete the `push:` and `schedule:` blocks), set `review.ci: on`. The file exists with an older
-  `# sdd-workflow: <n>` or another `sdd--v` pin → replace it with the template, keeping the user's
+  `# sdd-workflow: <n>` or another `sdd--v` / `v` pin → replace it with the template, keeping the user's
   trigger choice, and show the diff first.
 - No → set `review.ci: off`; write no workflow.
 

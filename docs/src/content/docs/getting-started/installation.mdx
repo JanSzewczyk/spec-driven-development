@@ -78,7 +78,7 @@ For a customized copy with your own defaults:
 1. Fork the repository and update `homepage` in `plugins/sdd/.claude-plugin/plugin.json`.
 2. *(Optional)* Edit `plugins/sdd/skills/doctor/templates/capabilities.yml.template` to pre-set the implementation flow.
 3. *(Optional)* Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard WHAT NOT TO DO rules.
-4. Bump `version` in `plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`. On merge to `main`, the release workflow tags `sdd--v<version>` and creates a GitHub Release.
+4. Bump `version` in `plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`. On merge to `main`, the release workflow tags `v<version>` and creates a GitHub Release.
 5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install `sdd@spec-driven-development`.
 
 </Steps>

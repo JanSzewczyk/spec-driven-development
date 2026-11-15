@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/JanSzewczyk/spec-driven-development/sdd--v{{sdd_version}}/plugins/sdd/schemas/capabilities.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/JanSzewczyk/spec-driven-development/v{{sdd_version}}/plugins/sdd/schemas/capabilities.schema.json
 # SDD configuration. Keys and values: references/capabilities.md in the sdd plugin.
 # `projects` is rewritten by /sdd:doctor init; everything else is yours and is never overwritten.
 format: 3
