@@ -1,0 +1,24 @@
+---
+import Default from "@astrojs/starlight/components/Footer.astro";
+---
+
+<Default {...Astro.props}><slot /></Default>
+<p class="szum-footer">
+  Built by <a href="https://github.com/JanSzewczyk" target="_blank" rel="noopener">Szum-Tech</a> · MIT
+</p>
+
+<style>
+  .szum-footer {
+    margin-top: 1rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .szum-footer a {
+    color: var(--sl-color-text-accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .szum-footer a:hover {
+    text-decoration: underline;
+  }
+</style>

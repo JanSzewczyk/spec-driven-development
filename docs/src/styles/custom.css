@@ -1,107 +1,110 @@
 @import "@fontsource-variable/inter";
-@import "@fontsource-variable/newsreader";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
 @import "@fontsource-variable/jetbrains-mono";
 
 /*
- * Claude-style theme: warm paper and ink, clay accent, serif headings.
- * Palette: ink #141413, paper #faf9f5, clay #d97757, stone #b0aea5, bone #e8e6dc.
+ * Szum-Tech theme: blue-600 brand, neutral greys, Poppins headings.
+ * Tokens follow @szum-tech/design-system (primary blue-600, radius 0.25rem scale).
  */
 :root {
   --sl-font: "Inter Variable", system-ui, sans-serif;
   --sl-font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  --font-serif: "Newsreader Variable", Georgia, "Times New Roman", serif;
+  --font-heading: "Poppins", "Inter Variable", system-ui, sans-serif;
   --sl-content-width: 46rem;
+  --brand: #2563eb;
 }
 
-/* Dark: warm charcoal, not blue-black */
+/* Dark: near-black neutrals */
 :root,
 :root[data-theme="dark"] {
-  --sl-color-white: #faf9f5;
-  --sl-color-gray-1: #e8e6dc;
-  --sl-color-gray-2: #c9c7bd;
-  --sl-color-gray-3: #a3a198;
-  --sl-color-gray-4: #7a7870;
-  --sl-color-gray-5: #3d3d3a;
-  --sl-color-gray-6: #2f2f2c;
-  --sl-color-gray-7: #262624;
-  --sl-color-black: #1f1e1d;
-  --sl-color-bg-nav: #1f1e1d;
-  --sl-color-bg-sidebar: #1f1e1d;
-  --sl-color-bg-inline-code: #2f2f2c;
-  --sl-color-accent-low: #4a2a1d;
-  --sl-color-accent: #d97757;
-  --sl-color-accent-high: #ecaa90;
-  --sl-color-text-accent: #e8916f;
-  --sl-color-hairline: #3d3d3a;
-  --sl-color-hairline-light: #34342f;
-  --sl-color-hairline-shade: #262624;
+  --sl-color-white: #fafafa;
+  --sl-color-gray-1: #e5e5e5;
+  --sl-color-gray-2: #d4d4d4;
+  --sl-color-gray-3: #a3a3a3;
+  --sl-color-gray-4: #737373;
+  --sl-color-gray-5: #404040;
+  --sl-color-gray-6: #262626;
+  --sl-color-gray-7: #171717;
+  --sl-color-black: #0a0a0a;
+  --sl-color-bg-nav: #0a0a0a;
+  --sl-color-bg-sidebar: #0a0a0a;
+  --sl-color-bg-inline-code: #262626;
+  --sl-color-accent-low: #172554;
+  --sl-color-accent: #3b82f6;
+  --sl-color-accent-high: #bfdbfe;
+  --sl-color-text-accent: #60a5fa;
+  --sl-color-hairline: #262626;
+  --sl-color-hairline-light: #1f1f1f;
+  --sl-color-hairline-shade: #171717;
 }
 :root:not([data-theme="light"]) body,
 :root[data-theme="dark"] body {
-  background: #262624;
+  background: #0a0a0a;
 }
 
-/* Light: paper */
+/* Light: white and neutral */
 :root[data-theme="light"] {
-  --sl-color-white: #141413;
-  --sl-color-gray-1: #2b2a28;
-  --sl-color-gray-2: #4a4944;
-  --sl-color-gray-3: #6b6a63;
-  --sl-color-gray-4: #8f8d84;
-  --sl-color-gray-5: #d9d6c9;
-  --sl-color-gray-6: #ebe9df;
-  --sl-color-gray-7: #f3f1e8;
-  --sl-color-black: #faf9f5;
-  --sl-color-bg-nav: #faf9f5;
-  --sl-color-bg-sidebar: #f5f4ed;
-  --sl-color-bg-inline-code: #ebe9df;
-  --sl-color-accent-low: #f6dfd3;
-  --sl-color-accent: #c6613f;
-  --sl-color-accent-high: #8f3d22;
-  --sl-color-text-accent: #b5532f;
-  --sl-color-hairline: #e8e6dc;
-  --sl-color-hairline-light: #efede4;
-  --sl-color-hairline-shade: #e1dfd3;
+  --sl-color-white: #0a0a0a;
+  --sl-color-gray-1: #171717;
+  --sl-color-gray-2: #404040;
+  --sl-color-gray-3: #525252;
+  --sl-color-gray-4: #737373;
+  --sl-color-gray-5: #d4d4d4;
+  --sl-color-gray-6: #f0f0f0;
+  --sl-color-gray-7: #f7f7f7;
+  --sl-color-black: #ffffff;
+  --sl-color-bg-nav: #ffffff;
+  --sl-color-bg-sidebar: #fafafa;
+  --sl-color-bg-inline-code: #f0f0f0;
+  --sl-color-accent-low: #dbeafe;
+  --sl-color-accent: #2563eb;
+  --sl-color-accent-high: #1e3a8a;
+  --sl-color-text-accent: #1d4ed8;
+  --sl-color-hairline: #e5e5e5;
+  --sl-color-hairline-light: #efefef;
+  --sl-color-hairline-shade: #dcdcdc;
 }
 :root[data-theme="light"] body {
-  background: #faf9f5;
+  background: #ffffff;
 }
 
-/* Asides and badges: warm, muted hues instead of Starlight's blue and purple */
+/* Asides and badges: blue note, emerald tip, amber caution, red danger */
 :root,
 :root[data-theme="dark"] {
-  --sl-color-blue-low: #2f2f2c;
-  --sl-color-blue: #7a7870;
-  --sl-color-blue-high: #c9c7bd;
-  --sl-color-purple-low: #2b3226;
-  --sl-color-purple: #788c5d;
-  --sl-color-purple-high: #b4c79a;
-  --sl-color-green-low: #2b3226;
-  --sl-color-green: #788c5d;
-  --sl-color-green-high: #b4c79a;
-  --sl-color-orange-low: #3a2f1c;
-  --sl-color-orange: #b9822a;
-  --sl-color-orange-high: #e6c27f;
-  --sl-color-red-low: #3d2420;
-  --sl-color-red: #b5483a;
-  --sl-color-red-high: #eba295;
+  --sl-color-blue-low: #172554;
+  --sl-color-blue: #3b82f6;
+  --sl-color-blue-high: #bfdbfe;
+  --sl-color-purple-low: #052e1f;
+  --sl-color-purple: #10b981;
+  --sl-color-purple-high: #6ee7b7;
+  --sl-color-green-low: #052e1f;
+  --sl-color-green: #10b981;
+  --sl-color-green-high: #6ee7b7;
+  --sl-color-orange-low: #3a2a0a;
+  --sl-color-orange: #f59e0b;
+  --sl-color-orange-high: #fcd34d;
+  --sl-color-red-low: #3f1313;
+  --sl-color-red: #ef4444;
+  --sl-color-red-high: #fca5a5;
 }
 :root[data-theme="light"] {
-  --sl-color-blue-low: #ebe9df;
-  --sl-color-blue: #8f8d84;
-  --sl-color-blue-high: #4a4944;
-  --sl-color-purple-low: #e6ecdc;
-  --sl-color-purple: #788c5d;
-  --sl-color-purple-high: #44532f;
-  --sl-color-green-low: #e6ecdc;
-  --sl-color-green: #788c5d;
-  --sl-color-green-high: #44532f;
-  --sl-color-orange-low: #f6e6c9;
-  --sl-color-orange: #b9822a;
-  --sl-color-orange-high: #6e4a0f;
-  --sl-color-red-low: #f5dcd6;
-  --sl-color-red: #b5483a;
-  --sl-color-red-high: #7c2a20;
+  --sl-color-blue-low: #dbeafe;
+  --sl-color-blue: #2563eb;
+  --sl-color-blue-high: #1e3a8a;
+  --sl-color-purple-low: #d1fae5;
+  --sl-color-purple: #059669;
+  --sl-color-purple-high: #065f46;
+  --sl-color-green-low: #d1fae5;
+  --sl-color-green: #059669;
+  --sl-color-green-high: #065f46;
+  --sl-color-orange-low: #fef3c7;
+  --sl-color-orange: #d97706;
+  --sl-color-orange-high: #78350f;
+  --sl-color-red-low: #fee2e2;
+  --sl-color-red: #dc2626;
+  --sl-color-red-high: #7f1d1d;
 }
 .sl-badge {
   font-family: var(--sl-font);
@@ -119,14 +122,14 @@ h4,
 .site-title,
 .card .title,
 .starlight-aside__title {
-  font-family: var(--font-serif);
+  font-family: var(--font-heading);
 }
 .sl-markdown-content h1,
 .sl-markdown-content h2,
 .sl-markdown-content h3,
 .sl-markdown-content h4 {
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 .sl-markdown-content h2 {
   font-size: var(--sl-text-3xl);
@@ -137,7 +140,7 @@ h4,
 }
 main > .content-panel:first-child h1,
 .sl-container h1 {
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 .sl-markdown-content {
@@ -149,24 +152,24 @@ main > .content-panel:first-child h1,
 }
 .site-title {
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 /* Surfaces: soft borders, generous radii */
 .sl-markdown-content :not(pre) > code {
-  border-radius: 0.375rem;
+  border-radius: 0.25rem;
   font-size: 0.86em;
 }
 .expressive-code .frame {
-  --ec-brdRad: 0.75rem;
+  --ec-brdRad: 0.5rem;
 }
 .starlight-aside {
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   border: 1px solid color-mix(in srgb, var(--sl-color-asides-text-accent) 35%, transparent);
 }
 .card,
 .sl-link-card {
-  border-radius: 0.875rem;
+  border-radius: 0.5rem;
   border-color: var(--sl-color-hairline);
   background: var(--sl-color-gray-7);
   box-shadow: none;
@@ -185,7 +188,7 @@ main > .content-panel:first-child h1,
 .sl-markdown-content table {
   display: table;
   width: 100%;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--sl-color-hairline);
@@ -215,7 +218,7 @@ main > .content-panel:first-child h1,
 }
 .sl-markdown-content details {
   border: 1px solid var(--sl-color-hairline);
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   margin-block: 0.75rem;
   background: var(--sl-color-gray-7);
@@ -227,18 +230,20 @@ main > .content-panel:first-child h1,
   cursor: pointer;
 }
 
-/* Buttons: clay, pill-ish */
+/* Buttons: brand blue */
 .sl-link-button {
-  border-radius: 0.6rem;
+  border-radius: 0.375rem;
   font-weight: 500;
 }
 .sl-link-button.primary {
   background: var(--sl-color-accent);
   border-color: var(--sl-color-accent);
   color: #fff;
+  background: var(--brand);
+  border-color: var(--brand);
 }
 .sl-link-button.primary:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.1);
 }
 
 /* Sidebar current item */
@@ -248,7 +253,7 @@ main > .content-panel:first-child h1,
   border-radius: 0.5rem;
 }
 
-/* Landing: warm glow, serif hero */
+/* Landing: soft blue glow */
 [data-has-hero] .hero {
   position: relative;
 }
@@ -257,17 +262,17 @@ main > .content-panel:first-child h1,
   position: absolute;
   inset: -4rem 0 auto 0;
   height: 22rem;
-  background: radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--sl-color-accent) 22%, transparent), transparent 70%);
+  background: radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--sl-color-accent) 16%, transparent), transparent 70%);
   pointer-events: none;
   z-index: -1;
 }
 [data-has-hero] .hero h1 {
-  font-weight: 400;
-  letter-spacing: -0.025em;
-  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
   line-height: 1.1;
   text-wrap: balance;
-  max-width: 18ch;
+  max-width: 20ch;
 }
 @media (min-width: 50rem) {
   .why {
@@ -290,7 +295,7 @@ main > .content-panel:first-child h1,
 pre.mermaid {
   background: transparent !important;
   border: 1px solid var(--sl-color-hairline);
-  border-radius: 0.875rem;
+  border-radius: 0.5rem;
   padding: 1rem;
 }
 
@@ -349,7 +354,7 @@ pre.mermaid {
   .sl-markdown-content table {
     display: block;
     overflow-x: auto;
-    border-radius: 0.75rem;
+    border-radius: 0.5rem;
   }
   .sl-markdown-content :is(th, td) {
     padding: 0.6rem 0.75rem;
@@ -365,7 +370,52 @@ pre.mermaid {
   padding-bottom: 0.6rem;
 }
 
-/* Mermaid in dark mode: dark nodes, light text, warm hue kept */
+/* Mermaid in dark mode: dark nodes, light text, blue hue kept */
 :root:not([data-theme="light"]) pre.mermaid svg {
   filter: invert(0.9) hue-rotate(180deg);
+}
+
+/* Szum-Tech label */
+.site-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.site-title-wrap a.site-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--sl-color-white);
+  font-size: var(--sl-text-h4);
+}
+.site-title-wrap img,
+.site-title-wrap svg {
+  height: 1.75rem;
+  width: auto;
+}
+.by-szum {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 999px;
+  color: var(--sl-color-gray-3);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.by-szum:hover {
+  color: var(--sl-color-text-accent);
+  border-color: var(--sl-color-accent);
+}
+.by-szum b {
+  color: var(--sl-color-text-accent);
+  font-weight: 600;
+}
+@media (max-width: 30rem) {
+  .by-szum {
+    display: none;
+  }
 }
