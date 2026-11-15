@@ -1,37 +1,42 @@
 ---
+import Diagram from "./Diagram.astro";
 const pl = Astro.currentLocale === "pl";
 const t = pl
-  ? { w1: "Startuje pierwsze", w2: "Po T1", w3: "Po T1 i T2", needs: "wymaga", note: "Zadania w jednej kolumnie są niezależne i mogą iść równolegle." }
-  : { w1: "Starts first", w2: "After T1", w3: "After T1 and T2", needs: "needs", note: "Tasks in one column are independent and can run in parallel." };
-const waves = [
-  { cap: t.w1, tasks: [{ id: "T1", name: "Reset API", proj: "api", needs: "" }] },
-  { cap: t.w2, tasks: [{ id: "T2", name: "Reset screen", proj: "web", needs: "T1" }, { id: "T3", name: "Reset screen", proj: "mobile", needs: "T1" }] },
-  { cap: t.w3, tasks: [{ id: "T4", name: "E2E test", proj: "", needs: "T1, T2" }] },
+  ? { w1: "Startuje pierwsze", w2: "Po T1", w3: "Po T1 i T2", needs: "wymaga", alt: "Graf zależności zadań: T1 odblokowuje T2 i T3 (równolegle), a T4 czeka na T1 i T2", dep: "T4 wymaga też T1" }
+  : { w1: "Starts first", w2: "After T1", w3: "After T1 and T2", needs: "needs", alt: "Task dependency graph: T1 unblocks T2 and T3 in parallel, T4 waits for T1 and T2", dep: "T4 also needs T1" };
+const card = (x: number, y: number, id: string, name: string, meta: string) => ({ x, y, w: 136, h: 66, kind: "cmd", lines: [{ t: id, s: "mono" }, { t: name, s: "title" }, ...(meta ? [{ t: meta }] : [])] });
+const nodes = [
+  card(0, 40, "T1", "Reset API", "api"),
+  card(172, 40, "T2", "Reset screen", `web · ${t.needs} T1`),
+  card(172, 126, "T3", "Reset screen", `mobile · ${t.needs} T1`),
+  card(344, 40, "T4", "E2E test", `${t.needs} T1, T2`),
+];
+const edges = [
+  { pts: [[136, 73], [172, 73]] },
+  { pts: [[136, 73], [154, 73], [154, 159], [172, 159]] },
+  { pts: [[308, 73], [344, 73]] },
+  { pts: [[68, 106], [68, 226], [412, 226], [412, 106]], dashed: true },
+];
+const labels = [
+  { x: 0, y: 20, t: t.w1.toUpperCase() },
+  { x: 172, y: 20, t: t.w2.toUpperCase() },
+  { x: 344, y: 20, t: t.w3.toUpperCase() },
+  { x: 240, y: 246, t: t.dep, anchor: "middle" },
+];
+const pcard = (x: number, y: number, id: string, name: string, meta: string) => ({ x, y, w: 150, h: 66, kind: "cmd", lines: [{ t: id, s: "mono" }, { t: name, s: "title" }, { t: meta }] });
+const pnodes = [
+  pcard(95, 10, "T1", "Reset API", "api"),
+  pcard(5, 124, "T2", "Reset screen", `web · ${t.needs} T1`),
+  pcard(165, 124, "T3", "Reset screen", `mobile · ${t.needs} T1`),
+  pcard(95, 240, "T4", "E2E test", `${t.needs} T1, T2`),
+];
+const pedges = [
+  { pts: [[170, 76], [170, 100], [80, 100], [80, 124]] },
+  { pts: [[170, 76], [170, 100], [240, 100], [240, 124]] },
+  { pts: [[80, 190], [80, 215], [170, 215], [170, 240]] },
+  { pts: [[245, 43], [330, 43], [330, 273], [245, 273]], dashed: true },
 ];
 ---
 
-<div class="fx">
-  <div class="fx-waves" style={`--cols:${waves.length}`}>
-    {
-      waves.map((w) => (
-        <div class="fx-wave">
-          <p class="fx-cap">{w.cap}</p>
-          {w.tasks.map((k) => (
-            <div class="fx-node fx-cmd">
-              <code>{k.id}</code>
-              <b>{k.name}</b>
-              {(k.proj || k.needs) && (
-                <small>
-                  {k.proj}
-                  {k.proj && k.needs ? " · " : ""}
-                  {k.needs ? `${t.needs} ${k.needs}` : ""}
-                </small>
-              )}
-            </div>
-          ))}
-        </div>
-      ))
-    }
-  </div>
-  <p class="fx-note">{t.note}</p>
-</div>
+<Diagram variant="fx-narrow" width={340} height={320} nodes={pnodes} edges={pedges} alt={t.alt} maxWidth={360} />
+<Diagram variant="fx-wide" width={480} height={256} nodes={nodes} edges={edges} labels={labels} alt={t.alt} maxWidth={500} />

@@ -1,25 +1,28 @@
 ---
+import Diagram from "./Diagram.astro";
 const pl = Astro.currentLocale === "pl";
 const t = pl
-  ? { par: "równolegle", tests: "Testy", checks: "Twoje sprawdzenia", reviewer: "reviewer", ask: "Pytanie · commit · PR", block: "Blokery + zadanie do ponowienia" }
-  : { par: "in parallel", tests: "Tests", checks: "Your checks", reviewer: "reviewer", ask: "Ask · commit · PR", block: "Blockers + task to re-run" };
+  ? { par: "równolegle", tests: "Testy", checks: "Twoje sprawdzenia", ask: "Pytanie · commit · PR", blk: "Blokery + zadanie do ponowienia", alt: "/sdd:review uruchamia równolegle testy, spec-verifier i Twoje sprawdzenia, a reviewer wydaje werdykt READY lub NOT READY" }
+  : { par: "in parallel", tests: "Tests", checks: "Your checks", ask: "Ask · commit · PR", blk: "Blockers + task to re-run", alt: "/sdd:review runs tests, spec-verifier and your checks in parallel; the reviewer then gives READY or NOT READY" };
+const nodes = [
+  { x: 115, y: 10, w: 220, h: 40, kind: "cmd", align: "middle", lines: [{ t: "/sdd:review", s: "cmd" }] },
+  { x: 5, y: 110, w: 140, h: 46, align: "middle", lines: [{ t: t.tests, s: "title" }] },
+  { x: 155, y: 110, w: 140, h: 46, align: "middle", lines: [{ t: "spec-verifier", s: "title" }] },
+  { x: 305, y: 110, w: 140, h: 46, align: "middle", lines: [{ t: t.checks, s: "title" }] },
+  { x: 115, y: 214, w: 220, h: 40, kind: "cmd", align: "middle", lines: [{ t: "reviewer", s: "cmd" }] },
+  { x: 5, y: 316, w: 215, h: 60, kind: "ok", lines: [{ t: "READY", s: "tag" }, { t: t.ask, s: "title" }] },
+  { x: 230, y: 316, w: 215, h: 60, kind: "bad", lines: [{ t: "NOT READY", s: "tag" }, { t: t.blk, s: "title" }] },
+];
+const edges = [
+  { pts: [[225, 50], [225, 80], [75, 80], [75, 110]] },
+  { pts: [[225, 50], [225, 110]] },
+  { pts: [[225, 50], [225, 80], [375, 80], [375, 110]] },
+  { pts: [[75, 156], [75, 184], [225, 184], [225, 214]], noArrow: true },
+  { pts: [[225, 156], [225, 214]], noArrow: true },
+  { pts: [[375, 156], [375, 184], [225, 184], [225, 214]] },
+  { pts: [[225, 254], [225, 285], [112, 285], [112, 316]] },
+  { pts: [[225, 254], [225, 285], [337, 285], [337, 316]] },
+];
 ---
 
-<div class="fx">
-  <div class="fx-col" style="max-width:40rem">
-    <div class="fx-node fx-cmd"><code>/sdd:review</code></div>
-    <div class="fx-down" data-label={t.par}></div>
-    <div class="fx-row" style="--cols:3">
-      <div class="fx-node"><b>{t.tests}</b></div>
-      <div class="fx-node"><b>spec-verifier</b></div>
-      <div class="fx-node"><b>{t.checks}</b></div>
-    </div>
-    <div class="fx-down"></div>
-    <div class="fx-node fx-cmd"><code>{t.reviewer}</code></div>
-    <div class="fx-down"></div>
-    <div class="fx-row">
-      <div class="fx-node fx-ok"><span class="fx-tag">READY</span><b>{t.ask}</b></div>
-      <div class="fx-node fx-bad"><span class="fx-tag">NOT READY</span><b>{t.block}</b></div>
-    </div>
-  </div>
-</div>
+<Diagram width={450} height={390} nodes={nodes} edges={edges} labels={[{ x: 233, y: 74, t: t.par }]} alt={t.alt} maxWidth={480} />
