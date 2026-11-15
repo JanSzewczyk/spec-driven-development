@@ -121,7 +121,7 @@ main > .content-panel:first-child h1,
 }
 .starlight-aside {
   border-radius: 0.75rem;
-  border-inline-start-width: 3px;
+  border: 1px solid color-mix(in srgb, var(--sl-color-asides-text-accent) 35%, transparent);
 }
 .card,
 .sl-link-card {
