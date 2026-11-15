@@ -123,9 +123,9 @@ export function register(on) {
       $.ui.log('sdd-board: first scan failed: ' + String(error), { to: 'debug' })
     }
     try {
-      await $.command.register({ name: 'sdd-board', description: 'Open the SDD side panel', immediate: true })
+      await $.command.register({ name: 'sdd-dashboard', description: 'Open the SDD side panel', immediate: true })
     } catch (error) {
-      $.ui.log('sdd-board: could not register /sdd-board: ' + String(error))
+      $.ui.log('sdd-board: could not register /sdd-dashboard: ' + String(error))
     }
     $.clock.every(4000, async () => {
       if (await scan($)) $.ui.invalidate('ui.render')
@@ -133,15 +133,15 @@ export function register(on) {
     if (hasSpecs && !isClosedByUser) {
       try {
         const placed = await $.ui.open({ id: PANE, title: TITLE, columns: 48 })
-        if (!placed.isPlaced) $.ui.toast('SDD panel ready: type /sdd-board')
+        if (!placed.isPlaced) $.ui.toast('SDD panel ready: type /sdd-dashboard')
       } catch {
-        // the panel can be opened with /sdd-board
+        // the panel can be opened with /sdd-dashboard
       }
     }
     return next(e)
   })
 
-  on('command.run', { command: 'sdd-board' }, async ($) => {
+  on('command.run', { command: 'sdd-dashboard' }, async ($) => {
     isClosedByUser = false
     await scan($)
     await $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true, columns: 48 })

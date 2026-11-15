@@ -257,7 +257,7 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
   on('process.run', () => ({ value: { exitCode: 0, stdout: (opts.branch ?? 'feat/user-login') + '\n', stderr: '' } }))
   on('prompt.fill', (_: any, e: any) => { filled.push(e.text); return { isFilled: true } })
   on('command.run', (_: any, e: any) => {
-    if (e.command === 'sdd-board') return {}
+    if (e.command === 'sdd-dashboard') return {}
     ran.push(e.command + ' ' + e.args)
     if (refuse) throw new Error('the session was stopped and nobody has sent input since')
     return {}

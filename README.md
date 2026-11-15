@@ -174,7 +174,7 @@ You should see `sdd@1.2.0`. Once installed, the plugin's 11 skills (`/sdd:spec`,
 
 ```text
 /plugin install sdd-board@spec-driven-development
-/sdd-board        # open or focus the panel (it also opens by itself when the project has specs/)
+/sdd-dashboard    # open or focus the panel (it also opens by itself when the project has specs/)
 ```
 
 `sdd-board` declares `sdd` as a dependency, so installing it installs `sdd` too.
