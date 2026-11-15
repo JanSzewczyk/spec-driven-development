@@ -92,7 +92,8 @@ proposed lines).
 
 - Edit only the values under `implementation`, `actions` and `review`; keep the comments, `format`,
   `projects`, `generated` and every line the user did not change byte-for-byte. A section missing
-  from the file is added from the template in its usual order. Two-space indentation.
+  from the file is added from the template in its usual order. Two-space indentation; quote a key or
+  value that starts with `@` (npm scopes) or another YAML indicator.
 - One value per key, grammar exactly as in the reference (`skill:<name>`, `agent:<name>`,
   `command:<shell>`, `in-session`; per project under `implementation.projects` / `review.projects`,
   `<project>: <value>`; `review.checks` as a list). Unknown keys stay untouched, and so does

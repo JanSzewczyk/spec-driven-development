@@ -301,7 +301,8 @@ function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult 
   }
   const name = caps.path
   const f: Finding[] = []
-  for (const e of caps.errors) f.push(fail(`line ${e.line}: ${e.message}`))
+  // A file that does not parse has no values to judge: report the syntax error alone.
+  if (caps.errors.length > 0) return finish(3, name, caps.errors.map((e) => fail(`line ${e.line}: ${e.message}`)), '')
   if (caps.legacy) f.push(warn(`${LEGACY_CAPABILITIES_PATH} is the old Markdown format: \`/sdd:doctor init\` migrates it to ${CAPABILITIES_PATH}`, 'init'))
   else if (caps.errors.length === 0 && caps.format < SDD_FORMAT) f.push(warn(`\`format\` is ${caps.format || 'not set'}, this version writes ${SDD_FORMAT}: run \`/sdd:doctor init\` to migrate`, 'init'))
 

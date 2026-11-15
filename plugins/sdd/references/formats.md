@@ -25,7 +25,7 @@ Verdict: `READY` (no warn / fail) · `PARTIAL` (warns, or 1–2 fails) · `NOT_R
 
 YAML, validated by `schemas/capabilities.schema.json`; keys, values and defaults in
 [capabilities.md](capabilities.md). The reader takes a subset: mappings, lists, `[]` / `{}` of plain
-values, quoted strings, `#` comments; no anchors, tags or multi-line strings. Quote globs (`"**/x"`).
+values, quoted strings, `#` comments; no anchors, tags or multi-line strings. Quote globs (`"**/x"`) and names starting with `@` (`"@acme/web"`).
 
 ## Constitution §2
 
