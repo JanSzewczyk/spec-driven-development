@@ -14,7 +14,7 @@ first is merged.
 ## Before the first task
 
 - The tree must be clean and on the SDD branch (the spec's `**Branch:**`); commit `specs/<slug>/`
-  first (step 5 of `/sdd:implement`). A new worktree sees only committed work.
+  first (the documentation commit, step 3 of `/sdd:implement`). A new worktree sees only committed work.
 - Ask once with `AskUserQuestion`:
   - `merge: auto` — "Task branches will be rebased and fast-forwarded into `<branch>` without
     asking." Options: "Go" / "Stop".

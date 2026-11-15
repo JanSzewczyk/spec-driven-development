@@ -38,7 +38,13 @@ for PRs). Everything below applies to both modes.
 **Ids.** `**Epic:**` in `tasks.md` + the task heading give the full id `<EPIC>-T<n>`. No `**Epic:**`
 line → STOP: "Run `/sdd:tasks` (or `/sdd:doctor init`) to assign an epic id."
 
-### 3. Build the brief
+### 3. Commit the documentation, then build the brief
+
+**Documentation commit.** `commit: task` and `specs/<slug>/` has uncommitted changes (spec, plan,
+tasks — nothing before this step commits them) → commit them now, before any status is set or any
+task starts: `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`, via the `commit`
+action or `git add -- specs/<slug>/`. A worktree or sub-session only sees what is committed.
+`commit: off` → skip; `/sdd:review` commits everything at the end.
 
 The task is self-contained only by reference, so inline what it points to:
 
@@ -69,9 +75,6 @@ with the code, and run the project's checks from §2 until they pass.
 
 `commit: task` (default; `off` → skip this step and leave the work uncommitted for `/sdd:review`):
 
-- **Before the first task** of the feature, commit `specs/<slug>/` if it has uncommitted changes:
-  `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`. A worktree or sub-session only
-  sees what is committed.
 - **After each finished task** (status `review`), commit only that task's files — never `specs/`,
   never `git add -A`. Use the `commit` action from `## Actions` (`skill:` / `agent:` / `command:`);
   unset → `git add -- <files>` and a Conventional Commits message `<type>(<slug>): <task title>`.
@@ -79,7 +82,7 @@ with the code, and run the project's checks from §2 until they pass.
 - Check it landed: `git log -1 --format='%(trailers:key=Task,valueonly)'`; empty (a skill rewrote the
   message) → `git commit --amend --trailer 'Task: <EPIC>-T<n>'`.
 
-Status changes in `tasks.md` stay uncommitted here; `/sdd:review` commits them.
+Status changes in `tasks.md` (and `spec.md` / `plan.md`) stay uncommitted here; `/sdd:review` commits them with `review.md`.
 
 ### 6. Output
 
