@@ -19,7 +19,12 @@ export type Capabilities = {
 // ---------- text helpers (also used for constitution and specs) ----------
 
 export function stripComments(text: string): string {
-  return text.replace(/<!--[\s\S]*?-->/g, '')
+  let current = text
+  while (true) {
+    const next = current.replace(/<!--[\s\S]*?-->/g, '')
+    if (next === current) return next
+    current = next
+  }
 }
 
 export type Heading = { title: string; line: number }
