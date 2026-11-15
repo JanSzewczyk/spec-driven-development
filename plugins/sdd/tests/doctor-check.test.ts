@@ -26,7 +26,7 @@ const CONSTITUTION = `# Project Constitution
 
 const CAPABILITIES = `# Project Capabilities
 
-<!-- sdd-format: 2 -->
+<!-- sdd-format: 3 -->
 
 ## Projects
 
@@ -331,7 +331,7 @@ test('effectiveConfig shows set values and defaults per project', () => {
 })
 
 test('capabilities: new Implementation keys are validated and are not project names', () => {
-  const caps = CAPABILITIES.replace('default: in-session\n', 'default: in-session\ncommit: task\nisolation: worktree\nmerge: pr\nparallel: 2\n')
+  const caps = CAPABILITIES.replace('default: in-session\n', 'default: in-session\nisolation: worktree\nmerge: pr\nparallel: 2\n')
   expect(texts(runChecks(allTools(snapshot({ capabilities: caps }))), 3)).toEqual([])
   const bad = CAPABILITIES.replace('default: in-session\n', 'default: in-session\nisolation: sideways\nparallel: 0\n')
   const t = texts(runChecks(allTools(snapshot({ capabilities: bad }))), 3).join('\n')
@@ -339,9 +339,18 @@ test('capabilities: new Implementation keys are validated and are not project na
   expect(t).toContain('"parallel: 0" has an unknown value')
 })
 
+test('capabilities: a commit: line under Implementation is no longer read and init deletes it', () => {
+  const caps = CAPABILITIES.replace('default: in-session\n', 'default: in-session\ncommit: off\n')
+  const f = runChecks(allTools(snapshot({ capabilities: caps }))).checks[2].findings
+  const commit = f.filter((x) => x.text.includes('commit'))
+  expect(commit.length).toBe(1)
+  expect(commit[0].text).toContain('`commit: off` is no longer read')
+  expect(commit[0].fix).toBe('init')
+})
+
 test('capabilities: an old format marker, an unset ci and a missing or old workflow ask for init', () => {
   const run = (over: Partial<Snapshot>) => runChecks(allTools(snapshot(over))).checks[2].findings
-  expect(run({ capabilities: CAPABILITIES.replace('<!-- sdd-format: 2 -->\n\n', '') }).find((f) => f.text.includes('format'))?.fix).toBe('init')
+  expect(run({ capabilities: CAPABILITIES.replace('<!-- sdd-format: 3 -->\n\n', '') }).find((f) => f.text.includes('format'))?.fix).toBe('init')
   expect(run({ capabilities: CAPABILITIES.replace('ci: on\n', '') }).find((f) => f.text.includes('`ci:` is not set'))?.fix).toBe('init')
   expect(run({ workflow: null }).find((f) => f.text.includes('is missing'))?.fix).toBe('init')
   expect(run({ workflow: '# sdd-workflow: 0\n' }).find((f) => f.text.includes('older than the template'))?.fix).toBe('init')

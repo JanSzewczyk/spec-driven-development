@@ -93,7 +93,7 @@ proposed lines).
   added from the template in its usual order.
 - One value per key, grammar exactly as in the reference (`skill:<name>`, `agent:<name>`,
   `command:<shell>`, `in-session`; per-project lines `<project>: <value>`). Unknown keys stay untouched,
-  and so do `commit`, `isolation`, `merge`, `parallel` (under `## Implementation`) and `ci` (under
+  and so do `isolation`, `merge`, `parallel` (under `## Implementation`) and `ci` (under
   `## Review`): they are settings, not flows.
 - Print one line per section: changed / unchanged.
 

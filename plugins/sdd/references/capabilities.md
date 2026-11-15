@@ -20,7 +20,7 @@ A missing section or line means the default below.
 
 | Section | Keys | Default |
 |---|---|---|
-| `## Implementation` | `default`, one line per project (`<project>: <value>`) — who implements a task; the project's line wins over `default`. Also `commit: task\|off` (commit every finished task with a `Task:` trailer), `isolation: none\|worktree` (each task in its own worktree and branch), `merge: pr\|auto` (with `worktree`: open a PR per task and wait for a human, or rebase + fast-forward by itself), `parallel: <n>` (tasks at once with `worktree`) | `default: in-session`, `commit: task`, `isolation: none`, `merge: pr`, `parallel: 3` |
+| `## Implementation` | `default`, one line per project (`<project>: <value>`) — who implements a task; the project's line wins over `default`. Also `isolation: none\|worktree` (each task in its own worktree and branch), `merge: pr\|auto` (with `worktree`: open a PR per task and wait for a human, or rebase + fast-forward by itself), `parallel: <n>` (tasks at once with `worktree`) | `default: in-session`, `isolation: none`, `merge: pr`, `parallel: 3` |
 | `## Actions` | `branch`, `commit`, `pr` — `skill:` / `agent:` / `command:` | unset: the session uses git and `gh` (or a matching skill it has) |
 | `## Review` | `tests: run\|skip` · `publish: ask\|off` · `default: auto\|skill:<name>\|agent:<name>` and one line per project for the audit flow · `checks:` extra `agent:` / `skill:` entries run on every review · `ci: on\|off` whether `.github/workflows/sdd-check.yml` is wanted | `tests: run`, `publish: ask`, `default: auto`, no checks, `ci` unset (init asks) |
 | `## Generated / out-of-band paths` | one glob per line | none |

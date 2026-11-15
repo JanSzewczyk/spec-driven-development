@@ -20,7 +20,7 @@ satisfy. You plan and describe; you do not implement and you do not choose agent
 - the feature folder `specs/<current>/`: from `$ARGUMENTS`, else the spec whose `**Branch:**`
   equals `git branch --show-current` (none → list the specs and ask); read its `plan.md` and
   `spec.md` (the AC ids)
-- `specs/capabilities.md`: the `## Projects` section, `commit:` under `## Implementation` and the `commit` action under `## Actions` (step 5)
+- `specs/capabilities.md`: the `## Projects` section and the `commit` action under `## Actions` (step 5)
 - `tasks.md`, when it already exists (a re-run after the plan or the spec changed)
 
 ### 2. Decompose
@@ -95,8 +95,7 @@ independent tasks with overlapping `files`.
 
 Set `plan.md` `**Status:**` → `tasks-ready` with Edit (unless already later).
 
-**Commit the documentation** (`commit:` under `## Implementation` is `task`, the default; `off` → skip
-and say the files stay uncommitted). The spec, plan and tasks are the whole documentation of the
+**Commit the documentation.** The spec, plan and tasks are the whole documentation of the
 feature, and nothing earlier commits them:
 
 - `git status --short -- specs/<slug>/` is empty → nothing to commit.

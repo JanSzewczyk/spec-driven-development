@@ -29,11 +29,12 @@ Read the `## Implementation` section of `specs/capabilities.md`. The line for th
 wins over `default`; the values and how each is handed over are in
 [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md) (`in-session` → step 4).
 
-No section, no matching line → `in-session`. The keys `commit`, `isolation`, `merge` and `parallel`
+No section, no matching line → `in-session`. The keys `isolation`, `merge` and `parallel`
 (same file) are not flows: `isolation: worktree` → follow
 [isolation.md](references/isolation.md) for steps 3–5 instead of handing tasks over in place
 (each task runs in its own worktree and branch; the references cover launching, merging and waiting
-for PRs). Everything below applies to both modes.
+for PRs). Steps 1, 2 and 6 apply to both modes; steps 3–5 describe `isolation: none`, and
+isolation.md reuses the brief of step 3.
 
 **Ids.** `**Epic:**` in `tasks.md` + the task heading give the full id `<EPIC>-T<n>`. No `**Epic:**`
 line → STOP: "Run `/sdd:tasks` (or `/sdd:doctor init`) to assign an epic id."
@@ -41,10 +42,9 @@ line → STOP: "Run `/sdd:tasks` (or `/sdd:doctor init`) to assign an epic id."
 ### 3. Commit the documentation, then build the brief
 
 **Documentation commit.** `/sdd:tasks` already committed the spec, plan and tasks. When `specs/<slug>/`
-still has uncommitted changes (edits made after it, or `/sdd:tasks` ran with `commit: off`) and
-`commit: task` → commit them now, before any status is set or any task starts: `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`, via the `commit`
+still has uncommitted changes (edits made after it) → commit them now, before any status is set or
+any task starts: `docs(<slug>): add spec, plan and tasks`, trailer `Epic: <EPIC>`, via the `commit`
 action or `git add -- specs/<slug>/`. A worktree or sub-session only sees what is committed.
-`commit: off` → skip; `/sdd:review` commits everything at the end.
 
 The task is self-contained only by reference, so inline what it points to:
 
@@ -73,7 +73,7 @@ with the code, and run the project's checks from §2 until they pass.
 
 ### 5. Commit
 
-`commit: task` (default; `off` → skip this step and leave the work uncommitted for `/sdd:review`):
+Every finished task is committed; there is no setting to turn it off.
 
 - **After each finished task** (status `review`), commit only that task's files — never `specs/`,
   never `git add -A`. Use the `commit` action from `## Actions` (`skill:` / `agent:` / `command:`);

@@ -64,10 +64,12 @@ byte-for-byte). **Keep these exact headings — other commands match them.**
 - **Format marker.** `<!-- sdd-format: N -->` sits right below the title block. New file: the
   template has it. Existing file: add or raise it to the template's number only **after** the
   migrations of this run are done (steps 3 and 5); never lower it.
-- **New keys.** An existing `## Implementation` that lacks `commit`, `isolation`, `merge` or
-  `parallel` gets the template's lines appended (`commit: task`, `isolation: none`, `merge: pr`,
-  `parallel: 3`: today's behaviour plus per-task commits); values the user already set stay. Do not
-  add `ci:` here (step 6).
+- **New keys.** An existing `## Implementation` that lacks `isolation`, `merge` or `parallel` gets
+  the template's lines appended (`isolation: none`, `merge: pr`, `parallel: 3`: today's behaviour);
+  values the user already set stay. Do not add `ci:` here (step 6).
+- **Removed key (format 3).** Delete a `commit:` line under `## Implementation` (not the `commit:`
+  action under `## Actions`): every finished task is now committed. When its value was `off`, tell the
+  user that `/sdd:implement` now commits each task.
 - Legacy files: drop the old auto-generated `Specialist agents` and `Skills` sections and rename
   `Stack profile` → `Projects`. Leave `Task type → routing rules` and `Custom routing rules` as they
   are (user content, no longer read) and tell the user they can delete them.

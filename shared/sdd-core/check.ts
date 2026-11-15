@@ -365,6 +365,10 @@ function checkCapabilities(s: Snapshot, caps: Capabilities | null): CheckResult 
       if (!IMPLEMENTATION_KEYS[k].test(v)) f.push(warn(`Implementation: "${k}: ${v}" has an unknown value`))
       continue
     }
+    if (k === 'commit') {
+      f.push(warn(`Implementation: \`commit: ${v}\` is no longer read (every finished task is committed): \`/sdd:doctor init\` deletes it`, 'init'))
+      continue
+    }
     if (k !== 'default' && !names.has(k)) f.push(warn(`Implementation: "${k}" is not a listed project`))
     if (!FLOW_VALUE.test(v)) f.push(warn(`Implementation: "${k}: ${v}" is not skill:<name> | agent:<name> | command:<shell> | in-session`))
   }
