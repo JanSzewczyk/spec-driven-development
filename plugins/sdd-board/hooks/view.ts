@@ -2,7 +2,7 @@
 import { ROLE_KEY, STATUS_ROLE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
 import type { Config } from './core/check.ts'
-import { checkSvg, dividerSvg, dotSvg, dotsSvg, pillSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
+import { branchSvg, checkSvg, dividerSvg, dotSvg, dotsSvg, pillSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
 export type Actions = {
@@ -461,7 +461,7 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
       children: tiles.map(([key, n, of, label]) =>
         Box({
           key, flexDirection: 'column', flexGrow: 1, borderStyle: 'round', paddingX: 1,
-          ...(isRich ? { borderColor: TILE_BG, backgroundColor: TILE_BG } : {}),
+          ...(isRich ? { backgroundColor: TILE_BG } : {}),
           children: [
             Box({
               flexDirection: 'row', alignItems: 'flex-end',
@@ -525,22 +525,33 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
   for (const sec of config.sections) {
     const set = sec.entries.filter((e) => e.source === 'set').length
     const width = Math.min(18, Math.max(...sec.entries.map((e) => e.key.length)))
+    // An option that belongs to another entry (merge and parallel under isolation) is drawn under it, behind a
+    // connector, and shares one row of the card with it, so no hairline cuts the group.
+    const entryRow = (e: (typeof sec.entries)[number], child: 'none' | 'mid' | 'last') =>
+      Box({
+        key: sec.title + '-' + e.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
+        children: [
+          child === 'none' ? null : isRich ? Svg({ alt: '', width: 16, height: 20, source: branchSvg(child === 'last') }) : Text({ dimColor: true, children: [child === 'last' ? '└' : '├'] }),
+          isRich
+            ? Svg({ alt: e.source === 'set' ? 'set' : 'default', width: 8, height: 8, source: dotSvg(e.source === 'set') })
+            : Text({ color: e.source === 'set' ? 'success' : undefined, dimColor: e.source !== 'set', children: [e.source === 'set' ? '●' : '○'] }),
+          Box({ width: Math.max(width + 1 - (child === 'none' ? 0 : 2), 6), children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [e.key] })] }),
+          valueNode(el, isRich, e),
+          e.source === 'default' ? Text({ dimColor: true, size: 'caption', children: ['default'] }) : null,
+        ].filter(Boolean),
+      })
+    const top = sec.entries.filter((e) => !e.parent)
     kids.push(
       section(
         el, sctx, sec.title, set ? set + ' set' : 'all default',
-        sec.entries.map((e) =>
-          Box({
-            key: sec.title + '-' + e.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
-            children: [
-              isRich
-                ? Svg({ alt: e.source === 'set' ? 'set' : 'default', width: 8, height: 8, source: dotSvg(e.source === 'set') })
-                : Text({ color: e.source === 'set' ? 'success' : undefined, dimColor: e.source !== 'set', children: [e.source === 'set' ? '●' : '○'] }),
-              Box({ width: width + 1, children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [e.key] })] }),
-              valueNode(el, isRich, e),
-              e.source === 'default' ? Text({ dimColor: true, size: 'caption', children: ['default'] }) : null,
-            ].filter(Boolean),
-          }),
-        ),
+        top.map((e) => {
+          const children = sec.entries.filter((c) => c.parent === e.key)
+          if (!children.length) return entryRow(e, 'none')
+          return Box({
+            key: sec.title + '-' + e.key + '-group', flexDirection: 'column',
+            children: [entryRow(e, 'none'), ...children.map((c, i) => entryRow(c, i === children.length - 1 ? 'last' : 'mid'))],
+          })
+        }),
       ),
     )
   }

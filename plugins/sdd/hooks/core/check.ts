@@ -129,7 +129,8 @@ export function commandOf(command: string): { dir: string | null; exe: string } 
 // ---------- effective configuration ----------
 
 export type FlowRef = { kind: 'skill' | 'agent' | 'command'; name: string; where: string }
-export type ConfigEntry = { key: string; value: string; source: 'set' | 'default' }
+// `parent` names the entry an option belongs to (merge and parallel belong to isolation: worktree); a view nests it under that entry.
+export type ConfigEntry = { key: string; value: string; source: 'set' | 'default'; parent?: string }
 export type ConfigSection = { title: string; entries: ConfigEntry[] }
 export type Config = { path: string; legacy: boolean; projects: Project[]; commands: CommandRow[]; sections: ConfigSection[]; generated: number; configured: boolean }
 
@@ -171,7 +172,7 @@ export function effectiveConfig(caps: Capabilities, constitution: string | null)
   const iso = isolationOf(caps)
   implementation.push(entry('isolation', iso.mode === 'worktree' ? 'worktree' : '', 'none'))
   if (iso.mode === 'worktree') {
-    for (const k of Object.keys(WORKTREE_KEYS)) implementation.push(entry(k, iso[k as 'merge' | 'parallel'], WORKTREE_DEFAULTS[k]))
+    for (const k of Object.keys(WORKTREE_KEYS)) implementation.push({ ...entry(k, iso[k as 'merge' | 'parallel'], WORKTREE_DEFAULTS[k]), parent: 'isolation' })
   }
 
   const act = section(caps, 'actions')
