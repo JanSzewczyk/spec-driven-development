@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] — 2026-11-16
+
+`sdd` goes to 2.0.4.
+
+### Changed
+
+- `effectiveConfig` marks `merge` and `parallel` with `parent: 'isolation'` (shared core, used by the `sdd-board` configuration pane). Their values and the `set` / `default` source are unchanged.
+
+## [0.9.3 sdd-board] — 2026-11-16
+
+`sdd-board` goes to 0.9.3.
+
+### Fixed
+
+- The configuration pane draws `merge` and `parallel` under `isolation: worktree`, behind a connector, instead of as separate rows.
+- The three stat tiles have a visible border again (it was set to the tile's own background colour).
+
 ## [2.0.3] — 2026-11-15
 
 `sdd` releases are now tagged `v<version>` instead of `sdd--v<version>`.
