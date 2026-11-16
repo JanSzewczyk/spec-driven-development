@@ -528,6 +528,36 @@ test('the configuration pane reads a legacy capabilities.md and offers the migra
   await ui.unmount()
 })
 
+const WORKTREE_CAPS = CAPS.replace('  isolation: none', '  isolation:\n    worktree:\n      merge: pr\n      parallel: 5')
+
+test('merge and parallel hang under isolation: worktree behind a connector', async ($, on) => {
+  stubProject($, on, true, { files: { 'specs/capabilities.yml': WORKTREE_CAPS, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: '├' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '└' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'parallel' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('without isolation: worktree there is nothing to nest', async ($, on) => {
+  stubProject($, on, true, { files: { 'specs/capabilities.yml': CAPS, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: '├' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '└' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('on Desktop the nested options get connectors and no separator between them', async ($, on) => {
+  stubProject($, on, true, { files: { 'specs/capabilities.yml': WORKTREE_CAPS, 'specs/constitution.md': CONSTITUTION } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, requestId: 'sdd-board-config', surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: 'parallel' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '├' })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('on Desktop the configuration pane draws tiles and row separators', async ($, on) => {
   stubProject($, on, true, { files: { 'specs/capabilities.yml': CAPS, 'specs/constitution.md': CONSTITUTION } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })

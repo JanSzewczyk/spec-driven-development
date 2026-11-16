@@ -492,8 +492,8 @@ test('effectiveConfig shows merge and parallel only with isolation: worktree', (
   const wt = effectiveConfig(parseCapabilities(CAPABILITIES.replace('  isolation: none', '  isolation:\n    worktree:\n      merge: auto')), CONSTITUTION).sections[0].entries
   expect(wt.slice(3)).toEqual([
     { key: 'isolation', value: 'worktree', source: 'set' },
-    { key: 'merge', value: 'auto', source: 'set' },
-    { key: 'parallel', value: '3', source: 'default' },
+    { key: 'merge', value: 'auto', source: 'set', parent: 'isolation' },
+    { key: 'parallel', value: '3', source: 'default', parent: 'isolation' },
   ])
   expect(none.sections[2].entries.find((e) => e.key === 'ci')).toEqual({ key: 'ci', value: 'on', source: 'set' })
 })

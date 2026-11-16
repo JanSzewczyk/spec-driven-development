@@ -155,6 +155,17 @@ export function dividerSvg(width: number, height = 15): string {
   return svgDoc(width, height, themed([['line', 'stroke', CDS.border]]) + '<line x1="0" y1="' + y + '" x2="' + width + '" y2="' + y + '" stroke="' + MID + '" stroke-opacity="0.28"/>')
 }
 
+// Connector of an option nested under another row: a guide at x=4 (under the parent's 8px dot) that bends
+// into the row; unless it is the last option the guide goes on to the next one. The arm stops 4 short of the
+// right edge, where the option's dot follows with no gap of its own.
+export function branchSvg(last: boolean, width = 18, height = 20): string {
+  const y = height / 2
+  const path = last
+    ? 'M4 0 V' + (y - 4) + ' Q4 ' + y + ' 8 ' + y + ' H' + (width - 4)
+    : 'M4 0 V' + height + ' M4 ' + y + ' H' + (width - 4)
+  return svgDoc(width, height, themed([['path', 'stroke', CDS.borderStrong]]) + '<path d="' + path + '" fill="none" stroke="' + MID + '" stroke-width="1" stroke-linecap="round"/>')
+}
+
 // Small marker for a configuration value: filled (--fill-success) when set by the user, hollow (--text-muted) when default.
 export function dotSvg(isSet: boolean): string {
   const body = isSet
