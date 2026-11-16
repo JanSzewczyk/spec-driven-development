@@ -28,7 +28,7 @@ Wtedy sesja uruchamiająca `/sdd:implement all` tylko **orkiestruje**. Każde go
   <TabItem label="merge: pr">
     **Człowiek w pętli.** Każde zadanie otwiera PR do gałęzi SDD, a orkiestrator czeka (`status: in-progress`, `pr:` w zadaniu; board pokazuje „czeka na merge").
 
-    Ty robisz merge. Ponowne `/sdd:implement all` sprawdza PR-y i startuje zadania, które odblokowały.
+    Ty robisz merge. `/sdd:implement` sprawdza PR-y, oznacza zmergowane zadania jako `review` i startuje zadania, które odblokowały; po ostatnim merge'u to samo sprawdza `/sdd:review`, więc możesz przejść od razu do niego.
   </TabItem>
   <TabItem label="merge: auto">
     **Bez udziału człowieka.** Orkiestrator robi rebase gałęzi zadania na gałąź SDD i fast-forward, po czym startuje kolejne zadania, bez ponownego pytania po jednym potwierdzeniu na początku.

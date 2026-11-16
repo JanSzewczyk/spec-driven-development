@@ -18,7 +18,9 @@ It does not verify the result on its own — the implementer runs the project's 
 ### 1. Resolve scope
 
 The feature is the `specs/*/spec.md` whose `**Branch:**` equals `git branch --show-current` (none →
-list the specs and ask). Read its `tasks.md`. `$ARGUMENTS`: a task id → that task; `all` → every task not yet
+list the specs and ask). `implementation.isolation` is `worktree:` → first run
+[Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks)
+(any argument, not only `all`). Read its `tasks.md`. `$ARGUMENTS`: a task id → that task; `all` → every task not yet
 `review|done`, in dependency order. A task whose `depends_on` are not all `review|done` → STOP and
 name the blockers. Independent tasks may be handed over together when the flow runs in the
 background; otherwise one after another.

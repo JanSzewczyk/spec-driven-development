@@ -23,7 +23,10 @@ per sibling repository on the feature branch. Every step and every agent uses th
 ### 1. Pre-flight and configuration
 
 - Branch ≠ default branch. The feature is the `specs/*/spec.md` whose `**Branch:**` equals the
-  current branch (`specs/<current>/`); every task in its `tasks.md` is `review` or `done`.
+  current branch (`specs/<current>/`). A task with `branch:` or `pr:` → run
+  [Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks)
+  first; a PR still open → STOP: "Waiting for merge: <PR list>". Then every task in its `tasks.md`
+  is `review` or `done`.
 - Read `projects`, `review` and `actions` from `specs/capabilities.yml` (keys and defaults:
   [capabilities.md](${CLAUDE_PLUGIN_ROOT}/references/capabilities.md); an unknown key such as the old
   `ui:` is ignored). Only the old `specs/capabilities.md` exists → STOP: "Run `/sdd:doctor init` to migrate it."

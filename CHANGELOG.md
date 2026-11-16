@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Isolated tasks (`worktree:`) never stack branches: each task branch is cut from the SDD branch and each task PR targets it; the base is passed explicitly to `actions.branch` / `actions.pr`.
+- Merged task PRs (`merge: pr`) no longer stay `in-progress` after the last merge: `/sdd:implement` (any argument) and `/sdd:review` first check each task's PR, or with `merge: auto` whether its branch is already in the SDD branch, and set the merged ones to `review`.
 
 ## [2.0.4] — 2026-11-16
 
