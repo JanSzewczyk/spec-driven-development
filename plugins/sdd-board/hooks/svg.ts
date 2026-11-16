@@ -166,9 +166,16 @@ export function branchSvg(last: boolean, width = 16, height = 20): string {
 }
 
 // Small marker for a configuration value: filled (--fill-success) when set by the user, hollow (--text-muted) when default.
-export function dotSvg(isSet: boolean): string {
-  const body = isSet
-    ? '<circle cx="4" cy="4" r="3" fill="' + FILL.success + '"/>'
-    : themed([['circle', 'stroke', CDS.muted]]) + '<circle cx="4" cy="4" r="2.6" fill="none" stroke="' + MID + '" stroke-width="1"/>'
-  return svgDoc(8, 8, body)
+// `stem`: the row has options nested under it, so the drawing is 18 tall (the height of the row) and a guide
+// runs from the dot to the bottom edge, where the connector of the first option starts.
+export function dotSvg(isSet: boolean, stem = false): string {
+  const cy = stem ? 9 : 4
+  const rules: [string, string, Pair][] = []
+  if (!isSet) rules.push(['circle', 'stroke', CDS.muted])
+  if (stem) rules.push(['path', 'stroke', CDS.borderStrong])
+  const circle = isSet
+    ? '<circle cx="4" cy="' + cy + '" r="3" fill="' + FILL.success + '"/>'
+    : '<circle cx="4" cy="' + cy + '" r="2.6" fill="none" stroke="' + MID + '" stroke-width="1"/>'
+  const guide = stem ? '<path d="M4 ' + (cy + 3.6) + ' V18" fill="none" stroke="' + MID + '" stroke-width="1" stroke-linecap="round"/>' : ''
+  return svgDoc(8, stem ? 18 : 8, (rules.length ? themed(rules) : '') + circle + guide)
 }
