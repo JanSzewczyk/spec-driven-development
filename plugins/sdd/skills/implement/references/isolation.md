@@ -44,6 +44,11 @@ Start at most `parallel` at once. For each:
    a PR into the SDD branch titled `<EPIC>-T<n>: <task title>` (`actions.pr`,
    else `gh pr create --base <spec-branch>`), and return its URL.
 
+Never stack: every task branch is cut from the SDD branch, never from another task branch, and every
+task PR targets the SDD branch, never `main` or a task branch. Pass the base explicitly to
+`actions.branch` / `actions.pr` and write it into the brief. A task that needs another task's code
+waits (`depends_on`) until that task is merged into the SDD branch.
+
 Only this session writes `tasks.md`; sub-sessions never touch `specs/`, so merges never conflict
 on task statuses.
 

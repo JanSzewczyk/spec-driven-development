@@ -351,7 +351,7 @@ implementation:
 - `merge: pr` — human in the loop: each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task, the board shows "waiting for merge"). You merge; running `/sdd:implement all` again checks the PRs and starts the tasks they unblock.
 - `merge: auto` — the orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation.
 
-Dependent tasks start only after their dependencies are merged. Projects in sibling repositories run in place. Details: [isolation.md](plugins/sdd/skills/implement/references/isolation.md).
+Dependent tasks start only after their dependencies are merged. Task branches are never stacked: each is cut from the SDD branch and its PR targets the SDD branch. Projects in sibling repositories run in place. Details: [isolation.md](plugins/sdd/skills/implement/references/isolation.md).
 
 ### 🔁 Status lifecycle
 
