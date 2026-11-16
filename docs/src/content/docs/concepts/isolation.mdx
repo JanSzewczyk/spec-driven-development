@@ -36,5 +36,5 @@ With it, the session running `/sdd:implement all` only **orchestrates**. Every r
 </Tabs>
 
 <Aside type="note">
-Dependent tasks start only after their dependencies are merged. Projects in sibling repositories run in place.
+Dependent tasks start only after their dependencies are merged. Task branches are never stacked: each is cut from the SDD branch and its PR targets the SDD branch. Projects in sibling repositories run in place.
 </Aside>
