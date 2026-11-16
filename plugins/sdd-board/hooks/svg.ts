@@ -156,14 +156,13 @@ export function dividerSvg(width: number, height = 15): string {
 }
 
 // Connector of an option nested under another row: a guide at x=4 (under the parent's 8px dot) that bends
-// into the row; unless it is the last option the guide goes on to the next one. The guide of the first option
-// starts 5 down, so it keeps the same distance from the parent's dot as the elbow keeps from the option's dot.
-export function branchSvg(last: boolean, width = 16, height = 20, first = false): string {
+// into the row; unless it is the last option the guide goes on to the next one. The arm stops 4 short of the
+// right edge, where the option's dot follows with no gap of its own.
+export function branchSvg(last: boolean, width = 18, height = 20): string {
   const y = height / 2
-  const top = first ? 5 : 0
   const path = last
-    ? 'M4 ' + top + ' V' + (y - 4) + ' Q4 ' + y + ' 8 ' + y + ' H' + (width - 2)
-    : 'M4 ' + top + ' V' + height + ' M4 ' + y + ' H' + (width - 2)
+    ? 'M4 0 V' + (y - 4) + ' Q4 ' + y + ' 8 ' + y + ' H' + (width - 4)
+    : 'M4 0 V' + height + ' M4 ' + y + ' H' + (width - 4)
   return svgDoc(width, height, themed([['path', 'stroke', CDS.borderStrong]]) + '<path d="' + path + '" fill="none" stroke="' + MID + '" stroke-width="1" stroke-linecap="round"/>')
 }
 

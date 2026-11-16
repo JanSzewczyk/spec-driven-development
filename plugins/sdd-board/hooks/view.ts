@@ -527,21 +527,26 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
     const width = Math.min(18, Math.max(...sec.entries.map((e) => e.key.length)))
     // An option that belongs to another entry (merge and parallel under isolation) is drawn under it, behind a
     // connector, and shares one row of the card with it, so no hairline cuts the group.
-    // The connector is 18 wide: with the column gap it takes 3 key-column cells on Desktop (2 in the terminal:
-    // the glyph and the gap), which the key column gives back so the values stay in one column.
-    const entryRow = (e: (typeof sec.entries)[number], child: 'none' | 'mid' | 'last', first = false) =>
-      Box({
+    // The connector takes 2 key-column cells (18 wide on Desktop, the glyph and its gap in the terminal), which
+    // the key column gives back so the values stay in one column. On Desktop it sits flush against the dot.
+    const entryRow = (e: (typeof sec.entries)[number], child: 'none' | 'mid' | 'last') => {
+      const dot = isRich
+        ? Svg({ alt: e.source === 'set' ? 'set' : 'default', width: 8, height: 8, source: dotSvg(e.source === 'set') })
+        : Text({ color: e.source === 'set' ? 'success' : undefined, dimColor: e.source !== 'set', children: [e.source === 'set' ? '●' : '○'] })
+      return Box({
         key: sec.title + '-' + e.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
         children: [
-          child === 'none' ? null : isRich ? Svg({ alt: 'nested option', width: 18, height: 20, source: branchSvg(child === 'last', 18, 20, first) }) : Text({ dimColor: true, children: [child === 'last' ? '└' : '├'] }),
-          isRich
-            ? Svg({ alt: e.source === 'set' ? 'set' : 'default', width: 8, height: 8, source: dotSvg(e.source === 'set') })
-            : Text({ color: e.source === 'set' ? 'success' : undefined, dimColor: e.source !== 'set', children: [e.source === 'set' ? '●' : '○'] }),
-          Box({ width: Math.max(width + 1 - (child === 'none' ? 0 : isRich ? 3 : 2), 6), children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [e.key] })] }),
+          child === 'none'
+            ? dot
+            : isRich
+              ? Box({ flexDirection: 'row', alignItems: 'center', children: [Svg({ alt: 'nested option', width: 18, height: 20, source: branchSvg(child === 'last') }), dot] })
+              : Box({ flexDirection: 'row', columnGap: 1, children: [Text({ dimColor: true, children: [child === 'last' ? '└' : '├'] }), dot] }),
+          Box({ width: Math.max(width + 1 - (child === 'none' ? 0 : 2), 6), children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [e.key] })] }),
           valueNode(el, isRich, e),
           e.source === 'default' ? Text({ dimColor: true, size: 'caption', children: ['default'] }) : null,
         ].filter(Boolean),
       })
+    }
     const top = sec.entries.filter((e) => !e.parent)
     kids.push(
       section(
@@ -551,7 +556,7 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
           if (!children.length) return entryRow(e, 'none')
           return Box({
             key: sec.title + '-' + e.key + '-group', flexDirection: 'column',
-            children: [entryRow(e, 'none'), ...children.map((c, i) => entryRow(c, i === children.length - 1 ? 'last' : 'mid', i === 0))],
+            children: [entryRow(e, 'none'), ...children.map((c, i) => entryRow(c, i === children.length - 1 ? 'last' : 'mid'))],
           })
         }),
       ),
