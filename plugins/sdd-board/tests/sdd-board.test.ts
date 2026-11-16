@@ -576,14 +576,24 @@ test('parseEpicId and the branch and pr of a task', () => {
   expect(t.pr).toBe('#12')
 })
 
-test('tasks waiting for a merge turn the next step into "implement all" while nothing else is ready', () => {
-  const waiting = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: in-progress\npr: #13\n')
-  const d = derive(feature({ planStatus: 'tasks-ready', tasks: waiting }))
+test('tasks waiting for a merge turn the next step into "implement all" while blocked tasks wait on them', () => {
+  const blocked = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: draft\ndepends_on: [T1]\n')
+  const d = derive(feature({ planStatus: 'tasks-ready', tasks: blocked }))
   expect(d.next?.command).toBe('/sdd:implement all')
-  expect(d.next?.why).toContain('#12, #13')
+  expect(d.next?.why).toContain('#12')
   expect(d.phase).toBe('implement')
-  const g = gate(feature({ planStatus: 'tasks-ready', tasks: waiting }))!
-  expect(g.checks.find((c) => c.key === 'merge')?.hint).toBe('T1 #12, T2 #13')
+  const g = gate(feature({ planStatus: 'tasks-ready', tasks: blocked }))!
+  expect(g.checks.find((c) => c.key === 'merge')?.hint).toBe('T1 #12')
   const more = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: draft\n')
   expect(derive(feature({ planStatus: 'tasks-ready', tasks: more })).next?.command).toBe('/sdd:implement T2')
+})
+
+test('when only task pull requests are left, the next step after the merge is the review', () => {
+  const waiting = parseTasks('### T1: A\nstatus: review\n### T2: B\nstatus: in-progress\npr: #13\n')
+  const d = derive(feature({ planStatus: 'tasks-ready', tasks: waiting }))
+  expect(d.next?.command).toBe('/sdd:review')
+  expect(d.next?.why).toContain('#13')
+  expect(d.phase).toBe('implement')
+  const g = gate(feature({ planStatus: 'tasks-ready', tasks: waiting }))!
+  expect(g.checks.find((c) => c.key === 'merge')?.hint).toBe('T2 #13')
 })
