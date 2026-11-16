@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `effectiveConfig` marks `merge` and `parallel` with `parent: 'isolation'` (shared core, used by the `sdd-board` configuration pane). Their values and the `set` / `default` source are unchanged.
 
+## [0.9.4 sdd-board] — 2026-11-16
+
+`sdd-board` goes to 0.9.4.
+
+### Fixed
+
+- When only task pull requests (`pr:`) are left, the next step is `/sdd:review` after the merge instead of `/sdd:implement all`; its checklist lists the PRs still to merge.
+- A task blocked by a task PR is no longer suggested as `/sdd:implement T<n>`; the panel suggests `/sdd:implement all` after the merge.
+
 ## [0.9.3 sdd-board] — 2026-11-16
 
 `sdd-board` goes to 0.9.3.
