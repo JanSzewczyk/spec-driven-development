@@ -28,7 +28,7 @@ With it, the session running `/sdd:implement all` only **orchestrates**. Every r
   <TabItem label="merge: pr">
     **Human in the loop.** Each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task; the board shows "waiting for merge").
 
-    You merge. Running `/sdd:implement all` again checks the PRs and starts the tasks they unblock.
+    You merge. `/sdd:implement` checks the PRs, marks the merged tasks `review` and starts the tasks they unblock; after the last merge `/sdd:review` does the same check, so you can go straight to it.
   </TabItem>
   <TabItem label="merge: auto">
     **Hands-off.** The orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation.

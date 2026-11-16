@@ -69,12 +69,12 @@ changed, the reported tests passed. Anything off → leave the task `in-progress
 ### `merge: pr` (a human merges)
 
 1. Write `pr: <url>` into the task. Do not merge anything yourself.
-2. When no task is ready any more, report "waiting for merge: <PR list>" and end the turn.
-3. The next `/sdd:implement all` resumes (idempotent): for every task with `pr:` run
-   `gh pr view <pr> --json state,mergedAt`.
-   - merged → `git pull --ff-only` on the SDD branch, `status: review`, remove `branch:` and `pr:`,
-     remove the worktree and the local branch; its dependants become ready.
-   - open → still waiting. Closed without merge → report it, the task stays `in-progress`.
+2. When no task is ready any more, report "waiting for merge: <PR list>" and end the turn. Name the
+   next command: tasks still wait for these PRs (`depends_on`) → "merge, then `/sdd:implement all`";
+   nothing waits → "merge, then `/sdd:review`" (it marks the merged tasks itself).
+3. The next `/sdd:implement` or `/sdd:review` picks the merges up with
+   [Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks);
+   the dependants of a merged task become ready.
 4. Never poll or schedule a wake-up for the merge; the user comes back when the PRs are merged.
    Change requests on a PR go to that task's own session, which has its context.
 
