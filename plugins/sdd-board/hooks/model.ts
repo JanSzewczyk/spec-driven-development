@@ -90,13 +90,18 @@ export function derive(f: Feature): Derived {
     idx = 4
     // First task not yet implemented whose dependencies are done; else the first unfinished one.
     // A task with a pull request (merge: pr) is waiting for a human, not for the implementer.
+    // Both /sdd:implement and /sdd:review mark merged task PRs as review first, so once nothing else
+    // is left the next step after the merge is the review, not another implement run.
     const open = tasks.filter((t) => !taskDone(t))
     const waiting = open.filter((t) => t.pr)
     const working = open.filter((t) => !t.pr)
-    const ready = working.find((t) => blockedBy(t, tasks).length === 0) ?? working[0]
+    const prs = waiting.map((t) => t.pr).join(', ')
+    const ready = working.find((t) => blockedBy(t, tasks).length === 0) ?? (waiting.length ? undefined : working[0])
     next = ready
       ? { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' }
-      : { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + waiting.map((t) => t.pr).join(', ') + ' to be merged. Merge them, then resume: the next tasks start from there.' }
+      : working.length
+        ? { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. Merge them, then resume: the next tasks start from there.' }
+        : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. Merge them, then review: it marks the merged tasks as review first.' }
   } else if (status === 'planned' || f.planStatus !== null) {
     idx = 3
     next = { command: '/sdd:tasks', model: 'Sonnet', why: 'Split the plan into self-contained tasks.' }
@@ -160,7 +165,9 @@ export function gate(f: Feature): Gate | null {
     }
     questions()
   } else if (verb === '/sdd:review') {
-    checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })
+    const prs = (f.tasks ?? []).filter((t) => !taskDone(t) && t.pr)
+    if (prs.length) checks.push({ key: 'merge', label: 'Task pull requests merged', ok: false, hint: prs.map((t) => t.id + ' ' + t.pr).join(', ') })
+    else checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })
     questions()
     checks.push({ key: 'verdict', label: 'Last review findings fixed', ok: f.review !== 'NOT READY', hint: f.review === 'NOT READY' ? 'the last review was not ready' : undefined })
   }
