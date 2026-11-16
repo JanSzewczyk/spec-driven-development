@@ -156,26 +156,21 @@ export function dividerSvg(width: number, height = 15): string {
 }
 
 // Connector of an option nested under another row: a guide at x=4 (under the parent's 8px dot) that bends
-// into the row; unless it is the last option the guide goes on to the next one.
-export function branchSvg(last: boolean, width = 16, height = 20): string {
+// into the row; unless it is the last option the guide goes on to the next one. The guide of the first option
+// starts 5 down, so it keeps the same distance from the parent's dot as the elbow keeps from the option's dot.
+export function branchSvg(last: boolean, width = 16, height = 20, first = false): string {
   const y = height / 2
+  const top = first ? 5 : 0
   const path = last
-    ? 'M4 0 V' + (y - 4) + ' Q4 ' + y + ' 8 ' + y + ' H' + (width - 2)
-    : 'M4 0 V' + height + ' M4 ' + y + ' H' + (width - 2)
+    ? 'M4 ' + top + ' V' + (y - 4) + ' Q4 ' + y + ' 8 ' + y + ' H' + (width - 2)
+    : 'M4 ' + top + ' V' + height + ' M4 ' + y + ' H' + (width - 2)
   return svgDoc(width, height, themed([['path', 'stroke', CDS.borderStrong]]) + '<path d="' + path + '" fill="none" stroke="' + MID + '" stroke-width="1" stroke-linecap="round"/>')
 }
 
 // Small marker for a configuration value: filled (--fill-success) when set by the user, hollow (--text-muted) when default.
-// `stem`: the row has options nested under it, so the drawing is 18 tall (the height of the row) and a guide
-// runs from the dot to the bottom edge, where the connector of the first option starts.
-export function dotSvg(isSet: boolean, stem = false): string {
-  const cy = stem ? 9 : 4
-  const rules: [string, string, Pair][] = []
-  if (!isSet) rules.push(['circle', 'stroke', CDS.muted])
-  if (stem) rules.push(['path', 'stroke', CDS.borderStrong])
-  const circle = isSet
-    ? '<circle cx="4" cy="' + cy + '" r="3" fill="' + FILL.success + '"/>'
-    : '<circle cx="4" cy="' + cy + '" r="2.6" fill="none" stroke="' + MID + '" stroke-width="1"/>'
-  const guide = stem ? '<path d="M4 ' + (cy + 3.6) + ' V18" fill="none" stroke="' + MID + '" stroke-width="1" stroke-linecap="round"/>' : ''
-  return svgDoc(8, stem ? 18 : 8, (rules.length ? themed(rules) : '') + circle + guide)
+export function dotSvg(isSet: boolean): string {
+  const body = isSet
+    ? '<circle cx="4" cy="4" r="3" fill="' + FILL.success + '"/>'
+    : themed([['circle', 'stroke', CDS.muted]]) + '<circle cx="4" cy="4" r="2.6" fill="none" stroke="' + MID + '" stroke-width="1"/>'
+  return svgDoc(8, 8, body)
 }
