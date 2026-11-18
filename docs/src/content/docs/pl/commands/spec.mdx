@@ -17,6 +17,7 @@ import { Steps, Aside } from '@astrojs/starlight/components';
 1. Tworzy gałąź przez `actions.branch` (skill, agent lub komenda), w przeciwnym razie skill do gałęzi, który ma sesja, a w ostateczności `git checkout -b <type>/<slug>`.
 2. Odczytuje prawdziwą nazwę gałęzi; `feature_slug` to część po pierwszym `/`.
 3. Generuje `specs/<feature_slug>/spec.md` z `specs/template.md`, wpisując prawdziwą nazwę w `**Branch:**`. Wypełnia tylko Summary.
+4. Zmienia tytuł sesji na tytuł funkcjonalności, gdy sesja ma do tego narzędzie (Claude Code Desktop). W pozostałych przypadkach pomija ten krok.
 
 </Steps>
 

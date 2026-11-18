@@ -52,6 +52,11 @@ The `**Branch:**` line holds the real branch name: every later command finds the
 Then edit only the **Summary** section: ONE business-level sentence from the description. Leave the
 other sections as the template has them (filled manually or by `/sdd:clarify`).
 
+**Session title.** The session has a tool that renames it (Claude Code Desktop:
+`mcp__ccd_session_mgmt__set_session_title`, load it with ToolSearch when deferred) → set this
+session's title (`session_id: "self"`) to `feature_title` without the sed escapes. `/sdd:tasks`
+prefixes it with the Epic id. No such tool, or the rename is declined → go on without it.
+
 ### 3. Output
 
 - ✅ Branch `<branch>` · Spec `specs/<feature_slug>/spec.md`

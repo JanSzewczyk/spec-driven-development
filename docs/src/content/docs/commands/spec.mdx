@@ -17,6 +17,7 @@ import { Steps, Aside } from '@astrojs/starlight/components';
 1. Creates the branch with `actions.branch` (a skill, agent or command), else a branch skill the session has, else `git checkout -b <type>/<slug>`.
 2. Reads the real branch name; `feature_slug` is the part after the first `/`.
 3. Generates `specs/<feature_slug>/spec.md` from `specs/template.md` with the real name in `**Branch:**`. Only the Summary is filled.
+4. Renames the session to the feature title when the session has a tool for it (Claude Code Desktop). Elsewhere this step is skipped.
 
 </Steps>
 

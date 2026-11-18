@@ -53,6 +53,12 @@ their `T<n>` headings; the full id of a task is `<EPIC>-T<n>` (`ULOG-7f3a-T3`). 
   `printf '%s %s' "<spec branch>" "$(date +%s)" | git hash-object --stdin | cut -c1-4`. Another
   `specs/*/tasks.md` already has that id → hash again.
 
+Then name the session after the Epic: the session has a tool that renames it (Claude Code Desktop:
+`mcp__ccd_session_mgmt__set_session_title`, load it with ToolSearch when deferred) → set this
+session's title (`session_id: "self"`) to `<EPIC> <feature_title>` (`ULOG-7f3a User Login`), with
+`feature_title` from the spec's `# Feature:` heading. No such tool, or the rename is declined → go on
+without it.
+
 ### 4. Write `specs/<current>/tasks.md`
 
 ````markdown
