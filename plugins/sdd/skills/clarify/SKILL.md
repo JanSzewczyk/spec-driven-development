@@ -1,9 +1,8 @@
 ---
 name: clarify
-description: AI finds gaps in the current spec, asks the questions and writes the answers (SDD step 2)
+description: AI finds gaps in the current spec, asks the questions and writes the answers (SDD step 2). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Read, Edit, Glob, AskUserQuestion, Bash(git branch:*)
 argument-hint: "(optional path to spec.md)"
-disable-model-invocation: true
 ---
 
 # SDD Clarify
@@ -49,4 +48,4 @@ numbered list in the chat. Nothing is written to the spec before the user confir
 
 ### 5. Output
 
-Answered / still open counts and the next step: `/sdd:clarify` again if gaps remain, else `/sdd:plan`.
+Answered / still open counts and the next step: `/sdd:clarify` again if gaps remain, else `/sdd:plan`. Name the next step; do not start it yourself.

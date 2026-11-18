@@ -1,6 +1,6 @@
 ---
 name: review
-description: Final audit against the spec, then commit and PR (SDD step 6)
+description: Final audit against the spec, then commit and PR (SDD step 6). User-only: it commits, pushes and opens a pull request, so the user types /sdd:review themselves.
 allowed-tools: "*"
 argument-hint: "(none)"
 disable-model-invocation: true

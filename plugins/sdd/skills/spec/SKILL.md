@@ -1,9 +1,8 @@
 ---
 name: spec
-description: Create a feature spec, branch, and skeleton files (SDD step 1)
+description: Create a feature spec, branch, and skeleton files (SDD step 1). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Read, Write, Edit, Bash, Skill, Agent
 argument-hint: "<type> <short description>  # type: feat|fix|chore|refactor|docs"
-disable-model-invocation: true
 ---
 
 # SDD Spec
@@ -56,6 +55,6 @@ other sections as the template has them (filled manually or by `/sdd:clarify`).
 ### 3. Output
 
 - ✅ Branch `<branch>` · Spec `specs/<feature_slug>/spec.md`
-- 👉 Next: edit the spec, or `/sdd:clarify` to have AI ask gap questions.
+- 👉 Next: edit the spec, or `/sdd:clarify` to have AI ask gap questions. Name the next step; do not start it yourself.
 
 Do not commit — `/sdd:implement` commits the spec files with the first task, `/sdd:review` the rest.

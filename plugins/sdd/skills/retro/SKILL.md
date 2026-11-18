@@ -1,9 +1,8 @@
 ---
 name: retro
-description: Turn the lessons of a reviewed feature into WHAT NOT TO DO rules in the constitution (SDD, after /sdd:review)
+description: Turn the lessons of a reviewed feature into WHAT NOT TO DO rules in the constitution (SDD, after /sdd:review). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Read, Edit, Glob, AskUserQuestion, Bash(git branch:*)
 argument-hint: "(optional path to review.md)"
-disable-model-invocation: true
 ---
 
 # SDD Retro

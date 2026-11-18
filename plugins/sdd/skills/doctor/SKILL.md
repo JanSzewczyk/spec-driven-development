@@ -1,9 +1,8 @@
 ---
 name: doctor
-description: Audit (`check`) or set up (`init`) a project for the SDD framework — constitution, spec template, capabilities. Use when the user asks "is my project SDD-ready", wants to set up SDD, or `/sdd:spec` fails for a missing file.
+description: Audit (`check`) or set up (`init`) a project for the SDD framework — constitution, spec template, capabilities. Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__sdd__doctor_check
 argument-hint: "check | init"
-disable-model-invocation: true
 ---
 
 # SDD Doctor

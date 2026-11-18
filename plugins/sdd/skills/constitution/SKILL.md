@@ -1,9 +1,8 @@
 ---
 name: constitution
-description: Edit the project constitution at specs/constitution.md (full long-form rules with rationale)
+description: Edit the project constitution at specs/constitution.md (full long-form rules with rationale). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Read, Edit, Bash, Glob
 argument-hint: "(none — opens specs/constitution.md for editing)"
-disable-model-invocation: true
 ---
 
 # SDD Constitution

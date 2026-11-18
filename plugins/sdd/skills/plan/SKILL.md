@@ -1,9 +1,8 @@
 ---
 name: plan
-description: Generate the architectural plan from the spec (SDD step 3) — run in Plan Mode
+description: Generate the architectural plan from the spec (SDD step 3) — run in Plan Mode. Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, ExitPlanMode, Bash(git branch:*)
 argument-hint: "(optional path to spec.md)"
-disable-model-invocation: true
 ---
 
 # SDD Plan
@@ -86,7 +85,7 @@ constitution does not settle it), **Reference sources** (from step 2). Diagrams 
 **No Plan Mode:** write `specs/<current>/plan.md` and stop for the user to read and edit it.
 
 Then set `**Status:**` in `spec.md` to `planned` (unless already later). Report the path and the
-next step: `/sdd:tasks` (best after `/clear`; it re-reads `plan.md` from disk).
+next step: `/sdd:tasks` (best after `/clear`; it re-reads `plan.md` from disk). Name the next step; do not start it yourself.
 
 ## Constraints
 

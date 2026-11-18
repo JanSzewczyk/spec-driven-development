@@ -1,9 +1,8 @@
 ---
 name: capabilities
-description: Configure specs/capabilities.yml — who implements tasks, who runs branch/commit/PR, how /sdd:review verifies — from the skills, agents and plugins you have installed, then confirm each choice with you
+description: Configure specs/capabilities.yml — who implements tasks, who runs branch/commit/PR, how /sdd:review verifies — from the skills, agents and plugins you have installed, then confirm each choice with you. Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Bash, Read, Edit, Glob, Grep, AskUserQuestion, mcp__sdd__doctor_check
 argument-hint: "(optional: implementation | actions | review)"
-disable-model-invocation: true
 ---
 
 # SDD Capabilities

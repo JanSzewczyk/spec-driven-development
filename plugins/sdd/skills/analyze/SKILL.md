@@ -1,9 +1,8 @@
 ---
 name: analyze
-description: Find conflicts between spec, plan, tasks and code at any point (SDD diagnostic)
+description: Find conflicts between spec, plan, tasks and code at any point (SDD diagnostic). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Read, Glob, Bash, Agent
 argument-hint: "(none — works on the current branch)"
-disable-model-invocation: true
 ---
 
 # SDD Analyze
