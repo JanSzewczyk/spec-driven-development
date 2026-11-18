@@ -78,8 +78,8 @@ Three kinds of plugin asset, each in its own top-level dir, wired together by `.
 ## Conventions
 
 - **Conventional Commits** for both git commits and branch names: `/sdd:spec feat user login` → branch `feat/user-login`. Type ∈ {feat, fix, chore, refactor, docs}.
-- **Versioning is manual and multi-file**: a bump (only when the user asks, see Versions below) touches `plugins/<name>/.claude-plugin/plugin.json`, its entry in `.claude-plugin/marketplace.json`, and `CHANGELOG.md`; for `sdd` also the README badge. Keep them in sync.
-- **Tags and GitHub Releases exist only for `sdd` and are created by CI on merge, never by hand**: `.github/workflows/release.yml` runs `scripts/release.sh` on a push to `main` that touches `plugins/sdd/.claude-plugin/plugin.json` or `marketplace.json`: `git tag -a` + push (`v<version>`; `scripts/release.sh` checks `plugin.json` against the marketplace entry itself, because `claude plugin tag` only makes `<name>--v<version>`) when that version has no `v<version>` tag, then a Release for every `sdd` tag without one, notes taken from the version's `CHANGELOG.md` section (`## [<ver>]`). `sdd-board` is versioned in its manifest and `CHANGELOG.md` (`## [<ver> sdd-board]`) only: no tag, no Release. Use `/plugin-release` for the bump only and skip its tag step (step 6): a tag made on the feature branch points at a commit that is not on `main` after a squash merge, and CI then sees the tag and does not fix it. `scripts/release.sh --dry-run` shows what CI would do; re-run the workflow by hand (`workflow_dispatch`) to retry.
+- **Versioning is manual and multi-file**: a bump (only when the user asks, see Versions below) touches `plugins/<name>/.claude-plugin/plugin.json` (the only place a version is set; the marketplace entries carry none), `CHANGELOG.md` and, for `sdd`, the README badge. Keep them in sync.
+- **Tags and GitHub Releases exist only for `sdd` and are created by CI on merge, never by hand**: `.github/workflows/release.yml` runs `scripts/release.sh` on a push to `main` that touches `plugins/sdd/.claude-plugin/plugin.json`: `git tag -a` + push (`v<version>`, because `claude plugin tag` only makes `<name>--v<version>`) when that version has no `v<version>` tag, then a Release for every `sdd` tag without one, notes taken from the version's `CHANGELOG.md` section (`## [<ver>]`). `sdd-board` is versioned in its manifest and `CHANGELOG.md` (`## [<ver> sdd-board]`) only: no tag, no Release. Use `/plugin-release` for the bump only and skip its tag step (step 6): a tag made on the feature branch points at a commit that is not on `main` after a squash merge, and CI then sees the tag and does not fix it. `scripts/release.sh --dry-run` shows what CI would do; re-run the workflow by hand (`workflow_dispatch`) to retry.
 - Command/agent references in docs use the `/sdd:<command>` form.
 - Behavior lives in Markdown prompts; the doctor check lives in `shared/sdd-core/` TypeScript with tests. To change what a skill or agent does, edit its prose.
 
@@ -130,8 +130,8 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 ### Versions
 
 Plugins pin `version`, so users stay on the cached copy until it changes; semver sizes are in
-`/plugin-release`. A bump touches the changed plugin's `plugin.json`, its entry in
-`.claude-plugin/marketplace.json`, `CHANGELOG.md` and, for `sdd`, the README badge.
+`/plugin-release`. A bump touches the changed plugin's `plugin.json` (the marketplace
+entries carry no version), `CHANGELOG.md` and, for `sdd`, the README badge.
 
 **Never bump a version on your own.** Editing a skill or an agent is not a request to bump: change
 a `version` only when the user asks for it in this conversation, and then through `/plugin-release`,
