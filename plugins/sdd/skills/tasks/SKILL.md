@@ -1,7 +1,7 @@
 ---
 name: tasks
 description: Split the plan into self-contained, Jira-like tasks (SDD step 4). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
-allowed-tools: Read, Write, Edit, Glob, Grep, Skill, Agent, Bash(git branch:*), Bash(git hash-object:*), Bash(date:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git log:*)
+allowed-tools: Read, Write, Edit, Glob, Grep, Skill, Agent, Bash(git branch:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git log:*)
 argument-hint: "(optional path to plan.md)"
 ---
 
@@ -43,19 +43,19 @@ tests" or for "the service" of one unit. Tests belong to the task that delivers 
 
 ### 3. Epic id
 
-The Epic gets an id that never changes: `<LETTERS>-<4 hex>`, for example `ULOG-7f3a`. Tasks keep
-their `T<n>` headings; the full id of a task is `<EPIC>-T<n>` (`ULOG-7f3a-T3`). It is what
+The Epic gets an id that never changes: capital letters only, for example `ULOG`. Tasks keep
+their `T<n>` headings; the full id of a task is `<EPIC>-T<n>` (`ULOG-T3`). It is what
 `/sdd:implement` puts in commit trailers and task branch names.
 
 - `tasks.md` has a `**Epic:**` line → keep it.
-- Otherwise build it: 2–5 capital letters from the spec slug (first letter of each word; one word →
-  its first 4 letters), `-`, and 4 hex characters from
-  `printf '%s %s' "<spec branch>" "$(date +%s)" | git hash-object --stdin | cut -c1-4`. Another
-  `specs/*/tasks.md` already has that id → hash again.
+- Otherwise build it from the spec slug: the first letter of each word, at most 5 (one word → its
+  first 4 letters), uppercased, letters only. At least 2 letters; a shorter result takes the next
+  letters of the slug. Another `specs/*/tasks.md` already has that id → append the next letter of
+  the slug's last word until it is unique (at most 8 letters; still taken → ask the user for one).
 
 Then name the session after the Epic: the session has a tool that renames it (Claude Code Desktop:
 `mcp__ccd_session_mgmt__set_session_title`, load it with ToolSearch when deferred) → set this
-session's title (`session_id: "self"`) to `<EPIC> <feature_title>` (`ULOG-7f3a User Login`), with
+session's title (`session_id: "self"`) to `<EPIC> <feature_title>` (`ULOG User Login`), with
 `feature_title` from the spec's `# Feature:` heading. No such tool, or the rename is declined → go on
 without it.
 

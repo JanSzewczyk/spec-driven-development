@@ -334,7 +334,7 @@ Verification is a separate step: `/sdd:review` judges the outcome against the sp
 
 Every command finds the feature by the `**Branch:**` line of its `spec.md`, so the branch may be named by any branch skill. Acceptance criteria ids (`AC1`, `AC2` …) never change once written: tasks, `spec-verifier` and the board refer to them. Re-running `/sdd:tasks` after the plan changes updates `tasks.md` and keeps each task's id and status.
 
-**Ids.** `tasks.md` carries `**Epic:** ULOG-7f3a` (slug letters + 4 hex, assigned once, unique across specs). A task's full id is `<EPIC>-T<n>` (`ULOG-7f3a-T3`); it goes into the `Task:` trailer of every commit and into the task branch name. `git log --grep 'Task: ULOG-7f3a-T3'` finds the work.
+**Ids.** `tasks.md` carries `**Epic:** ULOG` (capital letters from the slug, assigned once, unique across specs). A task's full id is `<EPIC>-T<n>` (`ULOG-T3`); it goes into the `Task:` trailer of every commit and into the task branch name. `git log --grep 'Task: ULOG-T3'` finds the work.
 
 ### 🌿 Isolated tasks (opt-in)
 
@@ -495,7 +495,7 @@ Phase 4 — Tasks. Split `plan.md` into a list of **self-contained tasks** (form
 - **A contract shared between projects is its own task** (a schema the web and mobile clients are generated from, shared types, a migration); consumers depend on it.
 - **`depends_on`** only where a task needs another's result or touches the same files.
 - **No copies of the plan or the spec** — tasks refer to AC ids and plan sections.
-- **Epic id.** Writes `**Epic:** <LETTERS>-<4 hex>` into the header once (kept on re-runs); tasks are `<EPIC>-T<n>`.
+- **Epic id.** Writes `**Epic:** <LETTERS>` (`ULOG`) into the header once (kept on re-runs); tasks are `<EPIC>-T<n>`.
 - **Commits the documentation.** It ends by committing `specs/<slug>/` (spec, plan, tasks) as `docs(<slug>): add spec, plan and tasks` with an `Epic:` trailer, so the documentation is in git before any task starts and is visible to worktrees.
 - Does not choose agents or models and writes no code; ends with a one-line `Order:` such as `T1 → T2 ∥ T3 → T4`.
 

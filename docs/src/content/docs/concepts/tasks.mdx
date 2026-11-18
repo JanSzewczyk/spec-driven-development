@@ -87,9 +87,9 @@ Verification is a separate step. [`/sdd:review`](/spec-driven-development/comman
 
 - Every command finds the feature by the `**Branch:**` line of its `spec.md`, so any branch skill may name the branch.
 - **Acceptance criteria ids** (`AC1`, `AC2` …) never change once written. Tasks, `spec-verifier` and the board refer to them.
-- **Epic id:** `tasks.md` carries `**Epic:** ULOG-7f3a` (slug letters plus 4 hex, assigned once, unique across specs). A task's full id is `<EPIC>-T<n>` (`ULOG-7f3a-T3`); it goes into the `Task:` trailer of every commit and the task branch name.
+- **Epic id:** `tasks.md` carries `**Epic:** ULOG` (capital letters from the slug, assigned once, unique across specs). A task's full id is `<EPIC>-T<n>` (`ULOG-T3`); it goes into the `Task:` trailer of every commit and the task branch name.
 - Re-running `/sdd:tasks` after the plan changes keeps each task's id and status.
 
 ```bash
-git log --grep 'Task: ULOG-7f3a-T3'   # finds the work
+git log --grep 'Task: ULOG-T3'   # finds the work
 ```

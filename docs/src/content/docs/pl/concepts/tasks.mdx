@@ -87,9 +87,9 @@ Weryfikacja to osobny krok. [`/sdd:review`](/spec-driven-development/pl/commands
 
 - Każda komenda znajduje funkcję po linii `**Branch:**` w jej `spec.md`, więc dowolny skill do gałęzi może nazwać gałąź.
 - **Id kryteriów akceptacji** (`AC1`, `AC2` …) nigdy się nie zmieniają po zapisaniu. Odwołują się do nich zadania, `spec-verifier` i board.
-- **Id Epica:** `tasks.md` zawiera `**Epic:** ULOG-7f3a` (litery sluga plus 4 znaki hex, nadawane raz, unikalne w obrębie specyfikacji). Pełne id zadania to `<EPIC>-T<n>` (`ULOG-7f3a-T3`); trafia do trailera `Task:` każdego commita i do nazwy gałęzi zadania.
+- **Id Epica:** `tasks.md` zawiera `**Epic:** ULOG` (wielkie litery ze sluga, nadawane raz, unikalne w obrębie specyfikacji). Pełne id zadania to `<EPIC>-T<n>` (`ULOG-T3`); trafia do trailera `Task:` każdego commita i do nazwy gałęzi zadania.
 - Ponowne uruchomienie `/sdd:tasks` po zmianie planu zachowuje id i status każdego zadania.
 
 ```bash
-git log --grep 'Task: ULOG-7f3a-T3'   # finds the work
+git log --grep 'Task: ULOG-T3'   # finds the work
 ```

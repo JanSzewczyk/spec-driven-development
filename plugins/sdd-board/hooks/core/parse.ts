@@ -96,7 +96,7 @@ export function parsePlanStatus(text: string): string {
   return header(text, 'Status').split(/\s/)[0]
 }
 
-// `**Epic:** ULOG-7f3a` in the tasks.md header; '' when absent.
+// `**Epic:** ULOG` in the tasks.md header; '' when absent.
 export function parseEpicId(text: string): string {
   return header(text, 'Epic').split(/\s/)[0]
 }
