@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] — 2026-11-18
+
+`sdd` goes to 2.2.0.
+
+### Added
+
+- In Claude Code Desktop, `/sdd:spec` renames the session to the feature title once the branch exists, and `/sdd:tasks` renames it to `<EPIC> <feature title>` (`UL User Login`). Elsewhere, or when the rename is declined, the step is skipped.
+
+### Changed
+
+- New Epic ids are capital letters from the slug only (`ULOG`, task `ULOG-T3`), without the `-<4 hex>` suffix. A clash with another spec appends the next slug letter. Existing ids such as `ULOG-7f3a` stay valid and are not rewritten.
+
+## [0.9.5 sdd-board] — 2026-11-18
+
+`sdd-board` goes to 0.9.5.
+
+### Changed
+
+- The Config pane accepts letters-only Epic ids (`ULOG`) as well as the older `ULOG-7f3a`.
+
 ## [2.1.0] — 2026-11-18
 
 `sdd` goes to 2.1.0.
