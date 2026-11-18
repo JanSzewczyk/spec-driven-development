@@ -122,16 +122,14 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 
 ### After a change to a plugin
 
-1. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure),
-   `plugins/sdd/README.md`, `plugins/sdd-board/README.md`, and the Plugins table and Architecture sections of this file.
+1. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure), `plugins/sdd/README.md`, `plugins/sdd-board/README.md`, and the Plugins table and Architecture sections of this file.
 2. **Run `/marketplace-creator audit`** and fix what it reports before committing. It checks manifests,
    docs and frontmatter against what is on disk.
 
 ### Versions
 
-Plugins pin `version`, so users stay on the cached copy until it changes; semver sizes are in
-`/plugin-release`. A bump touches the changed plugin's `plugin.json` (the marketplace
-entries carry no version), `CHANGELOG.md` and, for `sdd`, the README badge.
+Plugins pin `version` in `plugin.json` (the marketplace entries carry none), so users stay on the cached copy until it changes; semver sizes are in
+`/plugin-release`.
 
 **Never bump a version on your own.** Editing a skill or an agent is not a request to bump: change
 a `version` only when the user asks for it in this conversation, and then through `/plugin-release`,
@@ -143,8 +141,14 @@ changed a plugin and left its version alone is caught by CI, not by a standing i
 Merging an `sdd` bump PR is the release: `.github/workflows/release.yml` tags it and creates the
 GitHub Release (see Conventions). An `sdd-board` bump is not tagged or released. Never tag by hand.
 
+Every version bump adds a `CHANGELOG.md` section, `## [<version> <plugin>] — <date>`
+(`## [<version>]` for a single plugin or the main plugin); `/plugin-release` drafts it from
+git history.
+
+Changelog main plugin: sdd
+
 ### What runs on its own
 
-Only `.github/workflows/release.yml`, which tags and releases `sdd` on merge to `main`. The steps above happen because this file asks for them; CI, if
+Nothing in the background. The steps above happen because this file asks for them; CI, if
 `.github/workflows/plugin-checks.yml` exists, fails a pull request with drift or a missing bump.
 <!-- END:plugin-dev -->
