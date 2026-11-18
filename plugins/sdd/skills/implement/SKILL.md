@@ -1,9 +1,8 @@
 ---
 name: implement
-description: Hand a task to the implementation flow (SDD step 5)
+description: Hand a task to the implementation flow (SDD step 5). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: "*"
 argument-hint: "<task-id | all>  # e.g. T2, or all"
-disable-model-invocation: true
 ---
 
 # SDD Implement
@@ -90,4 +89,4 @@ Status changes in `tasks.md` (and `spec.md` / `plan.md`) stay uncommitted here; 
 ### 6. Output
 
 Task id, flow used, status, commit, files changed, any unmet AC. Next: the next task, or
-`/sdd:review` when all are `review|done`.
+`/sdd:review` when all are `review|done`. Name the next step; do not start it yourself.

@@ -1,9 +1,8 @@
 ---
 name: tasks
-description: Split the plan into self-contained, Jira-like tasks (SDD step 4)
+description: Split the plan into self-contained, Jira-like tasks (SDD step 4). Run only when the user explicitly asks for it (types the command or asks to run this step); never start it on your own.
 allowed-tools: Read, Write, Edit, Glob, Grep, Skill, Agent, Bash(git branch:*), Bash(git hash-object:*), Bash(date:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git log:*)
 argument-hint: "(optional path to plan.md)"
-disable-model-invocation: true
 ---
 
 # SDD Tasks
@@ -107,6 +106,6 @@ and nothing earlier commits them:
 - Not on the feature branch (`**Branch:**` of the spec) → do not commit; say so.
 
 Report the task count, projects, the commit and the `Order:` line. Next: `/sdd:implement T1` (one task) or `/sdd:implement all`; best after
-`/clear` — it re-reads `tasks.md` from disk.
+`/clear` — it re-reads `tasks.md` from disk. Name the next step; do not start it yourself.
 
 Do not write code.
