@@ -32,16 +32,11 @@ dry_run=false
 
 # 1. Tag the main plugin when its current version has no tag. The repo ships one tagged plugin, so
 #    the tag is a plain `v<version>` (`claude plugin tag` only makes `<name>--v<version>`). The
-#    manifest and the marketplace entry must agree, as `claude plugin tag` would check.
+#    version lives only in plugin.json; the marketplace entry carries none.
 dir="plugins/$main_plugin"
 manifest="$dir/.claude-plugin/plugin.json"
 name="$(jq -r .name "$manifest")"
 version="$(jq -r .version "$manifest")"
-market_version="$(jq -r --arg n "$name" '.plugins[] | select(.name == $n) | .version' .claude-plugin/marketplace.json)"
-if [[ "$version" != "$market_version" ]]; then
-  echo "::error::$name version differs: plugin.json $version, marketplace.json $market_version"
-  exit 1
-fi
 tag="v$version"
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   echo "tag exists: $tag"

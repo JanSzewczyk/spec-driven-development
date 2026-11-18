@@ -188,7 +188,7 @@ If you want a customized copy (e.g. with org-specific defaults in `capabilities.
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugins/sdd/.claude-plugin/plugin.json`.
 2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.yml.template` to pre-set the implementation flow for your org.
 3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
-4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json` and in the `sdd` entry of `.claude-plugin/marketplace.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`v<version>`) and creates a GitHub Release (`sdd-board` gets neither).
+4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`v<version>`) and creates a GitHub Release (`sdd-board` gets neither).
 5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install with `/plugin install sdd@spec-driven-development`.
 
 ---
@@ -915,7 +915,7 @@ Why this framework looks the way it does:
 - **Agents** are Markdown with `name`, `description`, `tools`, `model` and `color` frontmatter. `plugins/sdd/.claude-plugin/plugin.json` lists them in an explicit `agents` array: a new agent file must be added there or it never loads.
 - **Conventional Commits** for commit messages and branch names (`feat`, `fix`, `chore`, `refactor`, `docs`).
 - **Docs** reference commands as `/sdd:<command>`; all framework files are English-only.
-- **Versions** — a bump touches the plugin's `plugin.json`, its entry in `.claude-plugin/marketplace.json`, `CHANGELOG.md` and, for `sdd`, the README badge.
+- **Versions** — a bump touches the plugin's `plugin.json` (the marketplace entries carry no version), `CHANGELOG.md` and, for `sdd`, the README badge.
 
 ---
 
@@ -928,7 +928,7 @@ In short:
 1. Fork the repository and create a branch named with Conventional Commits (`git checkout -b feat/new-check`)
 2. Make changes inside the plugin (`plugins/sdd/skills/`, `plugins/sdd/agents/`, `plugins/sdd/references/`, `plugins/sdd/skills/doctor/templates/`) or the panel (`plugins/sdd-board/hooks/`); shared TypeScript lives in `shared/sdd-core/` (run `scripts/sync-core.sh` afterwards)
 3. Run `claude plugin test` in both plugins, then exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
-4. Update the README's File Structure / reference sections and bump the version of the changed plugin (`plugin.json`, `marketplace.json`, for `sdd` the README badge) with a matching `CHANGELOG.md` section
+4. Update the README's File Structure / reference sections and bump the version of the changed plugin (`plugin.json`, for `sdd` the README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request — the [Plugin Checks](.github/workflows/plugin-checks.yml) workflow fails it on manifest or docs drift, a changed plugin without a version bump, a plugin that does not load or install, a failed skill audit, a drifted `hooks/core/` copy or a failing plugin test
 6. After merge, the [Release](.github/workflows/release.yml) workflow tags a new `sdd` version (`v<version>`) and creates a GitHub Release from its `CHANGELOG.md` section; `sdd-board` is not tagged or released — do not tag by hand
 
