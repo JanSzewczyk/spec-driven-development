@@ -513,7 +513,7 @@ function checkFeatures(s: Snapshot, caps: Capabilities | null): CheckResult {
       const epic = parseEpicId(ft.tasks)
       const specBranch = ft.spec === null ? '' : parseSpec(ft.spec).branch
       if (!epic) f.push(warn(`${at}tasks.md: no \`**Epic:**\` id: run \`/sdd:doctor init\` to assign one`, 'init'))
-      else if (!EPIC_ID.test(epic)) f.push(fail(`${at}tasks.md: epic id "${epic}" is not <LETTERS>-<4 hex> (ULOG-7f3a)`))
+      else if (!EPIC_ID.test(epic)) f.push(fail(`${at}tasks.md: epic id "${epic}" is not 2-8 capital letters (ULOG)`))
       else if (epics.has(epic)) f.push(fail(`${at}tasks.md: epic id ${epic} is also used by specs/${epics.get(epic)}/`))
       else epics.set(epic, ft.slug)
       if (tasks.length === 0) f.push(fail(`${at}tasks.md: no \`### T<n>:\` task`))

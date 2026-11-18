@@ -104,7 +104,7 @@ otherwise do not touch `.claude/settings.json`. Make the one edit:
 
 ## 5. Epic ids in existing specs
 Each `specs/*/tasks.md` without a `**Epic:**` line gets one, built exactly as in step 3 of
-`/sdd:tasks` (slug letters + 4 hex, unique across specs), inserted under the `**Spec:** … **Plan:** …`
+`/sdd:tasks` (capital letters from the slug, unique across specs), inserted under the `**Spec:** … **Plan:** …`
 line. Leave everything else in the file as it is. Mention in the report that old commits carry no
 `Task:` trailers.
 

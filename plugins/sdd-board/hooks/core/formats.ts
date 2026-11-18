@@ -80,8 +80,9 @@ export const SDD_FORMAT: number = props.format.const
 // `<!-- sdd-format: N -->` in the legacy capabilities.md.
 export const SDD_FORMAT_MARKER = /<!--\s*sdd-format:\s*(\d+)\s*-->/
 
-// Epic id in tasks.md: 2-5 capital letters from the slug, a dash and 4 hex characters (ULOG-7f3a).
-export const EPIC_ID = /^[A-Z]{2,5}-[0-9a-f]{4}$/
+// Epic id in tasks.md: 2-8 capital letters from the slug (ULOG). Older ids carry a
+// dash and 4 hex characters (ULOG-7f3a); ids never change, so those stay valid.
+export const EPIC_ID = /^[A-Z]{2,8}(?:-[0-9a-f]{4})?$/
 // Task branch: `<spec branch>--<epic>-T<n>`; the separator is `--` because `feat/x/...` collides with the ref `feat/x`.
 export const taskBranch = (specBranch: string, epic: string, taskId: string) => `${specBranch}--${epic}-${taskId}`
 

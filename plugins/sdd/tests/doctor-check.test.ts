@@ -138,7 +138,7 @@ x
 const TASKS = `# Tasks: Login
 
 **Spec:** \`specs/login/spec.md\`  **Plan:** \`specs/login/plan.md\`
-**Epic:** LOG-7f3a
+**Epic:** LOG
 
 ## Epic: Login
 
@@ -454,25 +454,26 @@ test('features: epic id is required, well formed and unique', () => {
     { slug: 'login', spec: SPEC, plan: PLAN, tasks, review: null },
     { slug: 'logout', spec: SPEC.replace('feat/login', 'feat/logout'), plan: null, tasks: other, review: null },
   ] }))), 7).join('\n')
-  expect(t(TASKS.replace('**Epic:** LOG-7f3a\n', ''), TASKS.replace('LOG-7f3a', 'OUT-1234'))).toContain('no `**Epic:**` id')
-  expect(t(TASKS.replace('LOG-7f3a', 'log-7F3A'), TASKS.replace('LOG-7f3a', 'OUT-1234'))).toContain('is not <LETTERS>-<4 hex>')
-  expect(t(TASKS)).toContain('epic id LOG-7f3a is also used by specs/login/')
+  expect(t(TASKS.replace('**Epic:** LOG\n', ''), TASKS.replace('LOG', 'OUT'))).toContain('no `**Epic:**` id')
+  expect(t(TASKS.replace('LOG', 'LOG-12'), TASKS.replace('LOG', 'OUT'))).toContain('is not 2-8 capital letters')
+  expect(t(TASKS)).toContain('epic id LOG is also used by specs/login/')
+  expect(t(TASKS.replace('LOG', 'LOG-7f3a'), TASKS.replace('LOG', 'OUT'))).not.toContain('epic id')
 })
 
 test('features: task branch and pr are validated', () => {
   const run = (extra: string, caps = CAPABILITIES) => texts(runChecks(allTools(snapshot({ capabilities: caps, features: [{ slug: 'login', spec: SPEC, plan: PLAN, tasks: TASKS.replace('status: draft\ndepends_on: []', 'status: in-progress\ndepends_on: []\n' + extra), review: null }] }))), 7).join('\n')
-  expect(run('branch: feat/login--LOG-7f3a-T1\npr: #12')).toBe('')
-  expect(run('branch: feat/other')).toContain('is not feat/login--LOG-7f3a-T1')
+  expect(run('branch: feat/login--LOG-T1\npr: #12')).toBe('')
+  expect(run('branch: feat/other')).toContain('is not feat/login--LOG-T1')
   expect(run('pr: soon')).toContain('pr "soon" is not a pull request')
   const isolated = CAPABILITIES.replace('  isolation: none', '  isolation:\n    worktree:')
   expect(run('', isolated)).toContain('in-progress with isolation: worktree but no `branch:`')
 })
 
 test('parseEpicId and the task branch and pr fields', () => {
-  expect(parseEpicId(TASKS)).toBe('LOG-7f3a')
+  expect(parseEpicId(TASKS)).toBe('LOG')
   expect(parseEpicId('# Tasks\n## Epic: x\n')).toBe('')
-  const t = parseTasks(TASKS.replace('depends_on: []', 'depends_on: []\nbranch: feat/login--LOG-7f3a-T1\npr: https://github.com/o/r/pull/3'))
-  expect(t[0].branch).toBe('feat/login--LOG-7f3a-T1')
+  const t = parseTasks(TASKS.replace('depends_on: []', 'depends_on: []\nbranch: feat/login--LOG-T1\npr: https://github.com/o/r/pull/3'))
+  expect(t[0].branch).toBe('feat/login--LOG-T1')
   expect(t[0].pr).toBe('https://github.com/o/r/pull/3')
   expect(t[1].branch).toBe('')
 })
