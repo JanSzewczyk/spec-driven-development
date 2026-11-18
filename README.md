@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-2.0.5-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -911,7 +911,7 @@ Why this framework looks the way it does:
 
 - **Behavior lives in Markdown prompts.** The body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes; to change what a skill or agent does, edit its prose. The only code is TypeScript: the mod that registers `doctor_check` and the rules and parsers in `shared/sdd-core/`, which both plugins use.
 - **Shared code is edited once.** Change `shared/sdd-core/`, then run `scripts/sync-core.sh`: each mod imports only files inside its own plugin, so `hooks/core/` in both plugins is a generated copy (CI fails when one drifts).
-- **Skills** carry `name`, `description`, `argument-hint`, `allowed-tools` and a description saying the skill runs only when the user asks for it, so Claude can start a phase on request ("run plan"); `/sdd:review` alone keeps `disable-model-invocation: true` because it commits, pushes and opens a PR; `"*"` only where the skill hands work to flows the user picks (`/sdd:implement`, `/sdd:review`). Text two or more skills repeat lives in `plugins/sdd/references/`.
+- **Skills** carry `name`, `description` (the skill runs only when the user asks for it, so Claude starts a phase on request, e.g. "run plan", never on its own), `argument-hint` and `allowed-tools`; `"*"` only where the skill hands work to flows the user picks (`/sdd:implement`, `/sdd:review`). Text two or more skills repeat lives in `plugins/sdd/references/`.
 - **Agents** are Markdown with `name`, `description`, `tools`, `model` and `color` frontmatter. `plugins/sdd/.claude-plugin/plugin.json` lists them in an explicit `agents` array: a new agent file must be added there or it never loads.
 - **Conventional Commits** for commit messages and branch names (`feat`, `fix`, `chore`, `refactor`, `docs`).
 - **Docs** reference commands as `/sdd:<command>`; all framework files are English-only.
