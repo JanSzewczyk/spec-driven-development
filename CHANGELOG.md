@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] — 2026-11-18
+
+`sdd` goes to 2.1.0.
+
+### Changed
+
+- Claude can run any SDD skill when you ask it to ("run plan", "run review", or a next-step button), instead of you typing each command. `disable-model-invocation` is gone from all 11 skills. Each description says the skill runs only on an explicit request, and each phase names the next step without starting it.
+- `/sdd:review` started this way follows `review.publish` as before: `ask` (default) confirms before committing and opening the PR.
+- `/sdd:doctor` is no longer suggested on its own when `/sdd:spec` fails for a missing file.
+
 ## [2.0.5] — 2026-11-16
 
 `sdd` goes to 2.0.5.
