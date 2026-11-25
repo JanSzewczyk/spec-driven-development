@@ -18,7 +18,7 @@ import { Aside } from '@astrojs/starlight/components';
 | Sąsiednie repo | Najpierw dba o to, by gałąź funkcji istniała w tym repozytorium. |
 | Weryfikacja | **Sam nie uruchamia testów**: robi to implementator, a [`/sdd:review`](/spec-driven-development/pl/commands/review/) weryfikuje. |
 | Commity | Commituje dokumentację, którą `/sdd:tasks` zostawiło niezacommitowaną, przed pierwszym zadaniem, a potem pliki każdego ukończonego zadania z trailerem `Task: <EPIC>-T<n>`. |
-| Izolacja | Z `isolation: worktree:` orkiestruje sub-sesje. Zobacz [Izolowane zadania](/spec-driven-development/pl/concepts/isolation/). |
+| Izolacja | Z `isolation: worktree:` orkiestruje sub-sesje; `all` czeka na merge zadań i uruchamia kolejne, aż każde będzie `review` lub `done`. Zobacz [Izolowane zadania](/spec-driven-development/pl/concepts/isolation/). |
 
 <Aside type="tip">
 Otwieraj świeżą sesję na zadanie. Status w `tasks.md` jest dokumentem przekazania, więc nic się nie gubi.

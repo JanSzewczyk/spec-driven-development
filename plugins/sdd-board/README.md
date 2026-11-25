@@ -33,7 +33,7 @@ The panel also opens by itself when the project has a `specs/` folder (at least 
 | spec `clarified` | `/sdd:plan` |
 | spec `planned`, no `tasks.md` | `/sdd:tasks` |
 | tasks exist, some not implemented | `/sdd:implement T<n>` for the first unfinished task whose dependencies are done |
-| the rest wait for task PRs (`pr:`), and unfinished tasks depend on them | `/sdd:implement all` after the merge |
+| the rest wait for task PRs (`pr:`), and unfinished tasks depend on them | merge them; a running `/sdd:implement all` continues by itself, else run it again after the merge |
 | only task PRs (`pr:`) are left | `/sdd:review` after the merge (it marks the merged tasks `review` first) |
 | every task in `review` or `done` | `/sdd:review` |
 | spec `done` or review verdict READY | nothing, open the PR |

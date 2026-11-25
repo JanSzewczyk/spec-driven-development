@@ -348,8 +348,8 @@ implementation:
 
 `merge` and `parallel` exist only under `worktree`. With it the session running `/sdd:implement all` only orchestrates: every ready task runs in its own sub-session (Desktop) or isolated agent, in its own worktree, on `<spec-branch>--<EPIC>-T<n>` cut from the SDD branch. Sub-sessions never touch `specs/`; only the orchestrator writes `tasks.md`.
 
-- `merge: pr` — human in the loop: each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task, the board shows "waiting for merge"). You merge; `/sdd:implement` checks the PRs, marks the merged tasks `review` and starts the tasks they unblock. After the last merge `/sdd:review` does the same check, so you can go straight to it.
-- `merge: auto` — the orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation.
+- `merge: pr` — human in the loop: each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task, the board shows "waiting for merge"). You merge; the running `/sdd:implement all` waits for the merges (session events and one background check every 2 minutes, never a tight loop), marks the merged tasks `review`, starts the tasks they unblock and repeats until every task is `review|done`. A PR closed without merging is reported and only its dependants stay blocked. If that session has ended, run `/sdd:implement all` (or `/sdd:review` after the last merge) again: both pick up the merges first.
+- `merge: auto` — the orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation. A conflict is reported and blocks only that task's dependants.
 
 Dependent tasks start only after their dependencies are merged. Task branches are never stacked: each is cut from the SDD branch and its PR targets the SDD branch. Projects in sibling repositories run in place. Details: [isolation.md](plugins/sdd/skills/implement/references/isolation.md).
 

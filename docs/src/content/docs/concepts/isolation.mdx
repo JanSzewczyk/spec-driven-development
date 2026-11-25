@@ -28,12 +28,20 @@ With it, the session running `/sdd:implement all` only **orchestrates**. Every r
   <TabItem label="merge: pr">
     **Human in the loop.** Each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task; the board shows "waiting for merge").
 
-    You merge. `/sdd:implement` checks the PRs, marks the merged tasks `review` and starts the tasks they unblock; after the last merge `/sdd:review` does the same check, so you can go straight to it.
+    You merge. The running `/sdd:implement all` notices the merge, marks the merged tasks `review`, starts the tasks they unblock and repeats until every task is `review|done`; then it names `/sdd:review`. A PR closed without merging is reported and only its dependants stay blocked.
   </TabItem>
   <TabItem label="merge: auto">
-    **Hands-off.** The orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation.
+    **Hands-off.** The orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation. A conflict is reported and blocks only that task's dependants.
   </TabItem>
 </Tabs>
+
+## Waiting for merges
+
+One `/sdd:implement all` runs every wave to the end; you do not re-run it after each merge.
+
+- **Sub-sessions finish**: Desktop resumes the orchestrator when its sub-sessions end their turn (with `parallel` > 1, when the whole wave has); background agents resume it when they complete.
+- **PRs merge** (`merge: pr`): one background waiter checks the open PRs into the SDD branch every 2 minutes and resumes the session when one of them is merged or closed. No tight loop.
+- **Session ended**: the tasks keep `branch:` and `pr:`. Run `/sdd:implement all` again (or `/sdd:review` when nothing else waits); both pick up the merges first.
 
 <Aside type="note">
 Dependent tasks start only after their dependencies are merged. Task branches are never stacked: each is cut from the SDD branch and its PR targets the SDD branch. Projects in sibling repositories run in place.

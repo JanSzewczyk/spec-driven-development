@@ -26,7 +26,8 @@ branch, which happens after the sub-session ends. For every task that still has 
   merge happened but the status was not written: set `status: review`, remove `branch:`, clean up as
   above. Fails → the task is still running or was not merged; leave it.
 
-Report the tasks this moved in one line. Never poll or wait for a merge.
+Report the tasks this moved in one line. Reconcile checks once and never waits; waiting for the
+merges belongs to `/sdd:implement all` (see its `isolation.md`).
 
 Set a status only forward, never over a later one. Two moves go backwards: `/sdd:review` sets a task
 with unmet acceptance criteria back to `in-progress`, and a `/sdd:tasks` re-run sets a started task

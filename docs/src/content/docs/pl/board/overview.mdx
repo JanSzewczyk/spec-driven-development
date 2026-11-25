@@ -35,7 +35,7 @@ Panel otwiera się sam, gdy projekt ma `specs/`, w oknie o szerokości co najmni
 | spec `clarified` | `/sdd:plan` |
 | spec `planned`, brak `tasks.md` | `/sdd:tasks` |
 | zadania istnieją, część niezaimplementowana | `/sdd:implement T<n>` dla pierwszego nieukończonego zadania, którego zależności są gotowe |
-| reszta czeka na PR-y zadań (`pr:`), a niedokończone zadania od nich zależą | `/sdd:implement all` po merge'u |
+| reszta czeka na PR-y zadań (`pr:`), a niedokończone zadania od nich zależą | zmerguj je; działające `/sdd:implement all` kontynuuje samo, inaczej uruchom je ponownie po merge'u |
 | zostały tylko PR-y zadań (`pr:`) | `/sdd:review` po merge'u (najpierw oznacza zmergowane zadania jako `review`) |
 | każde zadanie w `review` lub `done` | `/sdd:review` |
 | spec `done` lub werdykt review READY | nic, otwórz PR |

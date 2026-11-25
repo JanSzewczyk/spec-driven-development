@@ -18,8 +18,9 @@ first is merged.
 - Ask once with `AskUserQuestion`:
   - `merge: auto` — "Task branches will be rebased and fast-forwarded into `<branch>` without
     asking." Options: "Go" / "Stop".
-  - `merge: pr` — "`<branch>` will be pushed and every task opens a PR into it; you merge them."
-    Options: "Go" / "Stop". Push `<branch>` with `git push -u origin <branch>` after the answer.
+  - `merge: pr` — "`<branch>` will be pushed and every task opens a PR into it; you merge them.
+    This session waits for the merges and starts the next tasks itself." Options: "Go" / "Stop".
+    Push `<branch>` with `git push -u origin <branch>` after the answer.
 - `repo: true` projects (sibling repositories) are not isolated: run their tasks in place on the feature
   branch, one at a time, as in [sibling-repos.md](${CLAUDE_PLUGIN_ROOT}/references/sibling-repos.md).
 
@@ -61,22 +62,62 @@ changed, the reported tests passed. Anything off → leave the task `in-progress
 ### `merge: auto`
 
 1. `git -C <worktree> rebase <spec-branch>`, then in the main checkout
-   `git merge --ff-only <branch>`. A conflict → stop, leave the task `in-progress`, report it.
+   `git merge --ff-only <branch>`. A conflict → leave the task `in-progress` with its `branch:`,
+   report it and go on with the other tasks; its dependants stay blocked.
 2. Set `status: review`, remove the `branch:` line, `git worktree remove <path>`,
    `git branch -d <branch>`. Desktop sessions: offer to archive the session.
-3. Tasks this unblocks become ready; go on until all are `review|done`.
+3. Tasks this unblocks become ready: launch them (Keep going, below).
 
 ### `merge: pr` (a human merges)
 
 1. Write `pr: <url>` into the task. Do not merge anything yourself.
-2. When no task is ready any more, report "waiting for merge: <PR list>" and end the turn. Name the
-   next command: tasks still wait for these PRs (`depends_on`) → "merge, then `/sdd:implement all`";
-   nothing waits → "merge, then `/sdd:review`" (it marks the merged tasks itself).
-3. The next `/sdd:implement` or `/sdd:review` picks the merges up with
-   [Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks);
-   the dependants of a merged task become ready.
-4. Never poll or schedule a wake-up for the merge; the user comes back when the PRs are merged.
+2. The merge is picked up by [Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks),
+   which this loop runs after every wake-up; the dependants of a merged task become ready.
    Change requests on a PR go to that task's own session, which has its context.
+
+## Keep going until every task is `review|done`
+
+`/sdd:implement all` does not end with "re-run after the merge": it waits and continues by itself.
+A single task id (`/sdd:implement T3`) launches that task, handles its report and stops.
+
+After every launch, report or wake-up:
+
+1. Run [Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks).
+2. Launch the tasks that became ready, up to `parallel` running at once.
+3. Decide:
+   - every task `review|done` → stop and name `/sdd:review`.
+   - something is running or awaited → arm the waits below and end the turn; the next event
+     resumes this loop at step 1.
+   - nothing running, ready or awaited (the rest is blocked by a closed PR, a conflict or a failed
+     report) → stop, list the blocked tasks and why.
+
+**Waits.** Never a tight loop; arm only what is outstanding, and at most one merge waiter at a time.
+
+- **Sub-sessions running** → nothing to arm: Desktop resumes this session with a
+  `<side-sessions-event>` once no sub-session it started is still working (with `parallel` > 1 that
+  is when the whole wave has ended its turn); background agents resume it with their completion
+  notification.
+- **PRs open (`merge: pr`)** → one background waiter for all of them: `Monitor` with an until-loop
+  where available, else a background `Bash` command (`run_in_background`), which resumes the session
+  when it exits. It exits as soon as any awaited PR is no longer open; check every 2 minutes:
+
+  ```bash
+  while :; do
+    open=$(gh pr list --base '<spec-branch>' --state open --json number --jq '.[].number') \
+      || { sleep 300; continue; }
+    for p in <awaited PR numbers>; do grep -qx "$p" <<<"$open" || exit 0; done
+    sleep 120
+  done
+  ```
+
+  A PR closed without merging → Reconcile reports it; drop it from the awaited set, leave the task
+  `in-progress` with its `pr:` and its dependants blocked, keep waiting for the rest.
+
+**When the loop cannot go on.** A launch refused on a resumed turn (Desktop may refuse
+`start_session` on a turn started by an event) → fall back to the Agent tool with
+`isolation: "worktree"`; that unavailable too → report the ready tasks and name `/sdd:implement all`.
+The session ends or stops being resumed → nothing is lost: the tasks keep `branch:` / `pr:` and the
+next `/sdd:implement all` (or `/sdd:review`, when nothing else waits) reconciles them and continues.
 
 The merge method (merge commit, squash, rebase) belongs to the user and the repository settings;
 "Rebase and merge" keeps the `Task:` trailers and a linear history.
