@@ -100,8 +100,8 @@ export function derive(f: Feature): Derived {
     next = ready
       ? { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' }
       : working.length
-        ? { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. Merge them, then resume: the next tasks start from there.' }
-        : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. Merge them, then review: it marks the merged tasks as review first.' }
+        ? { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all starts the next tasks after the merge; if that session has ended, run it again.' }
+        : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all names the review after the merge; otherwise review: it marks the merged tasks as review first.' }
   } else if (status === 'planned' || f.planStatus !== null) {
     idx = 3
     next = { command: '/sdd:tasks', model: 'Sonnet', why: 'Split the plan into self-contained tasks.' }

@@ -21,7 +21,8 @@ list the specs and ask). `implementation.isolation` is `worktree:` → first run
 [Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks)
 (any argument, not only `all`). Read its `tasks.md`. `$ARGUMENTS`: a task id → that task; `all` → every task not yet
 `review|done`, in dependency order. A task whose `depends_on` are not all `review|done` → STOP and
-name the blockers. Independent tasks may be handed over together when the flow runs in the
+name the blockers (with `worktree:` and `all`, blocked tasks instead wait for their dependencies to
+be merged; see [isolation.md](references/isolation.md)). Independent tasks may be handed over together when the flow runs in the
 background; otherwise one after another.
 
 ### 2. Pick the flow
@@ -34,7 +35,8 @@ set → `in-session`.
 
 `implementation.isolation` is not a flow. `worktree:` → follow [isolation.md](references/isolation.md)
 for steps 3–5 instead of handing tasks over in place (each task runs in its own sub-session, worktree
-and branch, and commits there; the reference covers launching, merging and waiting for PRs).
+and branch, and commits there; the reference covers launching, merging, and how `all` waits for
+the merges and keeps launching until every task is `review|done`).
 `none` (default) → this session hands over and commits each task. Everything below applies to both.
 
 **Ids.** `**Epic:**` in `tasks.md` + the task heading give the full id `<EPIC>-T<n>`. No `**Epic:**`
@@ -89,4 +91,5 @@ Status changes in `tasks.md` (and `spec.md` / `plan.md`) stay uncommitted here; 
 ### 6. Output
 
 Task id, flow used, status, commit, files changed, any unmet AC. Next: the next task, or
-`/sdd:review` when all are `review|done`. Name the next step; do not start it yourself.
+`/sdd:review` when all are `review|done`. Name the next step; do not start it yourself (with
+`worktree:`, `all` starts the next tasks itself and reports at the end, or the tasks left blocked).

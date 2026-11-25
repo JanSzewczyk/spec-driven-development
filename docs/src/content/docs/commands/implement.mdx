@@ -18,7 +18,7 @@ A **dispatcher**, not an implementer. It checks `depends_on`, builds the brief, 
 | Sibling repos | Makes sure the feature branch exists in that repository first. |
 | Verification | Runs **no tests itself**: the implementer does, and [`/sdd:review`](/spec-driven-development/commands/review/) verifies. |
 | Commits | Commits any documentation `/sdd:tasks` left uncommitted before the first task, then each finished task's files with a `Task: <EPIC>-T<n>` trailer. |
-| Isolation | With `isolation: worktree:` it orchestrates sub-sessions instead. See [Isolated tasks](/spec-driven-development/concepts/isolation/). |
+| Isolation | With `isolation: worktree:` it orchestrates sub-sessions instead; `all` waits for the task merges and keeps launching until every task is `review` or `done`. See [Isolated tasks](/spec-driven-development/concepts/isolation/). |
 
 <Aside type="tip">
 Open a fresh session per task. `tasks.md` status is the handover document, so nothing is lost.

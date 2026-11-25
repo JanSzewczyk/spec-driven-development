@@ -28,12 +28,20 @@ Wtedy sesja uruchamiająca `/sdd:implement all` tylko **orkiestruje**. Każde go
   <TabItem label="merge: pr">
     **Człowiek w pętli.** Każde zadanie otwiera PR do gałęzi SDD, a orkiestrator czeka (`status: in-progress`, `pr:` w zadaniu; board pokazuje „czeka na merge").
 
-    Ty robisz merge. `/sdd:implement` sprawdza PR-y, oznacza zmergowane zadania jako `review` i startuje zadania, które odblokowały; po ostatnim merge'u to samo sprawdza `/sdd:review`, więc możesz przejść od razu do niego.
+    Ty robisz merge. Działające `/sdd:implement all` zauważa merge, oznacza zmergowane zadania jako `review`, startuje zadania, które odblokowały, i powtarza to, aż każde zadanie będzie `review|done`; wtedy wskazuje `/sdd:review`. PR zamknięty bez merge'a jest zgłaszany i blokuje tylko zadania od niego zależne.
   </TabItem>
   <TabItem label="merge: auto">
-    **Bez udziału człowieka.** Orkiestrator robi rebase gałęzi zadania na gałąź SDD i fast-forward, po czym startuje kolejne zadania, bez ponownego pytania po jednym potwierdzeniu na początku.
+    **Bez udziału człowieka.** Orkiestrator robi rebase gałęzi zadania na gałąź SDD i fast-forward, po czym startuje kolejne zadania, bez ponownego pytania po jednym potwierdzeniu na początku. Konflikt jest zgłaszany i blokuje tylko zadania zależne od tego zadania.
   </TabItem>
 </Tabs>
+
+## Czekanie na merge
+
+Jedno `/sdd:implement all` przeprowadza wszystkie fale do końca; nie uruchamiasz go ponownie po każdym merge'u.
+
+- **Sub-sesje kończą**: Desktop wznawia orkiestratora, gdy jego sub-sesje kończą turę (przy `parallel` > 1 — gdy skończy cała fala); agenci w tle wznawiają go po zakończeniu.
+- **PR-y są mergowane** (`merge: pr`): jeden waiter w tle co 2 minuty sprawdza otwarte PR-y do gałęzi SDD i wznawia sesję, gdy któryś zostanie zmergowany lub zamknięty. Bez ciasnej pętli.
+- **Sesja zakończona**: zadania zachowują `branch:` i `pr:`. Uruchom ponownie `/sdd:implement all` (albo `/sdd:review`, gdy nic więcej nie czeka); oba najpierw uwzględniają merge.
 
 <Aside type="note">
 Zadania zależne startują dopiero po zmergowaniu ich zależności. Gałęzie zadań nigdy nie są stackowane: każda jest odcinana od gałęzi SDD, a jej PR trafia do gałęzi SDD. Projekty w sąsiednich repozytoriach działają w miejscu.
