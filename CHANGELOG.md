@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] — 2026-11-25
+
+`sdd` goes to 2.3.0.
+
+### Changed
+
+- With worktree isolation, one `/sdd:implement all` runs every wave to the end. It resumes when task sessions finish and when a task PR is merged (one background `gh` check every 2 minutes), marks merged tasks `review`, starts the tasks they unblock, and names `/sdd:review` at the end. A PR closed without merging, or a `merge: auto` rebase conflict, blocks only that task's dependants instead of stopping the run. If the session ends, run `/sdd:implement all` again to continue.
+
+## [0.9.6 sdd-board] — 2026-11-25
+
+`sdd-board` goes to 0.9.6.
+
+### Changed
+
+- While task PRs wait for a merge, the next step says a running `/sdd:implement all` continues by itself; run it again only if that session ended.
+
 ## [2.2.0] — 2026-11-18
 
 `sdd` goes to 2.2.0.
