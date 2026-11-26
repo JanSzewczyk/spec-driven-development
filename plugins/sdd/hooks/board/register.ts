@@ -49,6 +49,12 @@ let drawnFreshness = ''
 let ghRetryAt = 0
 let live: Live = emptyLive()
 let openKeys: string[] = [] // expanded lanes and task rows
+
+// One task row open at a time; lanes open independently.
+function toggled(keys: string[], key: string): string[] {
+  if (keys.includes(key)) return keys.filter((k) => k !== key)
+  return [...(key.startsWith('task-') ? keys.filter((k) => !k.startsWith('task-')) : keys), key]
+}
 let taskFilter = 'all'
 let commits: Record<string, Commit> = {} // last commit of each running task branch, by task id
 const prCache = new Map<string, { at: number; prs: Map<number, PrInfo> }>()
@@ -359,6 +365,16 @@ export function registerBoard(on) {
     return next(e)
   })
 
+  // A task row on Desktop (board/task-row.ts) posts { toggle: <task id> } when pressed anywhere on it.
+  on('ui.message', async ($, e, next) => {
+    const id = (e.data as { toggle?: unknown } | null)?.toggle
+    if (e.module.endsWith('task-row.ts') && typeof id === 'string' && /^[A-Za-z0-9-]{1,40}$/.test(id)) {
+      openKeys = toggled(openKeys, 'task-' + id)
+      $.ui.invalidate('ui.render')
+    }
+    return next(e)
+  })
+
   on('ui.close', { id: PANE }, async ($, e, next) => {
     if (e.origin && e.origin.kind === 'person') isClosedByUser = true
     return next(e)
@@ -413,7 +429,7 @@ export function registerBoard(on) {
         if (t !== 'ticket') $.store.set('prefs', { tab, filter })
       },
       toggle: (key) => {
-        openKeys = openKeys.includes(key) ? openKeys.filter((k) => k !== key) : [...openKeys, key]
+        openKeys = toggled(openKeys, key)
         redraw()
       },
       taskFilter: (v) => {

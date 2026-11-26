@@ -362,7 +362,7 @@ function taskMeta(t: Task, f: Feature, look: TaskLook): { text: string; color?: 
 }
 
 function taskRows(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Button, Svg } = el
+  const { Box, Text, Button, Svg, Client } = el
   const tasks = f.tasks ?? []
   if (tasks.length === 0) return null
   const isRich = rich(ctx.surface)
@@ -378,6 +378,8 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
     const isOpen = (ctx.open ?? []).includes('task-' + t.id)
     const isRunning = running.has(t.id)
     const toggle = () => ctx.actions.toggle?.('task-' + t.id)
+    // Desktop: the row is a Client (board/task-row.ts) that takes the pointer over its whole width.
+    const hasClient = ctx.surface === 'desktop' && !!Client
     // Desktop draws a Button only as wide as its text and drops the colours of the Text inside it, so the
     // glyph and a status meta (PR, waits on) stay outside; the title and the project each press the row.
     const metaEl = !meta.text
@@ -394,16 +396,20 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
           flexDirection: 'row', columnGap: 1, alignItems: 'center',
           children: [
             isRich ? Svg({ alt: look, width: 14, height: 14, source: taskGlyphSvg(look, isRunning), isInteractive: isRunning }) : Text({ color: LOOK_KEY[look], dimColor: !LOOK_KEY[look], children: [GLYPH[look]] }),
-            Box({
-              flexGrow: 1, flexDirection: 'row',
-              children: [
-                Button({
-                  key: 'task-' + t.id, plain: true, onPress: toggle, hover: { scope: 'task-' + t.id, underline: true },
-                  children: [Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }), Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] })],
+            ...(hasClient
+              ? [Client({ key: 'task-' + t.id, module: './task-row.ts', flexGrow: 1, props: { id: t.id, title: t.title, meta: meta.text ?? '', metaColor: meta.color ?? null, isDone: look === 'done' } })]
+              : [
+                Box({
+                  flexGrow: 1, flexDirection: 'row',
+                  children: [
+                    Button({
+                      key: 'task-' + t.id, plain: true, onPress: toggle, hover: { scope: 'task-' + t.id, underline: true },
+                      children: [Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }), Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] })],
+                    }),
+                  ],
                 }),
-              ],
-            }),
-            metaEl,
+                metaEl,
+                ]),
           ].filter(Boolean),
         }),
         isOpen ? taskFacts(el, ctx, f, t, true) : null,
@@ -417,7 +423,7 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: 1,
         children: [Text({ weight: 'semibold', children: ['Tasks' + (f.epic ? ' · ' + f.epic : '')] }), Box({ flexDirection: 'row', columnGap: 2, children: [fb('all', 'All ' + tasks.length), fb('open', 'Open ' + open.length), fb('blocked', 'Blocked ' + blocked.length)] })],
       }),
-      Box({ flexDirection: 'column', children: rows.length ? rows : [Text({ dimColor: true, children: ['Nothing matches this filter.'] })] }),
+      Box({ flexDirection: 'column', rowGap: isRich ? 'xs' : 0, children: rows.length ? rows : [Text({ dimColor: true, children: ['Nothing matches this filter.'] })] }),
     ],
   })
 }

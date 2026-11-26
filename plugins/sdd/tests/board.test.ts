@@ -432,7 +432,7 @@ test('a task whose dependencies are open shows what it waits on', async ($, on) 
   stubProject($, on, true, { files: { 'specs/user-login/tasks.md': DEPS } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: 'waits on T2' })).toBeDefined()
+  expect(JSON.stringify(await ui.drawn({ in: 'task-T3' }))).toContain('"waits on T2"')
   await ui.unmount()
 })
 
@@ -443,7 +443,7 @@ test('mid-run, a later task still shows what it waits on', async ($, on) => {
   stubProject($, on, true, { files: { 'specs/user-login/tasks.md': midRun } })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: 'waits on T2' })).toBeDefined()
+  expect(JSON.stringify(await ui.drawn({ in: 'task-T3' }))).toContain('"waits on T2"')
   await ui.unmount()
 })
 
@@ -768,7 +768,7 @@ test('an expanded task links its PR and says it merged, also once the task is do
   await ui.unmount()
   await stub.clock.advance(4000)
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  await ui.press({ key: 'task-T1' })
+  await ui.pointer({ type: 'up', x: 3, y: 0, button: 'left', in: 'task-T1' })
   expect(await ui.find({ key: 'pr-T1' })).toBeDefined()
   expect(await ui.find({ type: 'Link', href: 'https://github.com/o/r/pull/11' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'merged' })).toBeDefined()
@@ -914,8 +914,12 @@ test('the main SDD session is named and shows the idle live strip', async ($, on
   }
   // Expanded rows and the task filter are the session's, kept across redraws.
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  await ui.press({ key: 'task-T2' })
+  // A press anywhere on a Desktop task row opens it, and one task is open at a time.
+  await ui.pointer({ type: 'up', x: 20, y: 0, button: 'left', in: 'task-T1' })
+  expect(await ui.find({ key: 'fact-T1-acceptance' })).toBeDefined()
+  await ui.pointer({ type: 'up', x: 20, y: 0, button: 'left', in: 'task-T2' })
   expect(await ui.find({ key: 'fact-T2-acceptance' })).toBeDefined()
+  expect(await ui.find({ key: 'fact-T1-acceptance' })).toBeUndefined()
   await ui.press({ key: 'tasks-open' })
   expect(await ui.find({ key: 'task-T1' })).toBeUndefined()
   await ui.unmount()
