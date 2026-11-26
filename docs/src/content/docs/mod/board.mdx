@@ -1,21 +1,15 @@
 ---
 title: Board
-description: "The SDD side panel: where each spec stands."
-sidebar:
-  label: Overview
+description: "The SDD side panel: where each spec stands and what to run next."
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
-A side panel, part of the `sdd` plugin's mod, that shows where each SDD feature stands. It only **reads** `specs/` and never writes to it. Needs Claude Code 2.1.287+.
+The board is the side panel of the [sdd mod](/spec-driven-development/mod/overview/). It only **reads** `specs/` and never writes to it.
 
 ```text
 /sdd-dashboard
 ```
 
-The panel opens by itself when the project has `specs/`, in a window at least 144 columns wide, unless you opened it once. To open it only with `/sdd-dashboard`, turn off the `show_board` option of `sdd` (`/plugin` → sdd → configure). Try it without installing: `claude --plugin-dir plugins/sdd`.
-
-Up to 0.9.7 the panel was the separate `sdd-board` plugin; the marketplace moves those installs to `sdd`.
+At session start it opens by itself when the project has `specs/` and the window has room for it; otherwise a toast says to type `/sdd-dashboard`. A board you close stays closed until you run `/sdd-dashboard`. To open it only by hand, turn off the `show_board` option. Try it without installing: `claude --plugin-dir plugins/sdd`.
 
 ## What it shows
 

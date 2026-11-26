@@ -1,0 +1,31 @@
+---
+title: Claude Code mod
+description: "What the sdd plugin's mod adds to Claude Code: the doctor_check tool and the board panel."
+sidebar:
+  label: Overview
+---
+
+`sdd` ships one Claude Code mod: TypeScript that runs inside Claude Code and adds a tool, a command and a side panel. It loads with the plugin; there is nothing to install separately.
+
+| Adds | What it does | Used by |
+|---|---|---|
+| `doctor_check` tool (`mcp__sdd__doctor_check`) | Read-only readiness check of the project: constitution, spec template, capabilities, git and gh, tooling, sibling repositories and every feature under `specs/`. Returns JSON with a verdict and one result per check. | [`/sdd:doctor check`](/spec-driven-development/commands/doctor/) |
+| [Board](/spec-driven-development/mod/board/) side panel | Shows where each spec stands and the next `/sdd:*` command. Only reads `specs/`. | you |
+| `/sdd-dashboard` command | Opens or focuses the board. | you |
+
+## Requirements
+
+- Claude Code **2.1.287+**, the first version with mods.
+- Mods do not run in WSL or under `--safe-mode`. There `/sdd:doctor check` does the checks itself and the board is not available; the skills work as usual.
+
+## Option
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_board` | on | Opens the board at session start in a project with `specs/`. Off, it opens only with `/sdd-dashboard`. |
+
+Change it with `/plugin` → sdd → configure.
+
+## Former sdd-board plugin
+
+Up to 0.9.7 the board was the separate `sdd-board` plugin. Since sdd 2.5.0 it is part of this mod, and the marketplace moves `sdd-board` installs to `sdd`. The board's saved tab and filter may reset once.

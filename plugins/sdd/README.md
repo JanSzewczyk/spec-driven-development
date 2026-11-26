@@ -28,7 +28,7 @@ A side panel that shows where each feature stands. It only reads `specs/` and ne
 /sdd-dashboard    # open or focus the panel
 ```
 
-It opens by itself at session start when the project has `specs/` (at least 144 columns wide, unless you opened it once). To open it only with `/sdd-dashboard`, turn off the `show_board` option of the `sdd` plugin (`/plugin` → sdd → configure). The panel was the separate `sdd-board` plugin up to sdd-board 0.9.7; the marketplace moves those installs to `sdd`.
+It opens by itself at session start when the project has `specs/` when the window has room for it; a board you close stays closed until `/sdd-dashboard`. To open it only with `/sdd-dashboard`, turn off the `show_board` option of the `sdd` plugin (`/plugin` → sdd → configure). The panel was the separate `sdd-board` plugin up to sdd-board 0.9.7; the marketplace moves those installs to `sdd`.
 
 ### What you get
 

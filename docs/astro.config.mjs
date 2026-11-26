@@ -8,6 +8,11 @@ import starlightVersions from "starlight-versions";
 export default defineConfig({
   site: "https://janszewczyk.github.io",
   base: "/spec-driven-development",
+  // The board pages moved under /mod/ in 2.5.0.
+  redirects: {
+    "/board/overview": "/spec-driven-development/mod/board/",
+    "/pl/board/overview": "/spec-driven-development/pl/mod/board/",
+  },
   integrations: [
     mermaid({
       theme: "base",
@@ -92,8 +97,8 @@ export default defineConfig({
           translations: { pl: "Agenci" }, items: ["agents/overview"] },
         { label: "Configuration",
           translations: { pl: "Konfiguracja" }, items: ["configuration/capabilities"] },
-        { label: "Board",
-          translations: { pl: "Board" }, items: ["board/overview"] },
+        { label: "Claude Code mod",
+          translations: { pl: "Mod Claude Code" }, items: ["mod/overview", "mod/board"] },
         {
           label: "Guides",
           translations: { pl: "Poradniki" },
