@@ -50,7 +50,11 @@ const LOOK_KEY: Record<TaskLook, string | undefined> = { done: 'success', review
 const LANE_ROLE: Record<Lane['kind'], Role> = { agent: 'pro', task: 'warning', pr: 'accent' }
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
 const SURFACE = 'userMessageBackground' // the surface Claude Code draws its own message bubbles on
-const ROW_HOVER = '#8b8d9824' // a mid grey at low opacity: a row under the pointer, on both themes
+const ROW_HOVER = '#4a86d424' // the permission blue at low opacity, as the design lights a row under the pointer
+// Desktop rounds a Box's corners only through `borderStyle: 'round'`; a border in the colour of the
+// background (or none) keeps the tint's corners round without drawing a line.
+const CLEAR = '#00000000'
+const roundBg = (bg: string) => ({ borderStyle: 'round', borderColor: bg, backgroundColor: bg })
 const PR_KEY: Record<PrState, string> = { OPEN: 'success', MERGED: 'merged', CLOSED: 'error' }
 const PR_WORD: Record<PrState, string> = { OPEN: 'open', MERGED: 'merged', CLOSED: 'closed without merging' }
 
@@ -118,7 +122,7 @@ function tabBar(el: any, ctx: Ctx) {
   const mk = ([id, label, hotkey]: [Tab, string, string]) =>
     Box({
       key: 'tabbox-' + id, paddingX: isRich ? 1 : 0,
-      ...(isRich && ctx.tab === id ? { backgroundColor: SURFACE } : {}),
+      ...(isRich ? (ctx.tab === id ? roundBg(SURFACE) : { borderStyle: 'round', borderColor: CLEAR }) : {}),
       children: [Button({ key: 'tab-' + id, label, hotkey, plain: true, dimColor: ctx.tab !== id, onPress: () => ctx.actions.tab(id) })],
     })
   // A new spec is offered only where no spec is being worked on (T9).
@@ -234,7 +238,7 @@ function laneRow(el: any, ctx: Ctx, l: Lane) {
     : null
   return Box({
     key: 'lanebox-' + l.key, flexDirection: 'column', rowGap: isRich ? 1 : 0,
-    ...(l.taskId ? { hover: { scope: 'task-' + l.taskId, backgroundColor: SURFACE } } : {}),
+    ...(l.taskId && isRich ? { borderStyle: 'round', borderColor: CLEAR, paddingX: 1, hover: { scope: 'task-' + l.taskId, backgroundColor: ROW_HOVER, borderColor: ROW_HOVER } } : {}),
     children: [
       Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ flexGrow: 1, flexDirection: 'row', children: [row] }), Text({ size: 'caption', tabular: true, color: l.state === 'waiting' ? 'permission' : l.state === 'failed' ? 'error' : undefined, dimColor: l.state !== 'waiting' && l.state !== 'failed', children: [status] })] }),
       bar,
@@ -336,7 +340,7 @@ function nextBlock(el: any, ctx: Ctx, f: Feature) {
   const status = isRunning ? 'running now' : isBlocked ? 'waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'model: ' + d.next.model
   return Box({
     key: 'next', marginTop: 1, padding: 'sm', flexDirection: 'column', rowGap: 1,
-    ...(rich(ctx.surface) ? { backgroundColor: SURFACE } : { borderStyle: 'round', borderColor: isBlocked ? 'warning' : 'success' }),
+    ...(rich(ctx.surface) ? roundBg(SURFACE) : { borderStyle: 'round', borderColor: isBlocked ? 'warning' : 'success' }),
     children: [
       Box({
         flexDirection: 'row', justifyContent: 'space-between', columnGap: 1, alignItems: 'center',
@@ -379,10 +383,12 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
     const metaEl = !meta.text
       ? null
       : meta.text === t.project
-        ? Button({ key: 'task-' + t.id + '-meta', label: meta.text, plain: true, dimColor: true, onPress: toggle })
+        ? Button({ key: 'task-' + t.id + '-meta', label: meta.text, plain: true, dimColor: true, onPress: toggle, hover: { scope: 'task-' + t.id, underline: true } })
         : Text({ size: 'caption', color: meta.color, dimColor: !meta.color, wrap: 'truncate-end', children: [meta.text] })
     return Box({
-      key: 'taskbox-' + t.id, flexDirection: 'column', rowGap: isOpen && isRich ? 'sm' : 0, paddingX: isRich ? 1 : 0, ...(isRich ? { paddingY: 'xs', hover: { scope: 'task-' + t.id, backgroundColor: ROW_HOVER } } : {}),
+      key: 'taskbox-' + t.id, flexDirection: 'column', rowGap: isOpen && isRich ? 'sm' : 0, paddingX: isRich ? 1 : 0,
+      // An open row is drawn as the design draws it, without the tint; a closed one lights under the pointer.
+      ...(isRich ? { paddingY: 'xs', borderStyle: 'round', borderColor: CLEAR, ...(isOpen ? {} : { hover: { scope: 'task-' + t.id, backgroundColor: ROW_HOVER, borderColor: ROW_HOVER } }) } : {}),
       children: [
         Box({
           flexDirection: 'row', columnGap: 1, alignItems: 'center',
@@ -392,7 +398,7 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
               flexGrow: 1, flexDirection: 'row',
               children: [
                 Button({
-                  key: 'task-' + t.id, plain: true, onPress: toggle,
+                  key: 'task-' + t.id, plain: true, onPress: toggle, hover: { scope: 'task-' + t.id, underline: true },
                   children: [Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }), Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] })],
                 }),
               ],
