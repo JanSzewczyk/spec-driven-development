@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] — 2026-11-26
+
+`sdd` goes to 2.5.1.
+
+### Fixed
+
+- The board in a task worktree (`<spec-branch>--<EPIC>-T<n>`) shows the statuses from the spec branch's checkout, where the orchestrating session writes `tasks.md`, instead of the snapshot the task branch was cut from, and no longer warns that the branch does not match the spec.
+- A task PR merged on GitHub, or a task branch fast-forwarded into the SDD branch (`merge: auto`), shows as merged before `/sdd:implement` or `/sdd:review` records it; the next step says so. While the panel is shown it asks GitHub (`gh pr list`) at most once a minute per spec branch and waits 10 minutes after `gh` fails. A PR closed without merging is named.
+- Writes under `specs/` by sub-agents, and `git merge`, `pull`, `rebase`, `reset`, `worktree` or `gh pr merge|create|edit|close|reopen`, refresh the board at once.
+
+### Added
+
+- A footer line on the board says when its data was read ("Updated just now · PRs checked 2 min ago", plus "statuses from <spec-branch>" in a task worktree) and keeps ageing while reads fail.
+
 ## [2.5.0] — 2026-11-26
 
 `sdd` goes to 2.5.0. The `sdd-board` plugin is merged into it.
