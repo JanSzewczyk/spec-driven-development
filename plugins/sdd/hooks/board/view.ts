@@ -117,18 +117,25 @@ function sessionStrip(el: any, ctx: Ctx) {
 }
 
 function tabBar(el: any, ctx: Ctx) {
-  const { Box, Button } = el
+  const { Box, Button, Text } = el
   const isRich = rich(ctx.surface)
   const isTask = ctx.session?.kind === 'task'
   const tabs: [Tab, string, string][] = isTask
     ? [['ticket', 'Ticket', '1'], ['current', 'Spec', '2'], ['all', 'All (' + ctx.features.length + ')', '3']]
     : [['current', 'Current', '1'], ['all', 'All (' + ctx.features.length + ')', '2']]
-  const mk = ([id, label, hotkey]: [Tab, string, string]) =>
-    Box({
-      key: 'tabbox-' + id, paddingX: isRich ? 1 : 0,
-      ...(isRich ? (ctx.tab === id ? roundBg(SURFACE) : { borderStyle: 'round', borderColor: CLEAR }) : {}),
-      children: [Button({ key: 'tab-' + id, label, hotkey, plain: true, dimColor: ctx.tab !== id, onPress: () => ctx.actions.tab(id) })],
+  // Desktop draws every Button as its own native button (hotkey chip, pill under the pointer), so a
+  // tinted box around it shows a pill inside a box: there the active tab is the full-strength,
+  // semibold label alone. VS Code draws the design's tinted tab.
+  const isDesktop = ctx.surface === 'desktop'
+  const mk = ([id, label, hotkey]: [Tab, string, string]) => {
+    const isActive = ctx.tab === id
+    const button = Button({
+      key: 'tab-' + id, label, hotkey, plain: true, dimColor: !isActive, onPress: () => ctx.actions.tab(id),
+      ...(isDesktop ? { children: [Text({ weight: isActive ? 'semibold' : 'regular', children: [label] })] } : {}),
     })
+    if (isDesktop || !isRich) return button
+    return Box({ key: 'tabbox-' + id, paddingX: 1, ...(isActive ? roundBg(SURFACE) : { borderStyle: 'round', borderColor: CLEAR }), children: [button] })
+  }
   // A new spec is offered only where no spec is being worked on (T9).
   const isSpecSession = ctx.session !== undefined && ctx.session.kind !== 'none'
   return Box({
