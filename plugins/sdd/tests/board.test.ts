@@ -370,14 +370,14 @@ test("another mod's pane is left alone", async ($, on) => {
 
 const DONE = { 'specs/user-login/review.md': 'Verdict: READY' }
 
-test('a finished feature shows the done card and hides the tasks', async ($, on) => {
+test('a finished feature shows the done card and keeps its task list', async ($, on) => {
   stubProject($, on, true, { files: DONE })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'Feature done · review ready' })).toBeDefined()
   expect(await ui.find({ key: 'fill-next' })).toBeUndefined()
-  expect(await ui.find({ key: 'task-T1' })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /^Tasks / })).toBeUndefined()
+  expect(await ui.find({ key: 'task-T1' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Tasks/ })).toBeDefined()
   await ui.unmount()
 })
 

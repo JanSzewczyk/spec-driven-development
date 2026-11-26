@@ -155,8 +155,9 @@ export function phaseBarSvg(steps: Step[], width: number, isAlert = false): stri
       body += '<clipPath id="c' + i + '"><rect x="' + x + '" y="0" width="' + w + '" height="' + h + '" rx="3"/></clipPath>'
       body += '<g clip-path="url(#c' + i + ')"><rect class="mv" x="' + (x - 20) + '" y="0" width="' + (w + 40) + '" height="' + h + '" fill="url(#st)"/></g>'
     }
+    // The end labels sit 4px in, so a drawing a few pixels wider than its slot keeps them whole.
     const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'
-    const tx = i === 0 ? x : i === n - 1 ? x + w : x + w / 2
+    const tx = i === 0 ? x + 1 : i === n - 1 ? x + w - 4 : x + w / 2
     const weight = s.state === 'current' ? '600' : '400'
     body += '<text class="l l-' + s.state + '" x="' + tx + '" y="27" text-anchor="' + anchor + '" font-size="11" font-weight="' + weight + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + esc(s.label) + '</text>'
     x += w + gap

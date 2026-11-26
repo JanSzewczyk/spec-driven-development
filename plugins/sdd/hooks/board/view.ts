@@ -53,7 +53,7 @@ const SURFACE = 'userMessageBackground' // the surface Claude Code draws its own
 // draw at that size inside a clipping box. A drawing without a width gets a much taller box than its
 // markup on Desktop, so every drawing names its width and height. Tune PX_PER_COLUMN if drawings come
 // out visibly short of (or cut off at) the cards' edges.
-const PX_PER_COLUMN = 8
+const PX_PER_COLUMN = 8.8
 const fullWidth = (ctx: { cols: number }, inset = 0) => Math.max(200, Math.min(900, Math.round((ctx.cols - 2) * PX_PER_COLUMN) - inset))
 // isInteractive: Desktop draws the markup in a sandboxed frame, where its CSS animation runs.
 function fit(el: any, alt: string, source: string, width: number, height: number, key?: string, isInteractive?: boolean) {
@@ -475,7 +475,7 @@ export function renderCurrent(el: any, ctx: Ctx) {
   if (ctx.session?.kind === 'task') kids.push(Text({ key: 'task-note', size: 'footnote', dimColor: true, wrap: 'wrap', children: ['You are on the branch of ' + ctx.session.label + '. Commands that change the spec run in the main session.'] }))
   kids.push(Box({ key: 'head', flexDirection: 'column', rowGap: 1, children: [specHeader(el, ctx, f), phaseBar(el, ctx, f)] }))
   kids.push(phaseCard(el, ctx, f))
-  if (d.phase === 'implement' || d.phase === 'review') {
+  if (d.phase === 'implement' || d.phase === 'review' || d.phase === 'done') {
     const rows = taskRows(el, ctx, f)
     if (rows) kids.push(rows)
   }
