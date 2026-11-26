@@ -26,6 +26,8 @@ export type Ctx = {
   filter: string
   hasSpecs: boolean
   now: number
+  freshness?: string // "Updated just now · PRs checked 2 min ago"
+  source?: string | null // spec branch whose checkout the statuses come from, when not this one
   actions: Actions
 }
 
@@ -148,7 +150,7 @@ function nextCard(el: any, ctx: Ctx, f: Feature) {
 
 function progress(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Svg } = el
-  const c = taskCounts(f.tasks)
+  const c = taskCounts(f.tasks, f.merges)
   const rows: any[] = []
   if (c.total > 0) {
     const done = c.done + c.review
@@ -168,7 +170,8 @@ function taskList(el: any, ctx: Ctx, f: Feature) {
   return Box({
     flexDirection: 'column',
     children: f.tasks.map((t) => {
-      const waits = blockedBy(t, f.tasks)
+      const waits = blockedBy(t, f.tasks, f.merges)
+      const merge = f.merges?.[t.id]
       return Box({
         key: 'task-' + t.id,
         flexDirection: 'row', columnGap: 1,
@@ -177,7 +180,15 @@ function taskList(el: any, ctx: Ctx, f: Feature) {
           Text({ mono: true, dimColor: true, children: [t.id] }),
           Text({ wrap: 'truncate-end', children: [t.title] }),
           Text({ dimColor: true, wrap: 'truncate-end', children: [t.project] }),
-          ...(t.pr ? [Text({ color: 'permission', wrap: 'truncate-end', children: ['PR ' + t.pr] })] : t.branch ? [Text({ dimColor: true, wrap: 'truncate-end', children: [t.branch] })] : []),
+          ...(merge === 'merged'
+            ? [Text({ color: 'success', wrap: 'truncate-end', children: [t.pr ? 'PR ' + t.pr + ' merged' : 'merged'] })]
+            : merge === 'closed'
+              ? [Text({ color: 'error', wrap: 'truncate-end', children: ['PR ' + t.pr + ' closed'] })]
+              : t.pr
+                ? [Text({ color: 'permission', wrap: 'truncate-end', children: ['PR ' + t.pr] })]
+                : t.branch
+                  ? [Text({ dimColor: true, wrap: 'truncate-end', children: [t.branch] })]
+                  : []),
           ...(waits.length ? [Text({ dimColor: true, wrap: 'truncate-end', children: ['waits on ' + waits.join(', ')] })] : []),
         ],
       })
@@ -300,7 +311,7 @@ export function renderAll(el: any, ctx: Ctx) {
   })
   const cards = filtered.map((f) => {
     const d = derive(f)
-    const c = taskCounts(f.tasks)
+    const c = taskCounts(f.tasks, f.merges)
     const isCurrent = ctx.current?.slug === f.slug
     return Box({
       borderStyle: 'round', borderColor: isCurrent ? 'permission' : undefined, paddingX: 1, flexDirection: 'column',
@@ -334,8 +345,15 @@ export function renderPane(el: any, ctx: Ctx) {
   if (!ctx.hasSpecs) return Box({ flexDirection: 'column', padding: 'sm', children: [emptyState(el, ctx)] })
   return Box({
     flexDirection: 'column', rowGap: 1, padding: 'sm',
-    children: [tabBar(el, ctx), Text({ children: [' '] }), ctx.tab === 'current' ? renderCurrent(el, ctx) : renderAll(el, ctx)],
+    children: [tabBar(el, ctx), Text({ children: [' '] }), ctx.tab === 'current' ? renderCurrent(el, ctx) : renderAll(el, ctx), footer(el, ctx)].filter(Boolean),
   })
+}
+
+// When the data was read and where from, so a stale board is visible as such.
+function footer(el: any, ctx: Ctx) {
+  const parts = [ctx.freshness, ctx.source ? 'statuses from ' + ctx.source : ''].filter(Boolean)
+  if (parts.length === 0) return null
+  return el.Text({ key: 'freshness', dimColor: true, wrap: 'wrap', children: [parts.join(' · ')] })
 }
 
 

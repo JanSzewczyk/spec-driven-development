@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
-import { blockedBy, currentSlug, derive, gate } from '../hooks/board/model.ts'
+import { blockedBy, currentSlug, derive, freshness, gate, warnings } from '../hooks/board/model.ts'
+import { mergeState, prNumber, prStates, taskBranchBase, worktreeOf } from '../core/merges.ts'
 import type { Feature } from '../hooks/board/model.ts'
 
 const SPEC = `# Feature: User Login
@@ -232,8 +233,14 @@ const PANE = {
   props: { title: 'SDD', isFocused: true, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
 } as const
 
-function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts: { branch?: string; files?: Record<string, string>; failing?: () => boolean } = {}) {
+type Run = (argv: string[], cwd?: string) => { exitCode: number; stdout: string } | undefined
+
+// `files` is the session's checkout (/work); `main` another checkout at /main. `run` answers host
+// commands; `git branch --show-current` answers `branch`, anything else unanswered exits 1.
+function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts: { branch?: string; files?: Record<string, string>; main?: Record<string, string>; failing?: () => boolean; run?: Run } = {}) {
   const all = { ...files, ...(opts.files ?? {}) }
+  const main = opts.main ?? {}
+  const pick = (path: string) => (path.startsWith('/main/') ? main : all)
   const has = () => (typeof withSpecs === 'function' ? withSpecs() : withSpecs)
   const clock = mock.clock(on)
   const filled: string[] = []
@@ -250,12 +257,20 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
   const rel = (p: string) => p.replace(/^.*?\/specs/, 'specs')
   on('fs.exists', (_: any, e: any) => {
     if (opts.failing?.()) throw new Error('read refused while a skill runs')
-    return { value: has() && (rel(e.path) === 'specs' || rel(e.path) in all) }
+    return { value: has() && (rel(e.path) === 'specs' || rel(e.path) in pick(e.path)) }
   })
   on('fs.list', () => ({ value: [{ name: 'user-login', kind: 'directory', size: 0, isLink: false }] }))
-  on('fs.read', (_: any, e: any) => ({ value: all[rel(e.path)] ?? '' }))
+  on('fs.read', (_: any, e: any) => ({ value: pick(e.path)[rel(e.path)] ?? '' }))
   on('fs.stat', () => ({ value: { mtimeMs: 1000 } }))
-  on('process.run', () => ({ value: { exitCode: 0, stdout: (opts.branch ?? 'feat/user-login') + '\n', stderr: '' } }))
+  const commands_run: string[] = []
+  on('process.run', (_: any, e: any) => {
+    const argv = [...e.argv]
+    commands_run.push(argv.join(' '))
+    const answer = opts.run?.(argv, e.init?.cwd)
+    if (answer) return { value: { ...answer, stderr: '' } }
+    if (argv.join(' ') === 'git branch --show-current') return { value: { exitCode: 0, stdout: (opts.branch ?? 'feat/user-login') + '\n', stderr: '' } }
+    return { value: { exitCode: 1, stdout: '', stderr: 'not stubbed' } }
+  })
   on('prompt.fill', (_: any, e: any) => { filled.push(e.text); return { isFilled: true } })
   on('command.run', (_: any, e: any) => {
     if (e.command === 'sdd-dashboard') return {}
@@ -264,7 +279,7 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
     return {}
   })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
-  return Object.assign(filled, { clock, ran, opened, commands, refuseSubmit: () => { refuse = true } })
+  return Object.assign(filled, { clock, ran, opened, commands, processes: commands_run, files: all as Record<string, string>, refuseSubmit: () => { refuse = true } })
 }
 
 test('the current tab shows the spec, its next step, and fills the prompt', async ($, on) => {
@@ -618,4 +633,174 @@ test('one session start registers both the doctor tool and /sdd-dashboard', asyn
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
   expect(tools).toEqual(['doctor_check'])
   expect(stub.commands).toEqual(['sdd-dashboard'])
+})
+
+test('taskBranchBase, worktreeOf, prNumber and prStates read git and gh output', () => {
+  expect(taskBranchBase('feat/x--LOG-7f3a-T1')).toBe('feat/x')
+  expect(taskBranchBase('feat/user-login--ULOG-T12')).toBe('feat/user-login')
+  expect(taskBranchBase('feat/user-login')).toBe(null)
+  const porcelain = 'worktree /main\nHEAD abc\nbranch refs/heads/feat/x\n\nworktree /main/.claude/worktrees/t1\nHEAD def\nbranch refs/heads/feat/x--LOG-T1\n'
+  expect(worktreeOf(porcelain, 'feat/x')).toBe('/main')
+  expect(worktreeOf(porcelain, 'feat/x--LOG-T1')).toBe('/main/.claude/worktrees/t1')
+  expect(worktreeOf(porcelain, 'main')).toBe(null)
+  expect(prNumber('#12')).toBe(12)
+  expect(prNumber('12')).toBe(12)
+  expect(prNumber('https://github.com/o/r/pull/34')).toBe(34)
+  expect(prNumber('soon')).toBe(null)
+  const states = prStates('[{"number":12,"state":"MERGED"},{"number":13,"state":"OPEN"},{"number":14,"state":"CLOSED"}]')
+  expect([...states.entries()]).toEqual([[12, 'MERGED'], [13, 'OPEN'], [14, 'CLOSED']])
+  expect(() => prStates('{}')).toThrow()
+})
+
+test('mergeState follows the Reconcile rules', () => {
+  const [byPr, byBranch, recorded, plain] = parseTasks(
+    '### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: in-progress\nbranch: feat/x--L-T2\n### T3: C\nstatus: review\npr: #13\n### T4: D\nstatus: draft\n',
+  )
+  const states = prStates('[{"number":12,"state":"MERGED"},{"number":13,"state":"MERGED"}]')
+  expect(mergeState(byPr, states, null)).toBe('merged')
+  expect(mergeState(byPr, prStates('[{"number":12,"state":"CLOSED"}]'), null)).toBe('closed')
+  expect(mergeState(byPr, prStates('[{"number":12,"state":"OPEN"}]'), null)).toBe('open')
+  expect(mergeState(byPr, null, null)).toBe(null)
+  expect(mergeState(byBranch, null, true)).toBe('merged')
+  expect(mergeState(byBranch, null, false)).toBe(null)
+  expect(mergeState(recorded, states, null)).toBe(null)
+  expect(mergeState(plain, states, true)).toBe(null)
+})
+
+test('a merged task counts as implemented before Reconcile records it', () => {
+  const tasks = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: draft\ndepends_on: [T1]\n')
+  const merged = feature({ planStatus: 'tasks-ready', tasks, merges: { T1: 'merged' } })
+  expect(blockedBy(tasks[1], tasks, merged.merges)).toEqual([])
+  expect(derive(merged).next?.command).toBe('/sdd:implement T2')
+  expect(derive(merged).next?.why).toContain('Merged, not recorded yet: T1')
+  const last = parseTasks('### T1: A\nstatus: review\n### T2: B\nstatus: in-progress\npr: #13\n')
+  const d = derive(feature({ planStatus: 'tasks-ready', tasks: last, merges: { T2: 'merged' } }))
+  expect(d.phase).toBe('review')
+  expect(d.next?.command).toBe('/sdd:review')
+  expect(d.next?.why).toContain('T2')
+  const closed = derive(feature({ planStatus: 'tasks-ready', tasks, merges: { T1: 'closed' } }))
+  expect(closed.next?.command).toBe('/sdd:implement all')
+  expect(closed.next?.why).toContain('Closed without merging: T1 #12')
+})
+
+test('a task branch belongs to its spec: current feature and no branch warning', () => {
+  const f = feature({ slug: 'user-login', planStatus: 'tasks-ready', tasks: parseTasks(TASKS) })
+  expect(currentSlug([f], 'feat/user-login--ULOG-T3', null)).toBe('user-login')
+  expect(warnings(f, 'feat/user-login--ULOG-T3')).toEqual([])
+  expect(warnings(f, 'feat/other')).toHaveLength(1)
+})
+
+test('freshness says when the data was read', () => {
+  expect(freshness(null, null, 5000)).toBe('')
+  expect(freshness(1000, null, 30_000)).toBe('Updated just now')
+  expect(freshness(0, 0, 180_000)).toBe('Updated 3 min ago · PRs checked 3 min ago')
+})
+
+const WORKTREES = 'worktree /work\nHEAD a\nbranch refs/heads/feat/user-login--ULOG-T2\n\nworktree /main\nHEAD b\nbranch refs/heads/feat/user-login\n'
+
+test('in a task worktree the board reads the statuses from the spec branch checkout', async ($, on) => {
+  // This checkout still has T2 in-progress; the orchestrator's checkout has moved it to review.
+  const filled = stubProject($, on, true, {
+    branch: 'feat/user-login--ULOG-T2',
+    main: { 'specs/user-login/spec.md': SPEC, 'specs/user-login/tasks.md': TASKS.replace('status: in-progress', 'status: review') },
+    run: (argv) => (argv.join(' ') === 'git worktree list --porcelain' ? { exitCode: 0, stdout: WORKTREES } : undefined),
+  })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'User Login' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /statuses from feat\/user-login$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /You are on/ })).toBeUndefined()
+  await ui.press({ key: 'fill-next' })
+  await ui.unmount()
+  expect(filled).toEqual(['/sdd:implement T3'])
+})
+
+const PR_TASKS = TASKS.replace('status: in-progress\n', 'status: in-progress\npr: #12\n')
+
+test('a PR merged on GitHub shows as merged, asking GitHub at most once a minute', async ($, on) => {
+  const stub = stubProject($, on, true, {
+    files: { 'specs/user-login/tasks.md': PR_TASKS },
+    run: (argv) => (argv[0] === 'gh' ? { exitCode: 0, stdout: '[{"number":12,"state":"MERGED"}]' } : undefined),
+  })
+  const asked = () => stub.processes.filter((c) => c.startsWith('gh pr list --base feat/user-login')).length
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'PR #12' })).toBeDefined()
+  await ui.unmount()
+  expect(asked()).toBe(0) // GitHub is asked only once the panel is drawn
+  await stub.clock.advance(4000)
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'PR #12 merged' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Merged, not recorded yet: T2/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /PRs checked just now/ })).toBeDefined()
+  await ui.unmount()
+  expect(asked()).toBe(1)
+  await stub.clock.advance(40_000)
+  expect(asked()).toBe(1)
+  await stub.clock.advance(24_000)
+  expect(asked()).toBe(2)
+})
+
+test('gh failing leaves the PR state unknown and backs off', async ($, on) => {
+  const stub = stubProject($, on, true, {
+    files: { 'specs/user-login/tasks.md': PR_TASKS },
+    run: (argv) => (argv[0] === 'gh' ? { exitCode: 4, stdout: '' } : undefined),
+  })
+  const asked = () => stub.processes.filter((c) => c.startsWith('gh ')).length
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.unmount()
+  await stub.clock.advance(4000)
+  expect(asked()).toBe(1)
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'PR #12' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /PRs checked/ })).toBeUndefined()
+  await ui.unmount()
+  await stub.clock.advance(120_000)
+  expect(asked()).toBe(1)
+  await stub.clock.advance(600_000)
+  expect(asked()).toBe(2)
+})
+
+test('a task branch fast-forwarded into the spec branch (merge: auto) shows as merged', async ($, on) => {
+  const stub = stubProject($, on, true, {
+    files: { 'specs/user-login/tasks.md': TASKS.replace('status: in-progress\n', 'status: in-progress\nbranch: feat/user-login--ULOG-T2\n') },
+    run: (argv) => (argv.join(' ') === 'git merge-base --is-ancestor feat/user-login--ULOG-T2 feat/user-login' ? { exitCode: 0, stdout: '' } : undefined),
+  })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'merged' })).toBeDefined()
+  await ui.press({ key: 'fill-next' })
+  await ui.unmount()
+  expect(stub).toEqual(['/sdd:implement T3'])
+})
+
+test('a sub-agent writing under specs/ refreshes the board', async ($, on) => {
+  const stub = stubProject($, on, true)
+  on('tool.call', () => ({ result: 'written' }))
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  stub.files['specs/user-login/tasks.md'] = TASKS.replace('status: in-progress', 'status: review')
+  await $.tool.call({ tool: 'Write', file_path: '/work/specs/user-login/tasks.md', content: '', agentId: 'agent-1' } as any)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'fill-next' })
+  await ui.unmount()
+  expect(stub).toEqual(['/sdd:implement T3'])
+})
+
+test('the Updated line ages while scans fail, and the poll redraws it', async ($, on) => {
+  let failing = false
+  const stub = stubProject($, on, true, { failing: () => failing })
+  let redraws = 0
+  on('ui.invalidate', () => { redraws += 1; return { value: undefined } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'Updated just now' })).toBeDefined()
+  await ui.unmount()
+  failing = true
+  const before = redraws
+  await stub.clock.advance(120_000)
+  expect(redraws).toBeGreaterThan(before)
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'Updated 2 min ago' })).toBeDefined()
+  await ui.unmount()
 })

@@ -19,7 +19,7 @@ At session start it opens by itself when the project has `specs/` and the window
 - **+ New spec:** puts `/sdd:spec feat ` in the prompt at any time, even while another feature is in progress.
 
 - **No SDD in the project:** only a setup card. **Init SDD in this project** runs `/sdd:doctor init`; it is the only button that runs a command, all others just fill the prompt.
-- **Live:** refreshes after Claude writes under `specs/`, after a branch switch, after each turn, and every 4 s for edits made elsewhere.
+- **Live:** refreshes after Claude or a sub-agent writes under `specs/`, after a branch switch, merge, pull or `gh pr` command, after each turn, and every 4 s for edits made elsewhere. While shown it asks GitHub about task PRs at most once a minute and checks task branches fast-forwarded into the SDD branch, so a merged task shows as merged before Reconcile records it. In a task worktree it reads the statuses from the SDD branch's checkout. A footer line says when the data was last read.
 - **Rendering:** SVG in Desktop and VS Code, text in the terminal.
 
 ## How it picks the next step
