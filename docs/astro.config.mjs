@@ -92,11 +92,8 @@ export default defineConfig({
           translations: { pl: "Agenci" }, items: ["agents/overview"] },
         { label: "Configuration",
           translations: { pl: "Konfiguracja" }, items: ["configuration/capabilities"] },
-        {
-          label: "Board",
-          translations: { pl: "Board" },
-          items: ["board/overview", ...makeChangelogsSidebarLinks([{ type: "all", base: "board/changelog", label: "Changelog" }])],
-        },
+        { label: "Board",
+          translations: { pl: "Board" }, items: ["board/overview"] },
         {
           label: "Guides",
           translations: { pl: "Poradniki" },

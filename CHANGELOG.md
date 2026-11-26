@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The panel polls `specs/` only once it has been drawn, so a session that never shows it does not poll.
 - The rules and parsers live once, in `plugins/sdd/core/`; the copy for the panel and `scripts/sync-core.sh` are gone (`scripts/gen-schema.sh` writes the schema module).
 - `plugins/sdd/core/` sits beside `hooks/` and `cli/`, the two hosts that use it. One `core/features.ts` decides which `specs/` folders are features for the doctor, the board and the CLI. Before, the CLI skipped a folder with only `plan.md` or `review.md` that the doctor listed.
+- The docs site has one changelog: `/board/changelog/` is gone, and the former `sdd-board` releases are listed in `/changelog/` under their own name.
 
 ## [2.4.0] — 2026-11-26
 
