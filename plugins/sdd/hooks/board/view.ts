@@ -34,6 +34,7 @@ export type Ctx = {
   running: string | null
   filter: string
   hasSpecs: boolean
+  isLoading?: boolean // no scan has finished yet (a reload, a refused first read): neither the board nor the setup card
   now: number
   freshness?: string // "Updated just now · PRs checked 2 min ago"
   source?: string | null // spec branch whose checkout the statuses come from, when not this one
@@ -645,6 +646,7 @@ export function renderAll(el: any, ctx: Ctx) {
 export function renderPane(el: any, ctx: Ctx) {
   const { Box } = el
   // No specs/ folder: the tabs have nothing to show, so only the setup card is drawn.
+  if (ctx.isLoading) return Box({ flexDirection: 'column', padding: 'sm', children: [el.Text({ dimColor: true, children: ['Reading specs/…'] })] })
   if (!ctx.hasSpecs) return Box({ flexDirection: 'column', padding: 'sm', children: [emptyState(el, ctx)] })
   const tab = ctx.tab === 'ticket' && ctx.session?.kind !== 'task' ? 'current' : ctx.tab
   const view = tab === 'ticket' ? renderTicket(el, ctx) : tab === 'all' ? renderAll(el, ctx) : renderCurrent(el, ctx)

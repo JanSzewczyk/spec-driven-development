@@ -250,7 +250,7 @@ type Run = (argv: string[], cwd?: string) => { exitCode: number; stdout: string 
 
 // `files` is the session's checkout (/work); `main` another checkout at /main. `run` answers host
 // commands; `git branch --show-current` answers `branch`, anything else unanswered exits 1.
-function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts: { branch?: string; files?: Record<string, string>; main?: Record<string, string>; failing?: () => boolean; run?: Run } = {}) {
+function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts: { branch?: string; files?: Record<string, string>; main?: Record<string, string>; failing?: () => boolean; cwdMoved?: () => boolean; run?: Run } = {}) {
   const all = { ...files, ...(opts.files ?? {}) }
   const main = opts.main ?? {}
   const pick = (path: string) => (path.startsWith('/main/') ? main : all)
@@ -260,6 +260,7 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
   const ran: any[] = []
   let refuse = false
   on('session.start', () => ({ cwd: '/work' }))
+  on('session.root', () => ({ value: '/work' }))
   on('store.get', () => ({ value: undefined }))
   on('store.set', () => ({ value: undefined }))
   const commands: string[] = []
@@ -270,6 +271,8 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
   const rel = (p: string) => p.replace(/^.*?\/specs/, 'specs')
   on('fs.exists', (_: any, e: any) => {
     if (opts.failing?.()) throw new Error('read refused while a skill runs')
+    // A Bash `cd apps/web` moved the session's directory: paths not under the project root (/work) miss specs/.
+    if (opts.cwdMoved?.() && !String(e.path).startsWith('/work/')) return { value: false }
     return { value: has() && (rel(e.path) === 'specs' || rel(e.path) in pick(e.path)) }
   })
   on('fs.list', () => ({ value: [{ name: 'user-login', kind: 'directory', size: 0, isLink: false }] }))
@@ -369,6 +372,39 @@ test('a failed scan keeps the last good panel instead of the setup card', async 
   expect(await ui.find({ key: 'tab-current' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'User Login' })).toBeDefined()
   await ui.unmount()
+})
+
+test('a shell cd out of the project root does not flip the panel to the setup card', async ($, on) => {
+  let moved = false
+  stubProject($, on, true, { cwdMoved: () => moved })
+  on('tool.call', () => ({ result: 'written' }))
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  moved = true
+  // A write under specs/ rescans at once, from wherever the shell went.
+  await $.tool.call({ tool: 'Write', file_path: '/work/specs/user-login/spec.md', content: '' } as any)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'SDD is not set up in this project' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: 'User Login' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the end of an overlapping main-loop turn does not stop the running command', async ($, on) => {
+  stubProject($, on, true)
+  on('turn.start', (_: any, e: any) => ({ turnId: e.turnId }))
+  on('skill.prompt', (_: any, e: any) => ({ text: e.text }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  await $.turn.start({ text: '/sdd:plan', turnId: 't1' })
+  await $.skill.prompt({ skill: 'sdd:plan', text: '', frontmatter: {}, source: 'plugin', pluginName: 'sdd' })
+  await $.turn.start({ text: '', turnId: 'fork' })
+  await $.turn.complete({ answer: '', durationMs: 5, isAborted: false, turnId: 'fork', reason: 'answer' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /Plan running/ })).toBeDefined()
+  await ui.unmount()
+  await $.turn.complete({ answer: '', durationMs: 9, isAborted: false, turnId: 't1', reason: 'answer' })
+  const after = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await after.find({ type: 'Text', text: /Plan running/ })).toBeUndefined()
+  await after.unmount()
 })
 
 test("another mod's pane is left alone", async ($, on) => {

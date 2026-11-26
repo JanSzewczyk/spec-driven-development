@@ -27,9 +27,12 @@ const REFRESH_COMMAND = /git\s+(checkout|switch|branch|merge|pull|rebase|reset|w
 // Module state: disposable, rebuilt from disk on every load.
 let features: Feature[] = []
 let hasSpecs = false
+let hasScanned = false // a scan finished since this module loaded: until then the panel cannot say specs/ is missing
 let branch = ''
 let source: string | null = null // spec branch whose checkout specs/ is read from, when not this one
-let specsRoot: string | null = null // that checkout's path
+let specsRoot: string | null = null // the checkout specs/ is read from: the project root, or the spec branch's
+let startRoot: string | null = null // the session's directory at start, when $.session.root() cannot answer
+let mainTurns: string[] = [] // ids of the main loop's turns that started and have not ended
 let signature = ''
 let tab: Tab = 'current'
 let ticketShownFor: string | null = null // the task branch whose session already opened on its Ticket tab
@@ -77,6 +80,19 @@ function startPolling($: any): void {
     // While something runs, the timers of the live strip move: redraw on every tick.
     if (isChanged || isActive(live) || freshness(updatedAt, checkedAt, await now($)) !== drawnFreshness) $.ui.invalidate('ui.render')
   })
+}
+
+// The project root, where specs/ lives. Never the shell's directory: a `cd apps/web` in a Bash call moves
+// the session's working directory, and relative reads there find no specs/ (the panel flipped to the
+// "not set up" card until Claude went back). $.session.root() follows /cd and worktree moves only.
+async function rootOf($: any): Promise<string | null> {
+  try {
+    const r = await $.session.root()
+    if (typeof r === 'string' && r) return r
+  } catch {
+    // older engines: the directory the session started in
+  }
+  return startRoot
 }
 
 async function modifiedOf($: any, path: string): Promise<number> {
@@ -180,9 +196,11 @@ async function scan($: any, isForced = false): Promise<boolean> {
 }
 
 async function scanOnce($: any, isForced: boolean): Promise<boolean> {
+  const home = await rootOf($)
+  const inHome = home ? { cwd: home } : undefined
   let next = branch
   try {
-    const r = await $.process.run(['git', 'branch', '--show-current'])
+    const r = await $.process.run(['git', 'branch', '--show-current'], inHome)
     if (r.exitCode === 0) next = String(r.stdout).trim()
   } catch {
     // not a git repo: keep the branch we had
@@ -193,17 +211,17 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
   const base = taskBranchBase(next)
   if (base) {
     try {
-      const r = await $.process.run(['git', 'worktree', 'list', '--porcelain'])
+      const r = await $.process.run(['git', 'worktree', 'list', '--porcelain'], inHome)
       if (r.exitCode === 0) root = worktreeOf(String(r.stdout), base)
     } catch {
       // read this checkout
     }
   }
-  specsRoot = root
+  specsRoot = root ?? home
   const found: Feature[] = []
   let any: boolean
   let cfg: Config | null = null
-  const io = ioOf($, { strict: true, root: root ?? undefined })
+  const io = ioOf($, { strict: true, root: specsRoot ?? undefined })
   const at = await now($)
   try {
     any = await io.exists('specs')
@@ -234,6 +252,7 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
   const isChanged = sig !== signature
   signature = sig
   hasSpecs = any
+  hasScanned = true
   branch = next
   source = root === null ? null : base
   features = found
@@ -248,6 +267,12 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
 // it opens the panel when the project has specs/; /sdd-dashboard opens it either way.
 export async function startBoard($: any, isAutoOpen: boolean): Promise<void> {
   isPolling = false
+  mainTurns = []
+  try {
+    startRoot = String(await $.session.cwd())
+  } catch {
+    startRoot = null
+  }
   try {
     const saved = await $.store.get('prefs')
     if (saved && typeof saved === 'object') {
@@ -295,7 +320,9 @@ export function registerBoard(on) {
   // The live strip: the main loop's turn, its tool calls and its subagents.
   on('turn.start', async ($, e, next) => {
     if (e.agentId === undefined) {
-      live = onTurnStart(live, e.turnId, await now($))
+      // A main-loop turn that starts while another runs (an engine fork) does not replace the running one.
+      if (mainTurns.length === 0) live = onTurnStart(live, e.turnId, await now($))
+      mainTurns = [...mainTurns.filter((id) => id !== e.turnId), e.turnId]
       $.ui.invalidate('ui.render')
     }
     return next(e)
@@ -352,7 +379,12 @@ export function registerBoard(on) {
       live = onReport(live, e.agentId, e.reason === 'answer' ? 'completed' : e.reason === 'aborted' ? 'stopped' : 'failed', await now($))
       $.ui.invalidate('ui.render')
     }
-    if (e.agentId === undefined) {
+    // The main loop's turn ends when every turn it heard start has ended: the end of an overlapping turn
+    // does not stop the running command. An end whose start was not heard ends what runs.
+    const isOwn = mainTurns.includes(e.turnId)
+    if (e.agentId === undefined) mainTurns = mainTurns.filter((id) => id !== e.turnId)
+    if (e.agentId === undefined && (!isOwn || mainTurns.length === 0)) {
+      mainTurns = []
       running = null
       live = onTurnComplete(live, await now($))
       try {
@@ -485,6 +517,7 @@ export function registerBoard(on) {
       running,
       filter,
       hasSpecs,
+      isLoading: !hasScanned,
       now: at,
       freshness: drawnFreshness,
       source,
