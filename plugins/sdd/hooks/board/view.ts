@@ -49,7 +49,9 @@ const GLYPH: Record<TaskLook, string> = { done: '●', review: '◑', 'in-progre
 const LOOK_KEY: Record<TaskLook, string | undefined> = { done: 'success', review: 'permission', 'in-progress': 'warning', merged: 'success', closed: 'error', blocked: undefined, draft: undefined }
 const LANE_ROLE: Record<Lane['kind'], Role> = { agent: 'pro', task: 'warning', pr: 'accent' }
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
-const SURFACE = 'userMessageBackground' // the surface Claude Code draws its own message bubbles on
+// The design's raised surface. Desktop draws the theme key userMessageBackground as the pane itself in the
+// light theme, so a warm grey at low opacity, which reads in both themes.
+const SURFACE = '#7a756a1f'
 const ROW_HOVER = '#4a86d424' // the permission blue at low opacity, as the design lights a row under the pointer
 // Desktop rounds a Box's corners only through `borderStyle: 'round'`. The border stays clear: a tinted one
 // would lie over the tinted background and draw a darker ring.
@@ -345,14 +347,14 @@ function nextBlock(el: any, ctx: Ctx, f: Feature) {
   const verb = cmd.split(' ')[0]
   const isRunning = runningCommand(ctx) === verb
   const isBlocked = open > 0
-  const status = isRunning ? 'running now' : isBlocked ? 'waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'model: ' + d.next.model
+  const status = isRunning ? 'running now' : 'model: ' + d.next.model
   return Box({
     key: 'next', marginTop: 1, padding: 'sm', flexDirection: 'column', rowGap: 1,
     ...(rich(ctx.surface) ? roundBg(SURFACE) : { borderStyle: 'round', borderColor: isBlocked ? 'warning' : 'success' }),
     children: [
       Box({
         flexDirection: 'row', justifyContent: 'space-between', columnGap: 1, alignItems: 'center',
-        children: [Text({ mono: true, weight: 'semibold', color: isRunning || isBlocked ? 'warning' : 'success', wrap: 'truncate-end', children: [cmd] }), Text({ size: 'caption', dimColor: true, children: [status] })],
+        children: [Text({ mono: true, weight: 'semibold', color: isRunning ? 'warning' : 'success', wrap: 'truncate-end', children: [cmd] }), Text({ size: 'caption', dimColor: true, children: [status] })],
       }),
       Text({ size: 'footnote', dimColor: true, wrap: 'wrap', children: [isBlocked && !isRunning ? 'Finish the open checks first. ' + d.next.why : d.next.why] }),
       isRunning ? null : Button({ key: 'fill-next', label: 'Put in prompt', hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),

@@ -433,7 +433,8 @@ test('the next step card waits on the open checks', async ($, on) => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
     expect(await ui.find({ key: 'check-questions' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /waiting on \d+ check/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Finish the open checks first/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^model: (Opus|Sonnet)$/ })).toBeDefined()
     await ui.unmount()
   }
   void filled
