@@ -321,7 +321,10 @@ export function registerBoard(on) {
   on('turn.start', async ($, e, next) => {
     if (e.agentId === undefined) {
       // A main-loop turn that starts while another runs (an engine fork) does not replace the running one.
-      if (mainTurns.length === 0) live = onTurnStart(live, e.turnId, await now($))
+      if (mainTurns.length === 0) {
+        live = onTurnStart(live, e.turnId, await now($), String(e.text ?? ''))
+        running = live.command
+      }
       mainTurns = [...mainTurns.filter((id) => id !== e.turnId), e.turnId]
       $.ui.invalidate('ui.render')
     }
@@ -386,7 +389,7 @@ export function registerBoard(on) {
     if (e.agentId === undefined && (!isOwn || mainTurns.length === 0)) {
       mainTurns = []
       running = null
-      live = onTurnComplete(live, await now($))
+      live = onTurnComplete(live, await now($), String(e.reason))
       try {
         await scan($, true)
       } catch {

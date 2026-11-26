@@ -178,6 +178,13 @@ function liveStrip(el: any, ctx: Ctx) {
   const isRich = rich(ctx.surface)
   const turn = live?.turn ?? null
   const active = lanes.filter((l) => l.state === 'working' || l.state === 'waiting')
+  const waiting = waitingCommand(ctx)
+  if (!turn && active.length === 0 && waiting) {
+    return Box({
+      key: 'live', flexDirection: 'row', columnGap: 1, alignItems: 'center',
+      children: [liveDot(el, ctx, 'warning', false), Text({ size: 'footnote', wrap: 'truncate-end', children: [waiting + ' · waits for your reply'] })],
+    })
+  }
   if (!turn && active.length === 0) {
     const last = live?.lastTurnEnd
     return Box({
@@ -315,7 +322,8 @@ function specHeader(el: any, ctx: Ctx, f: Feature) {
 // The pipeline as one bar: done segments green, the current one wider and moving.
 function phaseBar(el: any, ctx: Ctx, f: Feature) {
   const { Text } = el
-  const d = derive(f, runningCommand(ctx))
+  const waiting = runningCommand(ctx) ? null : waitingCommand(ctx)
+  const d = derive(f, runningCommand(ctx) ?? waiting)
   if (rich(ctx.surface)) {
     const { Box } = el
     const n = d.steps.length
@@ -323,7 +331,7 @@ function phaseBar(el: any, ctx: Ctx, f: Feature) {
       key: 'phase-bar', flexDirection: 'row', columnGap: 'xs',
       children: d.steps.map((s, i) => {
         const isCurrent = s.state === 'current'
-        const isMoving = isCurrent && d.isRunning
+        const isMoving = isCurrent && d.isRunning && !waiting
         const color = s.state === 'done' ? FILL.success : isCurrent ? (d.isRunning ? FILL.warning : FILL.danger) : MID_TRACK
         return Box({
           key: 'phase-' + s.key, flexDirection: 'column', rowGap: 'xs', flexGrow: isCurrent ? 2.2 : 1, flexShrink: 1, width: 0, minWidth: 0,
@@ -341,12 +349,20 @@ function phaseBar(el: any, ctx: Ctx, f: Feature) {
   const i = d.steps.findIndex((s) => s.state === 'current')
   const bar = d.steps.map((s) => (s.state === 'done' ? '██' : s.state === 'current' ? '▓▓▓▓' : '░░')).join(' ')
   const next = STEP_LABELS.find(([key]) => key === d.phase)?.[1]
-  return Text({ key: 'phase-bar', wrap: 'wrap', children: [bar + '  ' + (d.isRunning ? i + 1 + '/' + d.steps.length + ' ' + d.steps[i].label + ' running' : next ? 'Next: ' + next : 'Done')] })
+  return Text({ key: 'phase-bar', wrap: 'wrap', children: [bar + '  ' + (d.isRunning ? i + 1 + '/' + d.steps.length + ' ' + d.steps[i].label + (waiting ? ' waits for your reply' : ' running') : next ? 'Next: ' + next : 'Done')] })
 }
 
 // The /sdd:* command of the turn running now, or null.
 function runningCommand(ctx: Ctx): string | null {
   return ctx.live?.turn ? (ctx.live.command ?? ctx.running) : null
+}
+
+// The phase command waiting for the person's reply between its turns (a question, the plan approval),
+// while the phase it writes is still the current feature's open one.
+function waitingCommand(ctx: Ctx): string | null {
+  const w = ctx.live?.waiting
+  if (!w || ctx.live?.turn || !ctx.current) return null
+  return derive(ctx.current).phase === w.match(/^\/sdd:([a-z]+)/)?.[1] ? w : null
 }
 
 function doneCard(el: any, ctx: Ctx) {
@@ -691,7 +707,7 @@ export function renderAll(el: any, ctx: Ctx) {
   })
   const cards = filtered.map((f) => {
     const isCurrent = ctx.current?.slug === f.slug
-    const d = derive(f, isCurrent ? runningCommand(ctx) : null)
+    const d = derive(f, isCurrent ? (runningCommand(ctx) ?? waitingCommand(ctx)) : null)
     const c = taskCounts(f.tasks, f.merges)
     const label = d.phase === 'done' ? 'Done' : STEP_LABELS.find((s) => s[0] === d.phase)?.[1] ?? d.phase
     const mini = miniPhaseSvg(d.steps)

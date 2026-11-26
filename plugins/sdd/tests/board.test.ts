@@ -436,6 +436,46 @@ test('the end of an overlapping main-loop turn does not stop the running command
   await after.unmount()
 })
 
+test('a phase command waiting for the reply keeps its step and resumes with the next turn', async ($, on) => {
+  // The spec is clarified: no plan or tasks yet.
+  const stub = stubProject($, on, true)
+  delete stub.files['specs/user-login/plan.md']
+  delete stub.files['specs/user-login/tasks.md']
+  stub.files['specs/user-login/spec.md'] = SPEC.replace('**Status:** planned', '**Status:** clarified')
+  on('turn.start', (_: any, e: any) => ({ turnId: e.turnId }))
+  on('skill.prompt', (_: any, e: any) => ({ text: e.text }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const plan = async (text: RegExp) => {
+    const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    const found = await ui.find({ type: 'Text', text })
+    await ui.unmount()
+    return found
+  }
+  await $.turn.start({ text: '/sdd:plan', turnId: 't1' })
+  await $.skill.prompt({ skill: 'sdd:plan', text: '', frontmatter: {}, source: 'plugin', pluginName: 'sdd' })
+  await $.turn.complete({ answer: 'Which store?', durationMs: 9, isAborted: false, turnId: 't1', reason: 'answer' })
+  expect(await plan(/Plan waits for your reply/)).toBeDefined()
+  expect(await plan(/\/sdd:plan · waits for your reply/)).toBeDefined()
+  // The reply goes on with the plan.
+  await $.turn.start({ text: 'Postgres', turnId: 't2' })
+  expect(await plan(/Plan running/)).toBeDefined()
+  await $.turn.complete({ answer: '', durationMs: 9, isAborted: false, turnId: 't2', reason: 'answer' })
+  // Another slash command ends the wait.
+  await $.turn.start({ text: '/compact', turnId: 't3' })
+  await $.turn.complete({ answer: '', durationMs: 9, isAborted: false, turnId: 't3', reason: 'answer' })
+  expect(await plan(/Plan (running|waits)/)).toBeUndefined()
+})
+
+test('a waiting phase command is dropped once its phase is written, or after an interrupt', () => {
+  const asked = onTurnComplete(onTurnStart(onCommand(emptyLive(), '/sdd:plan'), 't1', 1000), 2000)
+  expect(asked.waiting).toBe('/sdd:plan')
+  expect(onTurnComplete(onTurnStart(onCommand(emptyLive(), '/sdd:plan'), 't1', 1000), 2000, 'aborted').waiting).toBeNull()
+  expect(onTurnComplete(onTurnStart(onCommand(emptyLive(), '/sdd:implement T1'), 't1', 1000), 2000).waiting).toBeNull()
+  expect(onTurnStart(asked, 't2', 3000, 'yes').command).toBe('/sdd:plan')
+  expect(onTurnStart(asked, 't2', 3000, '/sdd:tasks').command).toBeNull()
+})
+
 test("another mod's pane is left alone", async ($, on) => {
   stubProject($, on, true)
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })

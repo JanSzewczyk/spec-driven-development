@@ -6,6 +6,7 @@ export type AgentStatus = 'working' | 'completed' | 'failed' | 'stopped'
 export type AgentRun = { id: string; type: string; description: string; since: number; endedAt?: number; status: AgentStatus; steps: Step[]; isBackground?: boolean }
 export type Live = {
   command: string | null // the /sdd:* command this turn runs
+  waiting: string | null // a phase command whose turn ended with an answer: it waits for the person's reply
   turn: { id: string; since: number } | null // the main loop's running turn
   tool: Step | null // the main loop's latest tool call
   agents: AgentRun[] // subagents of this session, finished ones kept for the time axis
@@ -16,7 +17,7 @@ export const WINDOW_MS = 15 * 60_000 // the time axis of the live strip
 const STEPS_KEPT = 5
 
 export function emptyLive(): Live {
-  return { command: null, turn: null, tool: null, agents: [], lastTurnEnd: null }
+  return { command: null, waiting: null, turn: null, tool: null, agents: [], lastTurnEnd: null }
 }
 
 export function isActive(live: Live): boolean {
@@ -39,12 +40,19 @@ export function toolDetail(e: Record<string, unknown>): string {
 }
 
 export function onCommand(live: Live, command: string): Live {
-  return { ...live, command }
+  return { ...live, command, waiting: null }
 }
 
-export function onTurnStart(live: Live, id: string, at: number): Live {
-  return { ...live, turn: { id, since: at }, tool: null }
+// A turn that starts with the person's reply or a continuation (no slash command) goes on with the
+// command that waited for it; a new slash command ends the wait.
+export function onTurnStart(live: Live, id: string, at: number, text = ''): Live {
+  const resumed = live.waiting !== null && !text.trimStart().startsWith('/') ? live.waiting : null
+  return { ...live, command: live.command ?? resumed, waiting: null, turn: { id, since: at }, tool: null }
 }
+
+// The phase commands that ask the person something mid-way (questions, the plan approval) and end their
+// turn there; the phase they write is still open until they finish.
+const ASKING = /^\/sdd:(clarify|plan|tasks)\b/
 
 // A tool call of the main loop, or of a subagent (`agentId`), which goes to that agent's lane.
 export function onTool(live: Live, tool: string, detail: string, agentId: string | undefined, at: number): Live {
@@ -68,9 +76,12 @@ export function onReport(live: Live, id: string, status: Exclude<AgentStatus, 'w
 
 // The main turn ended. Foreground agents still marked working ended with it; background agents keep
 // running until their own turn.complete. Finished ones stay on the axis until they leave its window.
-export function onTurnComplete(live: Live, at: number): Live {
+// A phase command whose turn ended with an answer waits for the reply; the board shows it only while its
+// phase is still the open one (view.ts).
+export function onTurnComplete(live: Live, at: number, reason: string = 'answer'): Live {
   const agents = live.agents.map((a) => (a.status === 'working' && !a.isBackground ? { ...a, status: 'stopped' as const, endedAt: at } : a))
-  return { command: null, turn: null, tool: null, agents: prune(agents, at), lastTurnEnd: at }
+  const waiting = reason === 'answer' && live.command && ASKING.test(live.command) ? live.command : null
+  return { command: null, waiting, turn: null, tool: null, agents: prune(agents, at), lastTurnEnd: at }
 }
 
 export function prune(agents: AgentRun[], at: number): AgentRun[] {
