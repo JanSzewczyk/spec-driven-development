@@ -4,8 +4,11 @@ import type { Config } from '../../core/config.ts'
 import { FEATURE_DOCS, featurePath, readFeatures } from '../../core/features.ts'
 import type { FeatureDoc } from '../../core/features.ts'
 import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../../core/formats.ts'
+import type { Io } from '../../core/io.ts'
+import { mergeState, prStates, taskBranchBase, worktreeOf } from '../../core/merges.ts'
+import type { MergeState, PrState } from '../../core/merges.ts'
 import { ioOf } from '../io.ts'
-import { currentSlug, featureFrom, sortFeatures } from './model.ts'
+import { currentSlug, freshness, sortFeatures, featureFrom } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
 
@@ -13,11 +16,17 @@ const PANE = 'sdd-board'
 const DOC_PANE = 'sdd-board-doc'
 const CONFIG_PANE = 'sdd-board-config'
 const TITLE = 'Spec-driven Development by Szum-Tech'
+const PR_TTL = 60_000 // GitHub is asked about a spec branch's task PRs at most once a minute
+const GH_BACKOFF = 600_000 // after gh fails (missing, signed out, offline), wait 10 minutes
+// Commands after which statuses, merges or the branch may have changed: scan at once, ask GitHub too.
+const REFRESH_COMMAND = /git\s+(checkout|switch|branch|merge|pull|rebase|reset|worktree)\b|gh\s+pr\s+(merge|create|edit|close|reopen)\b/
 
 // Module state: disposable, rebuilt from disk on every load.
 let features: Feature[] = []
 let hasSpecs = false
 let branch = ''
+let source: string | null = null // spec branch whose checkout specs/ is read from, when not this one
+let specsRoot: string | null = null // that checkout's path
 let signature = ''
 let tab: 'current' | 'all' = 'current'
 let pinned: string | null = null
@@ -28,19 +37,36 @@ let cmdOpen: string[] | null = null
 let docView: { slug: string; kind: string } | null = null
 let isClosedByUser = false
 let isPolling = false
+let isScanning = false
+let isForcePending = false
+let updatedAt: number | null = null // last successful scan
+let checkedAt: number | null = null // last answer from GitHub
+let drawnFreshness = ''
+let ghRetryAt = 0
+const prCache = new Map<string, { at: number; states: Map<number, PrState> }>()
+
+async function now($: any): Promise<number> {
+  try {
+    return await $.clock.now()
+  } catch {
+    return Date.now()
+  }
+}
 
 // Polls specs/ every 4 s, started once the panel is drawn: a session that never shows it does not poll.
+// It also redraws when the "Updated …" line would read differently, so staleness shows.
 function startPolling($: any): void {
   if (isPolling) return
   isPolling = true
   $.clock.every(4000, async () => {
-    if (await scan($)) $.ui.invalidate('ui.render')
+    const isChanged = await scan($)
+    if (isChanged || freshness(updatedAt, checkedAt, await now($)) !== drawnFreshness) $.ui.invalidate('ui.render')
   })
 }
 
 async function modifiedOf($: any, path: string): Promise<number> {
   try {
-    const s: any = await $.fs.stat(path)
+    const s: any = await $.fs.stat(specsRoot ? specsRoot + '/' + path : path)
     const m = s?.mtimeMs ?? s?.modifiedMs ?? s?.mtime ?? s?.modified ?? 0
     return typeof m === 'number' ? m : Date.parse(String(m)) || 0
   } catch {
@@ -64,14 +90,94 @@ async function runCommand($: any, command: string, args: string): Promise<void> 
   }
 }
 
+// The state of the pull requests into `base`, from a cache of PR_TTL; null when GitHub cannot be asked.
+// Asked only while the panel is drawn, one `gh pr list` per spec branch.
+async function prStatesOf(io: Io, base: string, isForced: boolean, at: number): Promise<Map<number, PrState> | null> {
+  const cached = prCache.get(base)
+  if (!isPolling) return cached?.states ?? null
+  if (cached && !isForced && at - cached.at < PR_TTL) return cached.states
+  if (at < ghRetryAt) return cached?.states ?? null
+  const r = await io.run(['gh', 'pr', 'list', '--base', base, '--state', 'all', '--limit', '100', '--json', 'number,state'])
+  let states: Map<number, PrState> | null = null
+  try {
+    if (r && r.exitCode === 0) states = prStates(r.stdout)
+  } catch {
+    // not the JSON we asked for
+  }
+  if (states === null) {
+    ghRetryAt = at + GH_BACKOFF
+    return cached?.states ?? null
+  }
+  prCache.set(base, { at, states })
+  checkedAt = at
+  return states
+}
+
+// Isolated tasks that reached the SDD branch before Reconcile recorded them: `pr:` tasks from GitHub,
+// `branch:` tasks (merge: auto) from git, run in the checkout specs/ is read from.
+async function mergesOf(io: Io, f: Feature, isForced: boolean, at: number): Promise<Record<string, MergeState> | undefined> {
+  const base = f.spec.branch
+  const open = (f.tasks ?? []).filter((t) => t.status !== 'review' && t.status !== 'done' && (t.pr || t.branch))
+  if (!base || open.length === 0) return undefined
+  const states = open.some((t) => t.pr) ? await prStatesOf(io, base, isForced, at) : null
+  const out: Record<string, MergeState> = {}
+  for (const t of open) {
+    let isAncestor: boolean | null = null
+    if (!t.pr) {
+      const r = await io.run(['git', 'merge-base', '--is-ancestor', t.branch, base])
+      isAncestor = r === null ? null : r.exitCode === 0 ? true : r.exitCode === 1 ? false : null
+    }
+    const m = mergeState(t, states, isAncestor)
+    if (m !== null) out[t.id] = m
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
 // Reads specs/ and rebuilds the feature list. Returns true when anything changed. A scan that fails
 // part-way (a read refused or timing out while a skill is running) changes nothing: the panel keeps
-// showing the last good data instead of falling back to the "not set up" card.
-async function scan($: any): Promise<boolean> {
+// showing the last good data instead of falling back to the "not set up" card. One scan at a time:
+// a forced one that finds another running is done by the next poll.
+async function scan($: any, isForced = false): Promise<boolean> {
+  if (isScanning) {
+    if (isForced) isForcePending = true
+    return false
+  }
+  isScanning = true
+  try {
+    const force = isForced || isForcePending
+    isForcePending = false
+    return await scanOnce($, force)
+  } finally {
+    isScanning = false
+  }
+}
+
+async function scanOnce($: any, isForced: boolean): Promise<boolean> {
+  let next = branch
+  try {
+    const r = await $.process.run(['git', 'branch', '--show-current'])
+    if (r.exitCode === 0) next = String(r.stdout).trim()
+  } catch {
+    // not a git repo: keep the branch we had
+  }
+  // In a task worktree (<spec-branch>--<EPIC>-T<n>) the statuses live in the checkout of the spec
+  // branch, where the orchestrating session writes tasks.md: read specs/ there, not this snapshot.
+  let root: string | null = null
+  const base = taskBranchBase(next)
+  if (base) {
+    try {
+      const r = await $.process.run(['git', 'worktree', 'list', '--porcelain'])
+      if (r.exitCode === 0) root = worktreeOf(String(r.stdout), base)
+    } catch {
+      // read this checkout
+    }
+  }
+  specsRoot = root
   const found: Feature[] = []
   let any: boolean
   let cfg: Config | null = null
-  const io = ioOf($, { strict: true })
+  const io = ioOf($, { strict: true, root: root ?? undefined })
+  const at = await now($)
   try {
     any = await io.exists('specs')
     if (any) {
@@ -88,20 +194,19 @@ async function scan($: any): Promise<boolean> {
   } catch {
     return false
   }
-  let next = branch
-  try {
-    const r = await $.process.run(['git', 'branch', '--show-current'])
-    if (r.exitCode === 0) next = String(r.stdout).trim()
-  } catch {
-    // not a git repo: keep the branch we had
+  for (const f of found) {
+    const merges = await mergesOf(io, f, isForced, at)
+    if (merges) f.merges = merges
   }
-  const sig = JSON.stringify([any, next, found, cfg])
+  const sig = JSON.stringify([any, next, root, found, cfg])
   const isChanged = sig !== signature
   signature = sig
   hasSpecs = any
   branch = next
+  source = root === null ? null : base
   features = found
   config = cfg
+  updatedAt = at
   return isChanged
 }
 
@@ -139,7 +244,7 @@ export async function startBoard($: any, isAutoOpen: boolean): Promise<void> {
 export function registerBoard(on) {
   on('command.run', { command: 'sdd-dashboard' }, async ($) => {
     isClosedByUser = false
-    await scan($)
+    await scan($, true)
     await $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true, columns: 48 })
     return {}
   })
@@ -157,8 +262,8 @@ export function registerBoard(on) {
   on('tool.call', { tool: ['Edit', 'Write'] }, async ($, e, next) => {
     const result = await next(e)
     try {
-      // A subagent's cwd can differ from the session's, so only the main conversation scans here.
-      if (e.agentId === undefined && typeof e.file_path === 'string' && e.file_path.includes('/specs/')) {
+      // Sub-agents too: the scan reads this session's checkout (or the spec branch's), never the agent's cwd.
+      if (typeof e.file_path === 'string' && e.file_path.includes('/specs/')) {
         if (await scan($)) $.ui.invalidate('ui.render')
       }
     } catch {
@@ -170,7 +275,7 @@ export function registerBoard(on) {
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
     try {
-      if (e.agentId === undefined && /git\s+(checkout|switch|branch)/.test(String(e.command)) && (await scan($))) $.ui.invalidate('ui.render')
+      if (REFRESH_COMMAND.test(String(e.command)) && (await scan($, true))) $.ui.invalidate('ui.render')
     } catch {
       // the poll will catch up
     }
@@ -181,7 +286,7 @@ export function registerBoard(on) {
     if (e.agentId === undefined) {
       running = null
       try {
-        await scan($)
+        await scan($, true)
       } catch {
         // keep the last data
       }
@@ -199,7 +304,7 @@ export function registerBoard(on) {
     if (e.requestId === DOC_PANE) {
       const el = $.ui.resolve(e)
       const view = docView
-      const text = view ? await ioOf($).read(featurePath(view.slug, view.kind as FeatureDoc)) : null
+      const text = view ? await ioOf($, { root: specsRoot ?? undefined }).read(featurePath(view.slug, view.kind as FeatureDoc)) : null
       return renderDoc(el, { slug: view ? view.slug : '', kind: view ? view.kind : '', text })
     }
     if (e.requestId === CONFIG_PANE) {
@@ -228,6 +333,8 @@ export function registerBoard(on) {
     const sorted = sortFeatures(features, currentSlug(features, branch, pinned))
     const slug = currentSlug(features, branch, pinned)
     const current = features.find((f) => f.slug === slug) ?? null
+    const at = await now($)
+    drawnFreshness = freshness(updatedAt, checkedAt, at)
     const actions = {
       tab: (t) => {
         tab = t
@@ -283,7 +390,9 @@ export function registerBoard(on) {
       running,
       filter,
       hasSpecs,
-      now: Date.now(),
+      now: at,
+      freshness: drawnFreshness,
+      source,
       actions,
     })
   })

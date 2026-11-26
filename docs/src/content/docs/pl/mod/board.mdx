@@ -19,7 +19,7 @@ Na starcie sesji otwiera się sam, gdy projekt ma `specs/`, a w oknie jest na ni
 - **+ New spec:** wstawia `/sdd:spec feat ` do promptu w dowolnym momencie, nawet gdy inna funkcja jest w toku.
 
 - **Brak SDD w projekcie:** tylko karta konfiguracji. **Init SDD in this project** uruchamia `/sdd:doctor init`; to jedyny przycisk, który uruchamia komendę, pozostałe tylko wypełniają prompt.
-- **Na żywo:** odświeża się po zapisie Claude w `specs/`, po zmianie gałęzi, po każdej turze i co 4 s dla edycji wykonanych gdzie indziej.
+- **Na żywo:** odświeża się po zapisie Claude lub sub-agenta w `specs/`, po zmianie gałęzi, po `git merge`, `git pull` i komendach `gh pr`, po każdej turze i co 4 s dla edycji wykonanych gdzie indziej. Gdy panel jest widoczny, najwyżej raz na minutę pyta GitHub o PR-y zadań i sprawdza gałęzie zadań przewinięte do gałęzi SDD, więc scalone zadanie widać jako scalone, zanim Reconcile je zapisze. W worktree zadania czyta statusy z checkoutu gałęzi SDD. Stopka podaje, kiedy dane odczytano ostatnio.
 - **Renderowanie:** SVG w Desktop i VS Code, tekst w terminalu.
 
 ## Jak wybiera następny krok

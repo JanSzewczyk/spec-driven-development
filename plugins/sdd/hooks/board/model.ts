@@ -1,5 +1,7 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
 import type { FeatureFiles } from '../../core/features.ts'
+import { taskBranchBase } from '../../core/merges.ts'
+import type { MergeState } from '../../core/merges.ts'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../../core/parse.ts'
 import type { PlanInfo, SpecInfo, Task, Verdict } from '../../core/parse.ts'
 
@@ -12,6 +14,7 @@ export type Feature = {
   epic?: string // `**Epic:**` id from tasks.md; '' or absent in files written before epic ids
   review: Verdict | null
   modified: number
+  merges?: Record<string, MergeState> // isolated tasks whose merge state is known (git, gh), by task id
 }
 
 // A feature's files, parsed for the board. Call only with a spec (the board lists a feature once it has one).
@@ -64,11 +67,16 @@ export const ROLE_KEY: Record<Role, string> = { success: 'success', pro: 'merged
 
 export const TEXT_COLOR: Record<string, string> = Object.fromEntries(Object.entries(STATUS_ROLE).map(([status, role]) => [status, ROLE_KEY[role]]))
 
-export function taskCounts(tasks: Task[] | null) {
+type Merges = Record<string, MergeState> | undefined
+
+// Merged into the SDD branch but not recorded yet: counts as implemented, as Reconcile will record it.
+const isMerged = (t: Task, merges: Merges) => merges?.[t.id] === 'merged'
+
+export function taskCounts(tasks: Task[] | null, merges?: Merges) {
   const c = { total: 0, draft: 0, 'in-progress': 0, review: 0, done: 0 } as Record<string, number>
   for (const t of tasks ?? []) {
     c.total += 1
-    const k = t.status in c ? t.status : 'draft'
+    const k = isMerged(t, merges) && !taskDone(t) ? 'review' : t.status in c ? t.status : 'draft'
     c[k] += 1
   }
   return c
@@ -76,13 +84,13 @@ export function taskCounts(tasks: Task[] | null) {
 
 // Dependencies of a task that are not implemented yet (status review or done). Unknown ids count
 // as open, so a typo in depends_on shows up instead of silently unblocking the task.
-export function blockedBy(task: Task, tasks: Task[] | null): string[] {
+export function blockedBy(task: Task, tasks: Task[] | null, merges?: Merges): string[] {
   if (task.status !== 'draft' || task.dependsOn.length === 0) return []
-  const status = new Map<string, string>()
-  for (const t of tasks ?? []) status.set(t.id, t.status)
+  const byId = new Map<string, Task>()
+  for (const t of tasks ?? []) byId.set(t.id, t)
   return task.dependsOn.filter((id) => {
-    const st = status.get(id)
-    return st !== 'review' && st !== 'done'
+    const t = byId.get(id)
+    return !t || !implemented(t, merges)
   })
 }
 
@@ -90,10 +98,23 @@ export function taskDone(t: Task): boolean {
   return t.status === 'review' || t.status === 'done'
 }
 
+export function implemented(t: Task, merges?: Merges): boolean {
+  return taskDone(t) || isMerged(t, merges)
+}
+
+// Tasks merged into the SDD branch whose status Reconcile has not written yet.
+export function unrecorded(f: Feature): string[] {
+  return (f.tasks ?? []).filter((t) => !taskDone(t) && isMerged(t, f.merges)).map((t) => t.id)
+}
+
 export function derive(f: Feature): Derived {
   const tasks = f.tasks ?? []
   const hasTasks = tasks.length > 0
-  const allDone = hasTasks && tasks.every(taskDone)
+  const m = f.merges
+  const allDone = hasTasks && tasks.every((t) => implemented(t, m))
+  const merged = unrecorded(f)
+  // Every next command below runs Reconcile first, which records these merges.
+  const recorded = merged.length ? ' Merged, not recorded yet: ' + merged.join(', ') + ' (this command records ' + (merged.length === 1 ? 'it' : 'them') + ' first).' : ''
   let idx: number // index of current step; 6 = everything done
   let next: Next | null
   const status = f.spec.status
@@ -102,23 +123,26 @@ export function derive(f: Feature): Derived {
     next = null
   } else if (allDone) {
     idx = 5
-    next = { command: '/sdd:review', model: 'Opus', why: f.review === 'NOT READY' ? 'The last review was not ready: fix the findings, then review again.' : 'All tasks are implemented. Run the final audit before the PR.' }
+    next = { command: '/sdd:review', model: 'Opus', why: (f.review === 'NOT READY' ? 'The last review was not ready: fix the findings, then review again.' : 'All tasks are implemented. Run the final audit before the PR.') + recorded }
   } else if (hasTasks) {
     idx = 4
     // First task not yet implemented whose dependencies are done; else the first unfinished one.
     // A task with a pull request (merge: pr) is waiting for a human, not for the implementer.
     // Both /sdd:implement and /sdd:review mark merged task PRs as review first, so once nothing else
     // is left the next step after the merge is the review, not another implement run.
-    const open = tasks.filter((t) => !taskDone(t))
+    // A merged task counts as implemented even before Reconcile records it.
+    const open = tasks.filter((t) => !implemented(t, m))
     const waiting = open.filter((t) => t.pr)
     const working = open.filter((t) => !t.pr)
+    const closed = waiting.filter((t) => m?.[t.id] === 'closed').map((t) => t.id + ' ' + t.pr)
     const prs = waiting.map((t) => t.pr).join(', ')
-    const ready = working.find((t) => blockedBy(t, tasks).length === 0) ?? (waiting.length ? undefined : working[0])
+    const note = (closed.length ? ' Closed without merging: ' + closed.join(', ') + '.' : '') + recorded
+    const ready = working.find((t) => blockedBy(t, tasks, m).length === 0) ?? (waiting.length ? undefined : working[0])
     next = ready
-      ? { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' }
+      ? { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' + recorded }
       : working.length
-        ? { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all starts the next tasks after the merge; if that session has ended, run it again.' }
-        : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all names the review after the merge; otherwise review: it marks the merged tasks as review first.' }
+        ? { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all starts the next tasks after the merge; if that session has ended, run it again.' + note }
+        : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all names the review after the merge; otherwise review: it marks the merged tasks as review first.' + note }
   } else if (status === 'planned' || f.planStatus !== null) {
     idx = 3
     next = { command: '/sdd:tasks', model: 'Sonnet', why: 'Split the plan into self-contained tasks.' }
@@ -172,17 +196,17 @@ export function gate(f: Feature): Gate | null {
     const tasks = f.tasks ?? []
     const arg = command.split(' ')[1]
     if (arg === 'all') {
-      const prs = tasks.filter((t) => !taskDone(t) && t.pr)
+      const prs = tasks.filter((t) => !implemented(t, f.merges) && t.pr)
       checks.push({ key: 'merge', label: 'Task pull requests merged', ok: false, hint: prs.map((t) => t.id + ' ' + t.pr).join(', ') })
     } else {
       const target = tasks.find((t) => t.id === arg)
-      const waits = target ? blockedBy(target, tasks) : []
+      const waits = target ? blockedBy(target, tasks, f.merges) : []
       checks.push({ key: 'ac', label: 'Task has acceptance criteria', ok: !!target && target.acceptance.length > 0 })
       checks.push({ key: 'deps', label: 'Dependencies implemented', ok: waits.length === 0, hint: waits.length ? 'waiting on ' + waits.join(', ') : undefined })
     }
     questions()
   } else if (verb === '/sdd:review') {
-    const prs = (f.tasks ?? []).filter((t) => !taskDone(t) && t.pr)
+    const prs = (f.tasks ?? []).filter((t) => !implemented(t, f.merges) && t.pr)
     if (prs.length) checks.push({ key: 'merge', label: 'Task pull requests merged', ok: false, hint: prs.map((t) => t.id + ' ' + t.pr).join(', ') })
     else checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })
     questions()
@@ -201,16 +225,27 @@ export function sortFeatures(list: Feature[], current: string | null): Feature[]
 
 export function currentSlug(list: Feature[], branch: string, pinned: string | null): string | null {
   if (pinned && list.some((f) => f.slug === pinned)) return pinned
-  const slug = branch.includes('/') ? branch.slice(branch.indexOf('/') + 1) : branch
+  const base = specBranch(branch)
+  const slug = base.includes('/') ? base.slice(base.indexOf('/') + 1) : base
   if (slug && list.some((f) => f.slug === slug)) return slug
   // Fallback: the newest feature still in progress. Finished ones are never "current" by themselves.
   const latest = [...list].filter((f) => derive(f).phase !== 'done').sort((a, b) => b.modified - a.modified)[0]
   return latest ? latest.slug : null
 }
 
+// The spec branch a checkout works for: a task branch (`<spec-branch>--<EPIC>-T<n>`) belongs to its spec.
+export function specBranch(branch: string): string {
+  return taskBranchBase(branch) ?? branch
+}
+
 export function ago(ms: number, now: number): string {
   if (!ms) return ''
-  const m = Math.max(0, Math.round((now - ms) / 60000))
+  return elapsed(now - ms)
+}
+
+// A duration as the board words it: 'just now', '5 min ago', '3 h ago', '2 d ago'.
+export function elapsed(ms: number): string {
+  const m = Math.max(0, Math.round(ms / 60000))
   if (m < 1) return 'just now'
   if (m < 60) return m + ' min ago'
   const h = Math.round(m / 60)
@@ -218,10 +253,17 @@ export function ago(ms: number, now: number): string {
   return Math.round(h / 24) + ' d ago'
 }
 
+// How fresh the board's data is: when specs/ was last read and, once asked, when GitHub was. The poll
+// redraws when this text changes, so it ages even while nothing else does.
+export function freshness(updatedAt: number | null, checkedAt: number | null, now: number): string {
+  if (updatedAt === null) return ''
+  return 'Updated ' + elapsed(now - updatedAt) + (checkedAt === null ? '' : ' · PRs checked ' + elapsed(now - checkedAt))
+}
+
 export function warnings(f: Feature, branch: string): string[] {
   const out: string[] = []
   const d = derive(f)
-  if (d.phase !== 'done' && f.spec.branch && branch && f.spec.branch !== branch) out.push('You are on ' + branch + ', the spec belongs to ' + f.spec.branch)
+  if (d.phase !== 'done' && f.spec.branch && branch && f.spec.branch !== specBranch(branch)) out.push('You are on ' + branch + ', the spec belongs to ' + f.spec.branch)
   if (f.review === 'NOT READY') out.push('Last review: not ready')
   return out
 }

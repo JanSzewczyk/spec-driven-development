@@ -121,7 +121,7 @@ Part of the `sdd` mod (needs Claude Code 2.1.287+). It docks a panel beside the 
 - **+ New spec** in the tab bar puts `/sdd:spec feat ` in the prompt at any time.
 - **⚙ Config** (top right) — opens a read-only configuration panel: projects, the effective `specs/capabilities.yml` values for implementation, actions and review (set values vs defaults), the commands from constitution §2 per project, and buttons for `/sdd:capabilities` and `/sdd:doctor check`.
 - **No SDD in the project** — only a setup card; **Init SDD in this project** runs `/sdd:doctor init` in the session (the one button that runs a command).
-- Refreshes by itself: after Claude writes a file under `specs/`, after a branch switch, after each turn, and on a 4 s poll for edits made elsewhere. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
+- Refreshes by itself: after Claude or a sub-agent writes a file under `specs/`, after a branch switch, merge, pull or `gh pr` command, after each turn, and on a 4 s poll for edits made elsewhere. While shown it checks task PRs on GitHub at most once a minute (`gh pr list`) and task branches fast-forwarded into the SDD branch, so a merge shows before `/sdd:implement` or `/sdd:review` records it. In a task worktree it reads the statuses from the SDD branch's checkout. A footer says when the data was last read. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
 
 It opens at session start when the project has `specs/`; turn off the `show_board` option of `sdd` to open it only with `/sdd-dashboard`. Up to 0.9.7 it was the separate `sdd-board` plugin; the marketplace moves those installs to `sdd`. Full description: [plugins/sdd/README.md](plugins/sdd/README.md#board).
 
