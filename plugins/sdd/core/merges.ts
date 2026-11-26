@@ -13,6 +13,12 @@ export function taskBranchBase(branch: string): string | null {
   return m ? m[1] : null
 }
 
+// `<spec-branch>--<EPIC>-T<n>` → the task's full id `<EPIC>-T<n>`, else null.
+export function taskOfBranch(branch: string): string | null {
+  const m = /^.+?--(.+-T\d+)$/.exec(branch)
+  return m ? m[1] : null
+}
+
 // The path of the worktree that has `branch` checked out, from `git worktree list --porcelain`.
 export function worktreeOf(porcelain: string, branch: string): string | null {
   for (const block of porcelain.split(/\n\s*\n/)) {

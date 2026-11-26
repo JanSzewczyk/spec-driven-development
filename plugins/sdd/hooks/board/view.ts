@@ -1,24 +1,31 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
-import { ROLE_KEY, STATUS_ROLE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
-import type { Feature } from './model.ts'
+import { ROLE_KEY, STATUS_ROLE, STEP_LABELS, ago, blockedBy, clock, derive, gate, implemented, taskCounts, taskLook, warnings } from './model.ts'
+import type { Feature, Session, TaskLook } from './model.ts'
 import type { Config } from '../../core/config.ts'
-import { branchSvg, checkSvg, dividerSvg, dotSvg, dotsSvg, pillSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
+import type { Task } from '../../core/parse.ts'
+import { WINDOW_MS } from './live.ts'
+import type { Lane, Live } from './live.ts'
+import { axisSvg, branchSvg, checkSvg, dividerSvg, dotSvg, laneBarSvg, liveDotSvg, miniPhaseSvg, phaseBarSvg, pillSvg, pipsSvg, progressSvg, taskGlyphSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
+export type Tab = 'current' | 'all' | 'ticket'
+
 export type Actions = {
-  tab: (t: 'current' | 'all') => void
+  tab: (t: Tab) => void
   fill: (text: string) => void
   run: (command: string, args: string) => void
   pin: (slug: string) => void
   doc: (kind: string) => void
   filter: (v: string) => void
   config: () => void
+  toggle?: (key: string) => void // expands or collapses a lane or a task row
+  taskFilter?: (v: string) => void
 }
 
 export type Ctx = {
   surface: string
   cols: number
-  tab: 'current' | 'all'
+  tab: Tab
   features: Feature[]
   current: Feature | null
   branch: string
@@ -28,183 +35,404 @@ export type Ctx = {
   now: number
   freshness?: string // "Updated just now · PRs checked 2 min ago"
   source?: string | null // spec branch whose checkout the statuses come from, when not this one
+  session?: Session
+  live?: Live
+  lanes?: Lane[]
+  open?: string[] // expanded lanes and task rows, by key
+  taskFilter?: string // all | open | blocked
   actions: Actions
 }
 
-const GLYPH: Record<string, string> = { draft: '○', 'in-progress': '◐', review: '◑', done: '●' }
+const GLYPH: Record<TaskLook, string> = { done: '●', review: '◑', 'in-progress': '◐', merged: '◍', closed: '⊘', blocked: '◌', draft: '○' }
+const LOOK_KEY: Record<TaskLook, string | undefined> = { done: 'success', review: 'permission', 'in-progress': 'warning', merged: 'success', closed: 'error', blocked: undefined, draft: undefined }
+const LANE_ROLE: Record<Lane['kind'], Role> = { agent: 'pro', task: 'warning', pr: 'accent' }
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
+const SURFACE = 'userMessageBackground' // the surface Claude Code draws its own message bubbles on
 
-// Svg sizes are CSS pixels, the pane reports columns. Estimate the content width from the columns and
-// aim slightly past it: the drawings sit in a clipping box and keep a 26 px margin at both ends, so a
-// small overshoot is invisible while a shortfall leaves a gap. Tune PX_PER_COLUMN if they come out
-// visibly short of (or cut off at) the cards' edges.
+// Svg sizes are CSS pixels, the pane reports columns. A full-width drawing is made slightly wider than
+// the content and drawn without a width, so the surface scales it down to the slot: its ends (the
+// "now" of the time axis, the last step's name) always stay in view. Tune PX_PER_COLUMN if a drawing
+// comes out visibly short of the cards' edges.
 const PX_PER_COLUMN = 8
-const fullWidth = (ctx: { cols: number }) => Math.max(240, Math.min(900, Math.round((ctx.cols - 2) * PX_PER_COLUMN)))
+const fullWidth = (ctx: { cols: number }, inset = 0) => Math.max(200, Math.min(900, Math.round((ctx.cols - 2) * PX_PER_COLUMN) - inset))
+// isInteractive: Desktop draws the markup in a sandboxed frame, where its CSS animation runs.
+function fit(el: any, alt: string, source: string, key?: string, isInteractive?: boolean) {
+  return el.Svg({ key, alt, source, ...(isInteractive ? { isInteractive: true } : {}) })
+}
 function wide(el: any, child: any) {
   return el.Box({ overflow: 'hidden', flexDirection: 'column', children: [child] })
 }
 
-function bar(done: number, total: number, width: number): string {
-  const w = Math.max(8, Math.min(width, 24))
-  const filled = total ? Math.round((done / total) * w) : 0
-  return '█'.repeat(filled) + '░'.repeat(w - filled)
+// A tinted pill on Desktop/VS Code, a plain colored label in the terminal.
+function pill(el: any, isRich: boolean, label: string, role: Role) {
+  if (!isRich) return el.Text({ color: ROLE_KEY[role], weight: 'semibold', children: [label] })
+  const b = pillSvg(label, role)
+  return el.Svg({ alt: label, width: b.width, height: b.height, source: b.source })
 }
 
-function chip(el: any, status: string, label?: string) {
-  const { Text } = el
-  const key = status in TEXT_COLOR ? status : 'draft'
-  return Text({ color: TEXT_COLOR[key], weight: 'semibold', children: [' ' + (label ?? status) + ' '] })
+function statusPill(el: any, ctx: Ctx, status: string) {
+  return pill(el, rich(ctx.surface), status, STATUS_ROLE[status] ?? 'neutral')
 }
 
-// Status badge: a small tinted pill on Desktop/VS Code, a plain colored label in the terminal.
-function badge(el: any, ctx: Ctx, status: string) {
-  if (!rich(ctx.surface)) return chip(el, status)
-  const key = status in STATUS_ROLE ? status : 'draft'
-  const b = pillSvg(status, STATUS_ROLE[key])
-  return el.Svg({ alt: 'Status: ' + status, width: b.width, height: b.height, source: b.source })
+function liveDot(el: any, ctx: Ctx, role: Role, isLive: boolean) {
+  if (rich(ctx.surface)) return el.Svg({ alt: isLive ? 'running' : 'idle', width: 12, height: 12, source: liveDotSvg(role, isLive), isInteractive: true })
+  return el.Text({ color: isLive ? ROLE_KEY[role] : 'inactive', children: [isLive ? '◉' : '○'] })
+}
+
+// Which session this is: the spec's main SDD session or the session of one task (T8).
+function sessionStrip(el: any, ctx: Ctx) {
+  const { Box, Text } = el
+  const s = ctx.session
+  const f = ctx.current
+  if (!s || s.kind === 'none' || !f) return null
+  const isRich = rich(ctx.surface)
+  if (s.kind === 'main') {
+    return Box({
+      key: 'session', borderStyle: 'round', borderColor: 'permission', paddingX: 1, flexDirection: 'row', columnGap: 1, alignItems: 'center',
+      ...(isRich ? { backgroundColor: SURFACE, paddingY: 'xs' } : {}),
+      children: [Text({ color: 'permission', weight: 'semibold', children: ['Main SDD session'] }), Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.spec.branch] })],
+    })
+  }
+  return Box({
+    key: 'session', borderStyle: 'round', borderColor: 'merged', paddingX: 1, flexDirection: 'column',
+    ...(isRich ? { backgroundColor: SURFACE, paddingY: 'xs' } : {}),
+    children: [
+      Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ color: 'merged', weight: 'semibold', children: ['Task session · ' + s.label] }), Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [ctx.branch] })] }),
+      ctx.source ? Text({ dimColor: true, size: 'footnote', wrap: 'wrap', children: ['Statuses read from the ' + ctx.source + ' checkout, where the main session writes tasks.md.'] }) : null,
+    ].filter(Boolean),
+  })
 }
 
 function tabBar(el: any, ctx: Ctx) {
   const { Box, Button } = el
-  const mk = (id: 'current' | 'all', label: string, hotkey: string) =>
-    Button({
-      key: 'tab-' + id,
-      label,
-      hotkey,
-      plain: true,
-      dimColor: ctx.tab !== id,
-      onPress: () => ctx.actions.tab(id),
+  const isRich = rich(ctx.surface)
+  const isTask = ctx.session?.kind === 'task'
+  const tabs: [Tab, string, string][] = isTask
+    ? [['ticket', 'Ticket', '1'], ['current', 'Spec', '2'], ['all', 'All (' + ctx.features.length + ')', '3']]
+    : [['current', 'Current', '1'], ['all', 'All (' + ctx.features.length + ')', '2']]
+  const mk = ([id, label, hotkey]: [Tab, string, string]) =>
+    Box({
+      key: 'tabbox-' + id, paddingX: isRich ? 1 : 0,
+      ...(isRich && ctx.tab === id ? { backgroundColor: SURFACE } : {}),
+      children: [Button({ key: 'tab-' + id, label, hotkey, plain: true, dimColor: ctx.tab !== id, onPress: () => ctx.actions.tab(id) })],
     })
+  // A new spec is offered only where no spec is being worked on (T9).
+  const isSpecSession = ctx.session !== undefined && ctx.session.kind !== 'none'
   return Box({
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     children: [
       Box({
-        flexDirection: 'row',
-        columnGap: 3,
-        children: [
-          mk('current', 'Current', '1'),
-          mk('all', 'All (' + ctx.features.length + ')', '2'),
-          Button({ key: 'new-spec', label: '+ New spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
-        ],
+        flexDirection: 'row', columnGap: 1, alignItems: 'center',
+        children: [...tabs.map(mk), isSpecSession ? null : Button({ key: 'new-spec', label: '+ New spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') })].filter(Boolean),
       }),
-      Button({ key: 'open-config', label: '⚙ Config', hotkey: 'c', plain: true, onPress: () => ctx.actions.config() }),
+      Button({ key: 'open-config', label: 'Config', hotkey: 'c', plain: true, dimColor: true, onPress: () => ctx.actions.config() }),
     ],
   })
 }
 
-function stepper(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Svg } = el
-  const d = derive(f)
-  if (rich(ctx.surface)) {
-    return wide(el, Svg({ alt: 'Pipeline: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), width: fullWidth(ctx), height: 62, source: stepperSvg(d.steps, fullWidth(ctx)) }))
+// What runs now: the /sdd:* command of this turn, its latest tool call, and one lane per subagent,
+// task worktree and task pull request. One line when nothing runs.
+function liveStrip(el: any, ctx: Ctx) {
+  const { Box, Text } = el
+  const live = ctx.live
+  const lanes = ctx.lanes ?? []
+  const isRich = rich(ctx.surface)
+  const turn = live?.turn ?? null
+  const active = lanes.filter((l) => l.state === 'working' || l.state === 'waiting')
+  if (!turn && active.length === 0) {
+    const last = live?.lastTurnEnd
+    return Box({
+      key: 'live', flexDirection: 'row', columnGap: 1, alignItems: 'center',
+      children: [liveDot(el, ctx, 'neutral', false), Text({ dimColor: true, size: 'footnote', wrap: 'truncate-end', children: [last ? 'Idle · last turn ended ' + ago(last, ctx.now) : 'Idle · nothing runs in this session'] })],
+    })
   }
-  const line = d.steps.map((s) => (s.state === 'done' ? '●' : s.state === 'current' ? '◉' : '○') + ' ' + s.label).join(' ─ ')
-  return Box({ flexDirection: 'column', children: [Text({ wrap: 'wrap', children: [line] })] })
+  const head = turn
+    ? Box({
+        flexDirection: 'row', columnGap: 1, alignItems: 'center',
+        children: [
+          liveDot(el, ctx, 'warning', true),
+          Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, weight: 'semibold', wrap: 'truncate-end', children: [live?.command ?? 'Turn running'] })] }),
+          Text({ dimColor: true, tabular: true, size: 'footnote', children: [clock(ctx.now - turn.since)] }),
+        ],
+      })
+    : Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [liveDot(el, ctx, 'neutral', false), Text({ dimColor: true, size: 'footnote', wrap: 'truncate-end', children: ['This session is idle · ' + active.length + ' running elsewhere'] })] })
+  const tool = turn && live?.tool
+    ? Box({
+        flexDirection: 'row', columnGap: 1, paddingLeft: isRich ? 3 : 2,
+        children: [
+          Text({ size: 'footnote', weight: 'medium', children: [live.tool.tool] }),
+          Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [live.tool.detail] })] }),
+          Text({ dimColor: true, tabular: true, size: 'caption', children: [clock(ctx.now - live.tool.at)] }),
+        ],
+      })
+    : null
+  const timed = lanes.some((l) => l.since !== undefined)
+  const laneBox = lanes.length
+    ? Box({
+        flexDirection: 'column', rowGap: 1,
+        children: [isRich && timed ? fit(el, 'time axis, last ' + WINDOW_MS / 60_000 + ' minutes', axisSvg(WINDOW_MS, fullWidth(ctx, 28)), 'axis') : null, ...lanes.map((l) => laneRow(el, ctx, l))].filter(Boolean),
+      })
+    : null
+  return Box({
+    key: 'live', borderStyle: 'round', borderColor: turn ? 'warning' : undefined, padding: 'md', flexDirection: 'column', rowGap: isRich ? 2 : 1,
+    children: [Box({ flexDirection: 'column', rowGap: 1, children: [head, tool].filter(Boolean) }), laneBox].filter(Boolean),
+  })
 }
 
-// What has to be true before the next command: one row per check, open ones first called out in amber.
-function checklist(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Svg } = el
-  const g = gate(f)
-  if (!g || g.checks.length === 0) return null
-  const rows = g.checks.map((c) =>
-    Box({
-      key: 'check-' + c.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
-      children: [
-        rich(ctx.surface)
-          ? Svg({ alt: c.ok ? 'done' : 'open', width: 16, height: 16, source: checkSvg(c.ok) })
-          : Text({ color: c.ok ? 'success' : 'warning', children: [c.ok ? '✓' : '○'] }),
-        Text({ wrap: 'truncate-end', color: c.ok ? undefined : 'warning', dimColor: c.ok, children: [c.label] }),
-        c.hint ? Text({ dimColor: true, wrap: 'truncate-end', children: ['· ' + c.hint] }) : null,
-      ].filter(Boolean),
-    }),
-  )
+function laneRow(el: any, ctx: Ctx, l: Lane) {
+  const { Box, Text, Button, Svg } = el
+  const isRich = rich(ctx.surface)
+  const isOpen = (ctx.open ?? []).includes(l.key)
+  const role = LANE_ROLE[l.kind]
+  const timer = l.since === undefined ? '' : clock((l.endedAt ?? ctx.now) - l.since)
+  const status = { working: timer || 'working', waiting: 'waiting', done: l.kind === 'agent' ? 'done ' + timer : 'merged', failed: l.kind === 'agent' ? 'stopped' : 'closed' }[l.state]
+  const glyph = isRich
+    ? l.state === 'done'
+      ? Svg({ alt: 'done', width: 14, height: 14, source: checkSvg(true) })
+      : Svg({ alt: l.state, width: 14, height: 14, source: liveDotSvg(l.state === 'failed' ? 'danger' : role, l.state === 'working', 14), isInteractive: true })
+    : Text({ color: l.state === 'done' ? 'success' : l.state === 'failed' ? 'error' : ROLE_KEY[role], children: [l.state === 'done' ? '✓' : l.state === 'waiting' ? '◌' : l.state === 'failed' ? '✕' : '◉'] })
+  // A Button holds only text, so the glyph sits between the chevron and the label, both pressable.
+  const toggle = () => ctx.actions.toggle?.(l.key)
+  const row = Box({
+    flexDirection: 'row', columnGap: 1, alignItems: 'center',
+    children: [
+      Button({ key: l.key + '-chevron', plain: true, dimColor: true, label: isOpen ? '▾' : '▸', onPress: toggle }),
+      glyph,
+      Box({
+        flexGrow: 1, flexDirection: 'row',
+        children: [Button({ key: l.key, plain: true, onPress: toggle, children: [Text({ mono: true, size: 'footnote', weight: 'medium', children: [l.label + ' '] }), Text({ size: 'footnote', dimColor: l.state === 'done' || l.state === 'failed', wrap: 'truncate-end', children: [l.title] })] })],
+      }),
+    ],
+  })
+  const bar = isRich && l.since !== undefined
+    ? Box({ paddingLeft: 3, children: [fit(el, l.label + ' on the time axis', laneBarSvg({ since: l.since, endedAt: l.endedAt, state: l.state }, role, ctx.now, WINDOW_MS, fullWidth(ctx, 52)))] })
+    : null
+  const details = isOpen
+    ? Box({
+        flexDirection: 'column', paddingLeft: isRich ? 3 : 2,
+        children: [
+          Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [pill(el, isRich, l.kind === 'pr' ? 'pr' : l.kind === 'agent' ? 'agent' : 'task', l.kind === 'pr' ? 'accent' : l.kind === 'agent' ? 'pro' : 'warning'), Text({ mono: true, size: 'footnote', wrap: 'truncate-end', children: [l.who.replace(/^agent:/, '')] })] }),
+          Text({ size: 'footnote', dimColor: true, wrap: 'wrap', children: [l.where] }),
+          ...l.steps.slice(-3).map((s, i) =>
+            Box({
+              key: l.key + '-step-' + i, flexDirection: 'row', columnGap: 1,
+              children: [
+                Text({ size: 'footnote', weight: 'medium', children: [s.tool] }),
+                Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [s.detail] })] }),
+                Text({ size: 'caption', dimColor: true, tabular: true, children: [clock(ctx.now - s.at)] }),
+              ],
+            }),
+          ),
+          Text({ size: 'caption', dimColor: true, wrap: 'wrap', children: ['source: ' + l.source] }),
+        ],
+      })
+    : null
+  return Box({
+    key: 'lanebox-' + l.key, flexDirection: 'column', rowGap: isRich ? 1 : 0,
+    ...(l.taskId ? { hover: { scope: 'task-' + l.taskId, backgroundColor: SURFACE } } : {}),
+    children: [
+      Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ flexGrow: 1, flexDirection: 'row', children: [row] }), Text({ size: 'caption', tabular: true, color: l.state === 'waiting' ? 'permission' : l.state === 'failed' ? 'error' : undefined, dimColor: l.state !== 'waiting' && l.state !== 'failed', children: [status] })] }),
+      bar,
+      details,
+    ].filter(Boolean),
+  })
+}
+
+function specHeader(el: any, ctx: Ctx, f: Feature) {
+  const { Box, Text } = el
+  const done = derive(f).phase === 'done'
   return Box({
     flexDirection: 'column', rowGap: 1,
     children: [
-      Text({ dimColor: true, children: ['BEFORE ' + g.command.split(' ')[0].toUpperCase() + ' · ' + (g.checks.length - g.open) + '/' + g.checks.length]}),
-      ...rows,
+      Text({ size: 'title', weight: 'semibold', wrap: 'wrap', children: [f.spec.title || f.slug] }),
+      Box({
+        flexDirection: 'row', columnGap: 1, alignItems: 'center',
+        children: [statusPill(el, ctx, done ? 'done' : f.spec.status || 'draft'), Text({ dimColor: true, size: 'footnote', wrap: 'truncate-end', children: [[f.spec.type, f.spec.owner, f.modified ? 'edited ' + ago(f.modified, ctx.now) : ''].filter(Boolean).join(' · ')] })],
+      }),
     ],
   })
 }
 
-function nextCard(el: any, ctx: Ctx, f: Feature) {
+// The pipeline as one bar: done segments green, the current one wider and moving.
+function phaseBar(el: any, ctx: Ctx, f: Feature) {
+  const { Text } = el
+  const d = derive(f)
+  if (rich(ctx.surface)) return fit(el, 'Phase: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), phaseBarSvg(d.steps, fullWidth(ctx), f.review === 'NOT READY' && d.phase === 'review'), 'phase-bar', true)
+  const i = d.steps.findIndex((s) => s.state === 'current')
+  const bar = d.steps.map((s) => (s.state === 'done' ? '██' : s.state === 'current' ? '▓▓▓▓' : '░░')).join(' ')
+  return Text({ key: 'phase-bar', wrap: 'wrap', children: [bar + '  ' + (i >= 0 ? i + 1 + '/' + d.steps.length + ' ' + d.steps[i].label : 'Done')] })
+}
+
+function doneCard(el: any, ctx: Ctx) {
+  const { Box, Text, Button } = el
+  return Box({
+    key: 'done-card', borderStyle: 'round', borderColor: 'success', padding: 'md', flexDirection: 'column', rowGap: 1,
+    children: [
+      Text({ color: 'success', weight: 'semibold', children: ['Feature done · review ready'] }),
+      Text({ dimColor: true, wrap: 'wrap', size: 'footnote', children: ['Open or merge the pull request when you are ready, then start the next feature.'] }),
+      Button({ key: 'fill-empty', label: 'Start a new spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
+    ],
+  })
+}
+
+// The current phase: task progress, what has to be true before the next command, and that command.
+function phaseCard(el: any, ctx: Ctx, f: Feature) {
+  const { Box, Text, Svg } = el
+  const d = derive(f)
+  const isRich = rich(ctx.surface)
+  if (d.phase === 'done') return doneCard(el, ctx)
+  const kids: any[] = []
+  const c = taskCounts(f.tasks, f.merges)
+  const label = STEP_LABELS.find((s) => s[0] === d.phase)?.[1] ?? d.phase
+  const right = c.total && (d.phase === 'implement' || d.phase === 'review') ? c.done + c.review + ' of ' + c.total + ' implemented' : d.phase === 'clarify' && f.spec.openQuestions ? f.spec.openQuestions + ' open questions' : ''
+  kids.push(Box({ flexDirection: 'row', justifyContent: 'space-between', columnGap: 1, children: [Text({ size: 'heading', weight: 'semibold', children: [label] }), Text({ dimColor: true, size: 'footnote', tabular: true, children: [right] })] }))
+  if (c.total && (d.phase === 'implement' || d.phase === 'review')) {
+    const todo = c.total - c.done - c.review - c['in-progress']
+    kids.push(
+      isRich
+        ? fit(el, c.done + ' done, ' + c.review + ' in review, ' + c['in-progress'] + ' in progress of ' + c.total, progressSvg(c, fullWidth(ctx, 30)), 'progress')
+        : Text({ key: 'progress', color: 'success', children: ['█'.repeat(Math.round(((c.done + c.review) / c.total) * 24)) + '░'.repeat(24 - Math.round(((c.done + c.review) / c.total) * 24))] }),
+    )
+    kids.push(Text({ size: 'caption', dimColor: true, children: [c.done + ' done · ' + c.review + ' in review · ' + c['in-progress'] + ' in progress · ' + todo + ' to do'] }))
+  }
+  const g = gate(f)
+  if (g && g.checks.length) {
+    kids.push(
+      Box({
+        flexDirection: 'column', marginTop: 1,
+        children: g.checks.map((ch) =>
+          Box({
+            key: 'check-' + ch.key, flexDirection: 'row', columnGap: 1, alignItems: 'center',
+            children: [
+              isRich ? Svg({ alt: ch.ok ? 'done' : 'open', width: 16, height: 16, source: checkSvg(ch.ok) }) : Text({ color: ch.ok ? 'success' : 'warning', children: [ch.ok ? '✓' : '○'] }),
+              Text({ size: 'footnote', color: ch.ok ? undefined : 'warning', wrap: 'truncate-end', children: [ch.label] }),
+              ch.hint ? Text({ size: 'footnote', dimColor: true, wrap: 'truncate-end', children: ['· ' + ch.hint] }) : null,
+            ].filter(Boolean),
+          }),
+        ),
+      }),
+    )
+  }
+  const next = nextBlock(el, ctx, f)
+  if (next) kids.push(next)
+  return Box({ key: 'phase-card', borderStyle: 'round', padding: 'md', flexDirection: 'column', rowGap: 1, children: kids })
+}
+
+function nextBlock(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Button } = el
   const d = derive(f)
   if (!d.next) return null
   const g = gate(f)
   const open = g ? g.open : 0
   const cmd = d.next.command
-  const blocked = open > 0
+  const verb = cmd.split(' ')[0]
+  const isRunning = !!ctx.live?.turn && (ctx.live.command ?? ctx.running) === verb
+  const isBlocked = open > 0
+  const status = isRunning ? 'running now' : isBlocked ? 'waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'model: ' + d.next.model
   return Box({
-    marginTop: rich(ctx.surface) ? 1 : 0, borderStyle: 'round', borderColor: blocked ? 'warning' : 'success', padding: 'md', flexDirection: 'column', rowGap: 1,
+    key: 'next', marginTop: 1, padding: 'sm', flexDirection: 'column', rowGap: 1,
+    ...(rich(ctx.surface) ? { backgroundColor: SURFACE } : { borderStyle: 'round', borderColor: isBlocked ? 'warning' : 'success' }),
     children: [
-      Text({ dimColor: true, children: [(blocked ? 'NEXT STEP · waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'NEXT STEP · ready') + ' · model: ' + d.next.model] }),
-      Text({ mono: true, weight: 'semibold', color: blocked ? 'warning' : 'success', children: [cmd] }),
-      Text({ dimColor: true, wrap: 'wrap', children: [blocked ? 'Finish the open checks above first, then run this. ' + d.next.why : d.next.why] }),
-      Button({ key: 'fill-next', label: 'Put in prompt', hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),
+      Box({
+        flexDirection: 'row', justifyContent: 'space-between', columnGap: 1, alignItems: 'center',
+        children: [Text({ mono: true, weight: 'semibold', color: isRunning || isBlocked ? 'warning' : 'success', wrap: 'truncate-end', children: [cmd] }), Text({ size: 'caption', dimColor: true, children: [status] })],
+      }),
+      Text({ size: 'footnote', dimColor: true, wrap: 'wrap', children: [isBlocked && !isRunning ? 'Finish the open checks first. ' + d.next.why : d.next.why] }),
+      isRunning ? null : Button({ key: 'fill-next', label: 'Put in prompt', hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),
+    ].filter(Boolean),
+  })
+}
+
+function taskMeta(t: Task, f: Feature, look: TaskLook): { text: string; color?: string } {
+  const waits = blockedBy(t, f.tasks, f.merges)
+  if (look === 'merged') return { text: t.pr ? 'PR ' + t.pr + ' merged' : 'merged', color: 'success' }
+  if (look === 'closed') return { text: 'PR ' + t.pr + ' closed', color: 'error' }
+  if (t.pr && !implemented(t, f.merges)) return { text: 'PR ' + t.pr, color: 'permission' }
+  if (waits.length) return { text: 'waits on ' + waits.join(', ') }
+  return { text: t.project }
+}
+
+function taskRows(el: any, ctx: Ctx, f: Feature) {
+  const { Box, Text, Button, Svg } = el
+  const tasks = f.tasks ?? []
+  if (tasks.length === 0) return null
+  const isRich = rich(ctx.surface)
+  const filter = ctx.taskFilter ?? 'all'
+  const open = tasks.filter((t) => !implemented(t, f.merges))
+  const blocked = tasks.filter((t) => blockedBy(t, tasks, f.merges).length > 0)
+  const list = filter === 'open' ? open : filter === 'blocked' ? blocked : tasks
+  const running = new Set((ctx.lanes ?? []).filter((l) => l.state === 'working' && l.taskId).map((l) => l.taskId))
+  const fb = (id: string, label: string) => Button({ key: 'tasks-' + id, label, plain: true, dimColor: filter !== id, onPress: () => ctx.actions.taskFilter?.(id) })
+  const rows = list.map((t) => {
+    const look = taskLook(t, tasks, f.merges)
+    const meta = taskMeta(t, f, look)
+    const isOpen = (ctx.open ?? []).includes('task-' + t.id)
+    return Box({
+      key: 'taskbox-' + t.id, flexDirection: 'column', paddingX: isRich ? 1 : 0, ...(isRich ? { paddingY: 'xs' } : {}),
+      hover: { scope: 'task-' + t.id, backgroundColor: SURFACE },
+      children: [
+        Box({
+          flexDirection: 'row', columnGap: 1, alignItems: 'center',
+          children: [
+            isRich ? Svg({ alt: look, width: 14, height: 14, source: taskGlyphSvg(look, running.has(t.id)), isInteractive: running.has(t.id) }) : Text({ color: LOOK_KEY[look], dimColor: !LOOK_KEY[look], children: [GLYPH[look]] }),
+            Box({
+              flexGrow: 1, flexDirection: 'row',
+              children: [
+                Button({
+                  key: 'task-' + t.id, plain: true, onPress: () => ctx.actions.toggle?.('task-' + t.id),
+                  children: [Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }), Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] })],
+                }),
+              ],
+            }),
+            Text({ size: 'caption', color: meta.color, dimColor: !meta.color, wrap: 'truncate-end', children: [meta.text] }),
+          ],
+        }),
+        isOpen ? taskFacts(el, ctx, f, t, true) : null,
+      ].filter(Boolean),
+    })
+  })
+  return Box({
+    key: 'tasks', flexDirection: 'column', rowGap: 1,
+    children: [
+      Box({
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: 1,
+        children: [Text({ weight: 'semibold', children: ['Tasks' + (f.epic ? ' · ' + f.epic : '')] }), Box({ flexDirection: 'row', columnGap: 2, children: [fb('all', 'All ' + tasks.length), fb('open', 'Open ' + open.length), fb('blocked', 'Blocked ' + blocked.length)] })],
+      }),
+      Box({ flexDirection: 'column', children: rows.length ? rows : [Text({ dimColor: true, children: ['Nothing matches this filter.'] })] }),
     ],
   })
 }
 
-function progress(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Svg } = el
-  const c = taskCounts(f.tasks, f.merges)
-  const rows: any[] = []
-  if (c.total > 0) {
-    const done = c.done + c.review
-    rows.push(Text({ weight: 'semibold', children: ['Tasks ' + done + '/' + c.total + (c.done ? ' · ' + c.done + ' done' : '') + (f.epic ? ' · ' + f.epic : '')] }))
-    rows.push(
-      rich(ctx.surface)
-        ? wide(el, Svg({ alt: done + ' of ' + c.total + ' tasks implemented', width: fullWidth(ctx), height: 8, source: progressSvg(c, fullWidth(ctx)) }))
-        : Text({ color: 'success', children: [bar(done, c.total, ctx.cols - 12)] }),
-    )
-  }
-  return Box({ flexDirection: 'column', rowGap: 1, children: rows })
-}
-
-function taskList(el: any, ctx: Ctx, f: Feature) {
+// A task's facts: scope, acceptance criteria, dependencies, branch and pull request.
+function taskFacts(el: any, ctx: Ctx, f: Feature, t: Task, isCompact: boolean) {
   const { Box, Text } = el
-  if (!f.tasks || f.tasks.length === 0) return null
+  const tasks = f.tasks ?? []
+  const line = (k: string, v: string, opts: { mono?: boolean; color?: string } = {}) =>
+    Box({
+      key: 'fact-' + t.id + '-' + k, flexDirection: 'row', columnGap: 1,
+      children: [Box({ width: 12, children: [Text({ size: 'footnote', dimColor: true, children: [k] })] }), Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ size: 'footnote', wrap: 'wrap', mono: opts.mono, color: opts.color, children: [v] })] })],
+    })
+  const merge = f.merges?.[t.id]
   return Box({
-    flexDirection: 'column',
-    children: f.tasks.map((t) => {
-      const waits = blockedBy(t, f.tasks, f.merges)
-      const merge = f.merges?.[t.id]
-      return Box({
-        key: 'task-' + t.id,
-        flexDirection: 'row', columnGap: 1,
-        children: [
-          Text({ color: TEXT_COLOR[t.status] ?? 'inactive', children: [GLYPH[t.status] ?? '○'] }),
-          Text({ mono: true, dimColor: true, children: [t.id] }),
-          Text({ wrap: 'truncate-end', children: [t.title] }),
-          Text({ dimColor: true, wrap: 'truncate-end', children: [t.project] }),
-          ...(merge === 'merged'
-            ? [Text({ color: 'success', wrap: 'truncate-end', children: [t.pr ? 'PR ' + t.pr + ' merged' : 'merged'] })]
-            : merge === 'closed'
-              ? [Text({ color: 'error', wrap: 'truncate-end', children: ['PR ' + t.pr + ' closed'] })]
-              : t.pr
-                ? [Text({ color: 'permission', wrap: 'truncate-end', children: ['PR ' + t.pr] })]
-                : t.branch
-                  ? [Text({ dimColor: true, wrap: 'truncate-end', children: [t.branch] })]
-                  : []),
-          ...(waits.length ? [Text({ dimColor: true, wrap: 'truncate-end', children: ['waits on ' + waits.join(', ')] })] : []),
-        ],
-      })
-    }),
+    key: 'facts-' + t.id, flexDirection: 'column', paddingLeft: isCompact ? (rich(ctx.surface) ? 3 : 2) : 0,
+    children: [
+      isCompact && t.scope?.length ? Text({ size: 'footnote', dimColor: true, wrap: 'wrap', children: [t.scope.join('; ')] }) : null,
+      t.acceptance.length ? line('acceptance', t.acceptance.join(', ')) : null,
+      t.dependsOn.length ? line('depends on', t.dependsOn.map((id) => { const d = tasks.find((x) => x.id === id); return id + (d && implemented(d, f.merges) ? ' ✓' : '') }).join(', ')) : null,
+      line('project', t.project || '—'),
+      t.branch ? line('branch', t.branch, { mono: true }) : null,
+      t.pr ? line('pull req.', t.pr + (merge === 'merged' ? ' · merged' : merge === 'closed' ? ' · closed' : ' · open'), { color: merge === 'merged' ? 'success' : merge === 'closed' ? 'error' : 'permission' }) : null,
+      !isCompact && t.files ? line('files', t.files, { mono: true }) : null,
+    ].filter(Boolean),
   })
 }
 
-function docSwitch(el: any, ctx: Ctx, f: Feature) {
+function docLinks(el: any, ctx: Ctx, f: Feature) {
   const { Box, Text, Button } = el
   const kinds = ['spec', 'plan', 'tasks', 'review'].filter((k) => k === 'spec' || (k === 'plan' && f.planStatus !== null) || (k === 'tasks' && f.tasks) || (k === 'review' && f.review))
   return Box({
-    flexDirection: 'row', columnGap: 2,
-    children: [
-      Text({ dimColor: true, children: ['Open in a new tab:'] }),
-      ...kinds.map((k) => Button({ key: 'doc-' + k, label: k, plain: true, onPress: () => ctx.actions.doc(k) })),
-    ],
+    key: 'docs', flexDirection: 'row', columnGap: 2,
+    children: [Text({ dimColor: true, size: 'footnote', children: ['Open'] }), ...kinds.map((k) => Button({ key: 'doc-' + k, label: k + '.md', plain: true, onPress: () => ctx.actions.doc(k) }))],
   })
 }
 
@@ -236,59 +464,66 @@ function emptyState(el: any, ctx: Ctx) {
   return startCard(el, ctx, 'Nothing in progress', 'All your features are finished. Want to build something new? Start a new spec for the next feature or piece of functionality.')
 }
 
-function doneCard(el: any, ctx: Ctx) {
-  const { Box, Text, Button } = el
-  return Box({
-    borderStyle: 'round', borderColor: 'success', padding: 'md', flexDirection: 'column', rowGap: 1,
-    children: [
-      Text({ color: 'success', weight: 'semibold', children: ['✓ Feature done'] }),
-      Text({ dimColor: true, wrap: 'wrap', children: ['Review passed. Open the pull request when you are ready, or start the next feature.'] }),
-      Button({ key: 'fill-empty', label: 'Start a new spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
-    ],
-  })
-}
-
-// What each phase shows below the header (everything else stays hidden until it matters):
-//   clarify, plan, tasks -> next step, spec facts (acceptance criteria, open questions)
-//   implement            -> next step, task progress, task list
-//   review               -> next step, task progress, review verdict, task list
-//   done                 -> "Feature done" card above the stepper, nothing else
+// Main view of a spec: what runs now, the phase, the next command, the tasks.
 export function renderCurrent(el: any, ctx: Ctx) {
   const { Box, Text } = el
   const f = ctx.current
-  if (!f) return emptyState(el, ctx)
+  if (!f) return Box({ flexDirection: 'column', rowGap: 2, children: [liveStrip(el, ctx), emptyState(el, ctx)] })
   const d = derive(f)
-  const done = d.phase === 'done'
-  const warn = warnings(f, ctx.branch)
-  const kids: any[] = [
-    Box({
-      flexDirection: 'column', rowGap: 1,
-      children: [
-        Text({ size: 'title', weight: 'semibold', wrap: 'wrap', children: [f.spec.title || f.slug] }),
-        Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [badge(el, ctx, done ? 'done' : f.spec.status || 'draft'), Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.spec.branch || f.slug] })] }),
-        Text({ dimColor: true, children: [[f.spec.type, f.spec.owner, ago(f.modified, ctx.now)].filter(Boolean).join(' · ')] }),
-      ],
-    }),
-  ]
-  if (ctx.running) kids.push(Text({ color: 'warning', children: ['⟳ ' + ctx.running + ' running…'] }))
-  if (done) kids.push(doneCard(el, ctx))
-  kids.push(stepper(el, ctx, f))
-  const working = d.phase === 'implement' || d.phase === 'review'
-  if (!done) {
-    const cl = checklist(el, ctx, f)
-    if (cl) kids.push(cl)
+  const isRich = rich(ctx.surface)
+  const kids: any[] = [liveStrip(el, ctx)]
+  if (ctx.session?.kind === 'task') kids.push(Text({ key: 'task-note', size: 'footnote', dimColor: true, wrap: 'wrap', children: ['You are on the branch of ' + ctx.session.label + '. Commands that change the spec run in the main session.'] }))
+  kids.push(Box({ key: 'head', flexDirection: 'column', rowGap: 1, children: [specHeader(el, ctx, f), phaseBar(el, ctx, f)] }))
+  kids.push(phaseCard(el, ctx, f))
+  if (d.phase === 'implement' || d.phase === 'review') {
+    const rows = taskRows(el, ctx, f)
+    if (rows) kids.push(rows)
   }
-  if (working) {
-    kids.push(progress(el, ctx, f))
-    const tl = taskList(el, ctx, f)
-    if (tl) kids.push(tl)
-  }
-  if (!done) kids.push(nextCard(el, ctx, f))
-  if (!done && f.review) kids.push(Text({ color: f.review === 'READY' ? 'success' : 'error', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
-  for (const w of warn) kids.push(Text({ color: 'error', wrap: 'wrap', children: ['⚠ ' + w] }))
-  kids.push(docSwitch(el, ctx, f))
-  // Sections get room to breathe on Desktop/VS Code; the terminal keeps one line between them.
-  return Box({ flexDirection: 'column', rowGap: rich(ctx.surface) ? 2 : 1, children: kids })
+  if (d.phase !== 'done' && f.review) kids.push(Text({ key: 'verdict', color: f.review === 'READY' ? 'success' : 'error', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
+  for (const w of warnings(f, ctx.branch)) kids.push(Text({ key: 'warn-' + w, color: 'error', wrap: 'wrap', children: ['⚠ ' + w] }))
+  kids.push(docLinks(el, ctx, f))
+  return Box({ flexDirection: 'column', rowGap: isRich ? 3 : 1, children: kids })
+}
+
+// First view of a task session (T8): the task this branch implements.
+export function renderTicket(el: any, ctx: Ctx) {
+  const { Box, Text, Button } = el
+  const f = ctx.current
+  const s = ctx.session
+  const t = f && s && s.kind === 'task' ? (f.tasks ?? []).find((x) => x.id === s.taskId) : undefined
+  if (!f || !t || !s || s.kind !== 'task') return renderCurrent(el, ctx)
+  const isRich = rich(ctx.surface)
+  const criteria = new Map((f.spec.criteria ?? []).map((c) => [c.id, c.text]))
+  return Box({
+    flexDirection: 'column', rowGap: isRich ? 3 : 1,
+    children: [
+      liveStrip(el, ctx),
+      Box({
+        key: 'ticket', borderStyle: 'round', borderColor: 'merged', padding: 'md', flexDirection: 'column', rowGap: isRich ? 2 : 1,
+        children: [
+          Box({
+            flexDirection: 'column', rowGap: 1,
+            children: [
+              Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ mono: true, weight: 'semibold', color: 'merged', children: [s.label] }), statusPill(el, ctx, t.status), Text({ size: 'footnote', dimColor: true, children: [t.project] })] }),
+              Text({ size: 'title', weight: 'semibold', wrap: 'wrap', children: [t.title] }),
+              ...(t.scope ?? []).map((a, i) => Text({ key: 'scope-' + i, size: 'footnote', wrap: 'wrap', children: ['• ' + a] })),
+            ],
+          }),
+          t.acceptance.length
+            ? Box({
+                flexDirection: 'column', rowGap: 1,
+                children: [
+                  Text({ weight: 'semibold', size: 'footnote', children: ['Acceptance'] }),
+                  ...t.acceptance.map((a) => Box({ key: 'ac-' + a, flexDirection: 'row', columnGap: 1, children: [Text({ mono: true, size: 'footnote', color: 'permission', children: [a] }), Text({ size: 'footnote', wrap: 'wrap', children: [criteria.get(a) ?? 'not in spec.md'] })] })),
+                ],
+              })
+            : null,
+          taskFacts(el, ctx, f, t, false),
+        ].filter(Boolean),
+      }),
+      Box({ flexDirection: 'row', columnGap: 2, children: [Button({ key: 'open-spec', label: 'Open the spec pipeline', plain: true, onPress: () => ctx.actions.tab('current') }), Button({ key: 'doc-spec', label: 'spec.md', plain: true, onPress: () => ctx.actions.doc('spec') })] }),
+    ],
+  })
 }
 
 export function renderDoc(el: any, doc: { slug: string; kind: string; text: string | null }) {
@@ -305,6 +540,7 @@ export function renderDoc(el: any, doc: { slug: string; kind: string; text: stri
 export function renderAll(el: any, ctx: Ctx) {
   const { Box, Text, Button, Select } = el
   if (ctx.features.length === 0) return emptyState(el, ctx)
+  const isRich = rich(ctx.surface)
   const filtered = ctx.features.filter((f) => {
     const p = derive(f).phase
     return ctx.filter === 'all' || (ctx.filter === 'done' ? p === 'done' : p !== 'done')
@@ -313,21 +549,29 @@ export function renderAll(el: any, ctx: Ctx) {
     const d = derive(f)
     const c = taskCounts(f.tasks, f.merges)
     const isCurrent = ctx.current?.slug === f.slug
+    const label = d.phase === 'done' ? 'Done' : STEP_LABELS.find((s) => s[0] === d.phase)?.[1] ?? d.phase
+    const mini = miniPhaseSvg(d.steps)
     return Box({
-      borderStyle: 'round', borderColor: isCurrent ? 'permission' : undefined, paddingX: 1, flexDirection: 'column',
+      key: 'spec-' + f.slug, borderStyle: 'round', borderColor: isCurrent ? 'permission' : undefined, paddingX: 1, flexDirection: 'column', rowGap: isRich ? 1 : 0,
+      ...(isRich ? { paddingY: 'xs', hover: { borderColor: isCurrent ? 'permission' : 'inactive' } } : {}),
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] }), badge(el, ctx, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
-        Text({ mono: true, dimColor: true, wrap: 'truncate-end', children: [f.slug] }),
-        rich(ctx.surface)
-          ? el.Svg({ alt: 'Phase: ' + d.phase, width: d.steps.length * 16, height: 12, source: dotsSvg(d.steps) })
-          : Text({ children: [d.steps.map((s) => (s.state === 'done' ? '●' : s.state === 'current' ? '◉' : '○')).join(' ')] }),
-        Text({ dimColor: true, children: [(d.phase === 'done' ? 'done' : 'phase: ' + (STEP_LABELS.find((s) => s[0] === d.phase)?.[1] ?? d.phase)) + (c.total ? ' · ' + (c.done + c.review) + '/' + c.total + ' tasks' : '') + (f.modified ? ' · ' + ago(f.modified, ctx.now) : '')] }),
-        Button({ key: 'show-' + f.slug, label: isCurrent ? '● Showing' : 'Show', plain: true, dimColor: isCurrent, onPress: () => ctx.actions.pin(f.slug) }),
+        Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] })] }), statusPill(el, ctx, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
+        Box({
+          flexDirection: 'row', columnGap: 1, alignItems: 'center',
+          children: [
+            isRich ? el.Svg({ alt: 'Phase: ' + label, width: mini.width, height: mini.height, source: mini.source }) : Text({ children: [d.steps.map((s) => (s.state === 'done' ? '●' : s.state === 'current' ? '◉' : '○')).join('')] }),
+            Text({ size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [label + (c.total ? ' · ' + (c.done + c.review) + '/' + c.total + ' tasks' : '') + (f.modified ? ' · ' + ago(f.modified, ctx.now) : '')] }),
+          ],
+        }),
+        Box({
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          children: [Text({ mono: true, size: 'caption', dimColor: true, wrap: 'truncate-end', children: ['specs/' + f.slug] }), Button({ key: 'show-' + f.slug, label: isCurrent ? 'Showing' : 'Show', plain: true, dimColor: isCurrent, onPress: () => ctx.actions.pin(f.slug) })],
+        }),
       ],
     })
   })
   return Box({
-    flexDirection: 'column', rowGap: 1,
+    flexDirection: 'column', rowGap: isRich ? 2 : 1,
     children: [
       Select({
         key: 'filter', label: 'Show', value: ctx.filter,
@@ -340,22 +584,23 @@ export function renderAll(el: any, ctx: Ctx) {
 }
 
 export function renderPane(el: any, ctx: Ctx) {
-  const { Box, Text } = el
+  const { Box } = el
   // No specs/ folder: the tabs have nothing to show, so only the setup card is drawn.
   if (!ctx.hasSpecs) return Box({ flexDirection: 'column', padding: 'sm', children: [emptyState(el, ctx)] })
+  const tab = ctx.tab === 'ticket' && ctx.session?.kind !== 'task' ? 'current' : ctx.tab
+  const view = tab === 'ticket' ? renderTicket(el, ctx) : tab === 'all' ? renderAll(el, ctx) : renderCurrent(el, ctx)
   return Box({
-    flexDirection: 'column', rowGap: 1, padding: 'sm',
-    children: [tabBar(el, ctx), Text({ children: [' '] }), ctx.tab === 'current' ? renderCurrent(el, ctx) : renderAll(el, ctx), footer(el, ctx)].filter(Boolean),
+    flexDirection: 'column', rowGap: rich(ctx.surface) ? 2 : 1, padding: 'sm',
+    children: [sessionStrip(el, ctx), tabBar(el, ctx), view, footer(el, ctx)].filter(Boolean),
   })
 }
 
 // When the data was read and where from, so a stale board is visible as such.
 function footer(el: any, ctx: Ctx) {
-  const parts = [ctx.freshness, ctx.source ? 'statuses from ' + ctx.source : ''].filter(Boolean)
+  const parts = [ctx.freshness, ctx.source && ctx.session?.kind !== 'task' ? 'statuses from ' + ctx.source : ''].filter(Boolean)
   if (parts.length === 0) return null
-  return el.Text({ key: 'freshness', dimColor: true, wrap: 'wrap', children: [parts.join(' · ')] })
+  return el.Text({ key: 'freshness', dimColor: true, size: 'caption', tabular: true, wrap: 'wrap', children: [parts.join(' · ')] })
 }
-
 
 export type ConfigCtx = {
   surface: string
@@ -372,15 +617,7 @@ const FLOW = /^(agent|skill|command):(.+)$/
 // theme key that Claude Code maps to the same role ('merged' and 'permission' have no ANSI fixed value).
 const FLOW_ROLE: Record<string, Role> = { agent: 'accent', skill: 'pro', command: 'warning' }
 const KIND_ROLE: Record<string, Role> = { backend: 'accent', web: 'success', library: 'pro' }
-// Surface Claude Code uses for its own message bubbles (--surface-1 on Desktop).
-const TILE_BG = 'userMessageBackground'
-
-// A tinted pill on Desktop/VS Code, a plain colored label in the terminal.
-function pill(el: any, isRich: boolean, label: string, role: Role) {
-  if (!isRich) return el.Text({ color: ROLE_KEY[role], weight: 'semibold', children: [label] })
-  const b = pillSvg(label, role)
-  return el.Svg({ alt: label, width: b.width, height: b.height, source: b.source })
-}
+const TILE_BG = SURFACE
 
 // "agent:python:python-developer" → pill "agent" + dim "python:" + "python-developer". Anything else is plain text.
 function valueNode(el: any, isRich: boolean, e: { key: string; value: string; source: string }) {

@@ -8,9 +8,12 @@ import type { Io } from '../../core/io.ts'
 import { mergeState, prStates, taskBranchBase, worktreeOf } from '../../core/merges.ts'
 import type { MergeState, PrState } from '../../core/merges.ts'
 import { ioOf } from '../io.ts'
-import { currentSlug, freshness, sortFeatures, featureFrom } from './model.ts'
+import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, prune, toolDetail } from './live.ts'
+import type { Commit, Live } from './live.ts'
+import { currentSlug, freshness, sessionOf, sortFeatures, featureFrom } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
+import type { Tab } from './view.ts'
 
 const PANE = 'sdd-board'
 const DOC_PANE = 'sdd-board-doc'
@@ -28,7 +31,8 @@ let branch = ''
 let source: string | null = null // spec branch whose checkout specs/ is read from, when not this one
 let specsRoot: string | null = null // that checkout's path
 let signature = ''
-let tab: 'current' | 'all' = 'current'
+let tab: Tab = 'current'
+let ticketShownFor: string | null = null // the task branch whose session already opened on its Ticket tab
 let pinned: string | null = null
 let filter = 'all'
 let running: string | null = null
@@ -43,6 +47,10 @@ let updatedAt: number | null = null // last successful scan
 let checkedAt: number | null = null // last answer from GitHub
 let drawnFreshness = ''
 let ghRetryAt = 0
+let live: Live = emptyLive()
+let openKeys: string[] = [] // expanded lanes and task rows
+let taskFilter = 'all'
+let commits: Record<string, Commit> = {} // last commit of each running task branch, by task id
 const prCache = new Map<string, { at: number; states: Map<number, PrState> }>()
 
 async function now($: any): Promise<number> {
@@ -60,7 +68,8 @@ function startPolling($: any): void {
   isPolling = true
   $.clock.every(4000, async () => {
     const isChanged = await scan($)
-    if (isChanged || freshness(updatedAt, checkedAt, await now($)) !== drawnFreshness) $.ui.invalidate('ui.render')
+    // While something runs, the timers of the live strip move: redraw on every tick.
+    if (isChanged || isActive(live) || freshness(updatedAt, checkedAt, await now($)) !== drawnFreshness) $.ui.invalidate('ui.render')
   })
 }
 
@@ -133,6 +142,18 @@ async function mergesOf(io: Io, f: Feature, isForced: boolean, at: number): Prom
   return Object.keys(out).length ? out : undefined
 }
 
+// The last commit of each task branch still running (in-progress, not merged), for the live strip.
+async function commitsOf(io: Io, f: Feature | null): Promise<Record<string, Commit>> {
+  const out: Record<string, Commit> = {}
+  const running = (f?.tasks ?? []).filter((t) => t.status === 'in-progress' && t.branch).slice(0, 8)
+  for (const t of running) {
+    const r = await io.run(['git', 'log', '-1', '--format=%ct%x09%s', t.branch])
+    const m = r && r.exitCode === 0 ? /^(\d+)\t(.*)$/.exec(String(r.stdout).trim()) : null
+    if (m) out[t.id] = { at: Number(m[1]) * 1000, subject: m[2] }
+  }
+  return out
+}
+
 // Reads specs/ and rebuilds the feature list. Returns true when anything changed. A scan that fails
 // part-way (a read refused or timing out while a skill is running) changes nothing: the panel keeps
 // showing the last good data instead of falling back to the "not set up" card. One scan at a time:
@@ -198,7 +219,8 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
     const merges = await mergesOf(io, f, isForced, at)
     if (merges) f.merges = merges
   }
-  const sig = JSON.stringify([any, next, root, found, cfg])
+  const last = await commitsOf(io, found.find((f) => f.slug === currentSlug(found, next, pinned)) ?? null)
+  const sig = JSON.stringify([any, next, root, found, cfg, last])
   const isChanged = sig !== signature
   signature = sig
   hasSpecs = any
@@ -206,6 +228,7 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
   source = root === null ? null : base
   features = found
   config = cfg
+  commits = last
   updatedAt = at
   return isChanged
 }
@@ -253,10 +276,41 @@ export function registerBoard(on) {
   on('skill.prompt', async ($, e, next) => {
     if (e.pluginName === 'sdd') {
       running = '/sdd:' + String(e.skill).replace(/^sdd:/, '')
+      live = onCommand(live, running)
       $.ui.invalidate('ui.render')
     }
     return next(e)
   })
+
+  // The live strip: the main loop's turn, its tool calls and its subagents.
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId === undefined) {
+      live = onTurnStart(live, e.turnId, await now($))
+      $.ui.invalidate('ui.render')
+    }
+    return next(e)
+  })
+
+  on('tool.call', async ($, e, next) => {
+    try {
+      live = onTool(live, String(e.tool), toolDetail(e as Record<string, unknown>), e.agentId, await now($))
+      $.ui.invalidate('ui.render')
+    } catch {
+      // the strip misses one step
+    }
+    return next(e)
+  })
+
+  on('agent.spawn', async ($, e, next) => {
+    const result = await next(e)
+    if (result && result.agentId) {
+      const at = await now($)
+      live = onSpawn({ ...live, agents: prune(live.agents, at) }, result.agentId, String(e.subagentType || 'agent'), String(e.description || ''), at, e.background === true)
+      $.ui.invalidate('ui.render')
+    }
+    return result
+  })
+
 
   // Claude wrote a spec artifact: refresh right away instead of waiting for the poll.
   on('tool.call', { tool: ['Edit', 'Write'] }, async ($, e, next) => {
@@ -283,8 +337,14 @@ export function registerBoard(on) {
   })
 
   on('turn.complete', async ($, e, next) => {
+    // A subagent's loop ends with its own turn.complete: its lane stops.
+    if (e.agentId !== undefined) {
+      live = onReport(live, e.agentId, e.reason === 'answer' ? 'completed' : e.reason === 'aborted' ? 'stopped' : 'failed', await now($))
+      $.ui.invalidate('ui.render')
+    }
     if (e.agentId === undefined) {
       running = null
+      live = onTurnComplete(live, await now($))
       try {
         await scan($, true)
       } catch {
@@ -335,11 +395,26 @@ export function registerBoard(on) {
     const current = features.find((f) => f.slug === slug) ?? null
     const at = await now($)
     drawnFreshness = freshness(updatedAt, checkedAt, at)
+    const session = sessionOf(current, branch)
+    // A task session opens on its Ticket tab once; after that the person's choice stands.
+    if (session.kind === 'task' && ticketShownFor !== branch) {
+      ticketShownFor = branch
+      tab = 'ticket'
+    }
+    const lanes = lanesOf(live, current?.tasks ?? null, current?.epic ?? '', current?.merges, commits, session.kind === 'task' ? session.taskId : null)
     const actions = {
       tab: (t) => {
         tab = t
         redraw()
-        $.store.set('prefs', { tab, filter })
+        if (t !== 'ticket') $.store.set('prefs', { tab, filter })
+      },
+      toggle: (key) => {
+        openKeys = openKeys.includes(key) ? openKeys.filter((k) => k !== key) : [...openKeys, key]
+        redraw()
+      },
+      taskFilter: (v) => {
+        taskFilter = v
+        redraw()
       },
       fill: (text) => {
         $.prompt.fill({ text })
@@ -393,6 +468,11 @@ export function registerBoard(on) {
       now: at,
       freshness: drawnFreshness,
       source,
+      session,
+      live,
+      lanes,
+      open: openKeys,
+      taskFilter,
       actions,
     })
   })

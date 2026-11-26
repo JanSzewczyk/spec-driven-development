@@ -1,7 +1,8 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
-import { blockedBy, currentSlug, derive, freshness, gate, warnings } from '../hooks/board/model.ts'
-import { mergeState, prNumber, prStates, taskBranchBase, worktreeOf } from '../core/merges.ts'
+import { blockedBy, clock, currentSlug, derive, freshness, gate, sessionOf, taskLook, warnings } from '../hooks/board/model.ts'
+import { mergeState, prNumber, prStates, taskBranchBase, taskOfBranch, worktreeOf } from '../core/merges.ts'
+import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, toolDetail } from '../hooks/board/live.ts'
 import type { Feature } from '../hooks/board/model.ts'
 
 const SPEC = `# Feature: User Login
@@ -65,6 +66,7 @@ test('parseSpec reads header, criteria and open questions', () => {
   expect(s.acTotal).toBe(2)
   expect(s.acDone).toBe(1)
   expect(s.openQuestions).toBe(0)
+  expect(s.criteria).toEqual([{ id: 'AC1', text: 'logs in' }, { id: 'AC2', text: 'shows error' }])
 })
 
 test('parseTasks reads the tasks with their status', () => {
@@ -372,7 +374,7 @@ test('a finished feature shows the done card and hides the tasks', async ($, on)
   stubProject($, on, true, { files: DONE })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: '✓ Feature done' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Feature done · review ready' })).toBeDefined()
   expect(await ui.find({ key: 'fill-next' })).toBeUndefined()
   expect(await ui.find({ key: 'task-T1' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^Tasks / })).toBeUndefined()
@@ -592,10 +594,10 @@ test('parseEpicId and the branch and pr of a task', () => {
   expect(t.pr).toBe('#12')
 })
 
-test('tasks waiting for a merge turn the next step into "implement all" while blocked tasks wait on them', () => {
+test('tasks waiting for a merge turn the next step into a plain implement run while blocked tasks wait on them', () => {
   const blocked = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: draft\ndepends_on: [T1]\n')
   const d = derive(feature({ planStatus: 'tasks-ready', tasks: blocked }))
-  expect(d.next?.command).toBe('/sdd:implement all')
+  expect(d.next?.command).toBe('/sdd:implement')
   expect(d.next?.why).toContain('#12')
   expect(d.phase).toBe('implement')
   const g = gate(feature({ planStatus: 'tasks-ready', tasks: blocked }))!
@@ -679,7 +681,7 @@ test('a merged task counts as implemented before Reconcile records it', () => {
   expect(d.next?.command).toBe('/sdd:review')
   expect(d.next?.why).toContain('T2')
   const closed = derive(feature({ planStatus: 'tasks-ready', tasks, merges: { T1: 'closed' } }))
-  expect(closed.next?.command).toBe('/sdd:implement all')
+  expect(closed.next?.command).toBe('/sdd:implement')
   expect(closed.next?.why).toContain('Closed without merging: T1 #12')
 })
 
@@ -707,9 +709,14 @@ test('in a task worktree the board reads the statuses from the spec branch check
   })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  // A task session opens on its ticket, with the statuses of the orchestrator's checkout.
+  expect(await ui.find({ type: 'Text', text: 'Task session · ULOG-T2' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Login form' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Statuses read from the feat\/user-login checkout/ })).toBeDefined()
+  expect(await ui.find({ key: 'new-spec' })).toBeUndefined()
+  await ui.press({ key: 'tab-current' })
   expect(await ui.find({ type: 'Text', text: 'User Login' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /statuses from feat\/user-login$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /You are on/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^You are on \S+ the spec belongs/ })).toBeUndefined()
   await ui.press({ key: 'fill-next' })
   await ui.unmount()
   expect(filled).toEqual(['/sdd:implement T3'])
@@ -803,4 +810,107 @@ test('the Updated line ages while scans fail, and the poll redraws it', async ($
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'Updated 2 min ago' })).toBeDefined()
   await ui.unmount()
+})
+
+test('parseTasks reads scope bullets and files', () => {
+  const [t] = parseTasks('### T1: A\nproject: web\nscope:\n- form\n- errors\nfiles: src/a.ts, src/b.ts\nnotes: x\n- not scope\n')
+  expect(t.scope).toEqual(['form', 'errors'])
+  expect(t.files).toBe('src/a.ts, src/b.ts')
+  expect(t.project).toBe('web')
+})
+
+test('the session kind follows the branch: main SDD session, task session or neither', () => {
+  const f = feature({ slug: 'user-login', planStatus: 'tasks-ready', tasks: parseTasks(TASKS), epic: 'ULOG' })
+  expect(taskOfBranch('feat/user-login--ULOG-T2')).toBe('ULOG-T2')
+  expect(taskOfBranch('feat/user-login')).toBeNull()
+  expect(sessionOf(f, 'feat/user-login')).toEqual({ kind: 'main' })
+  expect(sessionOf(f, 'feat/user-login--ULOG-T2')).toEqual({ kind: 'task', taskId: 'T2', label: 'ULOG-T2' })
+  expect(sessionOf(f, 'feat/user-login--ULOG-T9')).toEqual({ kind: 'none' })
+  expect(sessionOf(f, 'main')).toEqual({ kind: 'none' })
+  expect(sessionOf(null, 'feat/user-login')).toEqual({ kind: 'none' })
+})
+
+test('taskLook shows merged, closed and blocked tasks apart from their status', () => {
+  const tasks = parseTasks('### T1: A\nstatus: in-progress\npr: #12\n### T2: B\nstatus: draft\ndepends_on: [T1]\n### T3: C\nstatus: draft\n')
+  expect(tasks.map((t) => taskLook(t, tasks))).toEqual(['in-progress', 'blocked', 'draft'])
+  expect(taskLook(tasks[0], tasks, { T1: 'merged' })).toBe('merged')
+  expect(taskLook(tasks[1], tasks, { T1: 'merged' })).toBe('draft')
+  expect(taskLook(tasks[0], tasks, { T1: 'closed' })).toBe('closed')
+  expect([clock(12_000), clock(250_000), clock(3_900_000)]).toEqual(['12s', '4m', '1h 5m'])
+})
+
+test('the live state follows the turn, its tool calls and its subagents', () => {
+  let live = onTurnStart(onCommand(emptyLive(), '/sdd:implement'), 't1', 1000)
+  expect(isActive(live)).toBe(true)
+  live = onTool(live, 'Bash', toolDetail({ command: 'gh pr list\n--json state' }), undefined, 2000)
+  expect(live.tool).toEqual({ tool: 'Bash', detail: 'gh pr list', at: 2000 })
+  live = onSpawn(live, 'a1', 'Explore', 'Find the limits', 3000)
+  live = onTool(live, 'Read', toolDetail({ file_path: '/repo/apps/api/limits.py' }), 'a1', 4000)
+  expect(live.tool?.tool).toBe('Bash')
+  expect(live.agents[0].steps).toEqual([{ tool: 'Read', detail: 'apps/api/limits.py', at: 4000 }])
+  expect(onTool(live, 'Read', 'x', 'unknown', 5000)).toBe(live)
+  live = onReport(live, 'a1', 'completed', 6000)
+  expect(live.agents[0]).toMatchObject({ status: 'completed', endedAt: 6000 })
+  live = onSpawn(live, 'a2', 'general-purpose', 'Check CI', 7000)
+  live = onSpawn(live, 'a3', 'Explore', 'Runs on', 7000, true)
+  live = onTurnComplete(live, 8000)
+  expect(live.turn).toBeNull()
+  expect(live.command).toBeNull()
+  expect(live.agents.find((a) => a.id === 'a2')?.status).toBe('stopped')
+  // A background agent outlives the main turn until its own turn.complete.
+  expect(live.agents.find((a) => a.id === 'a3')?.status).toBe('working')
+  expect(isActive(live)).toBe(true)
+  live = onReport(live, 'a3', 'completed', 9000)
+  expect(isActive(live)).toBe(false)
+  expect(onTurnComplete(live, 8000 + 16 * 60_000).agents).toEqual([])
+})
+
+test('lanes list running task branches, waiting task PRs and subagents', () => {
+  const tasks = parseTasks('### T1: A\nstatus: in-progress\nbranch: feat/x--ULOG-T1\n### T2: B\nstatus: in-progress\nbranch: feat/x--ULOG-T2\npr: #52\n### T3: C\nstatus: review\n')
+  const live = onSpawn(emptyLive(), 'a1', 'sdd:spec-verifier', 'Verify', 1000)
+  const lanes = lanesOf(live, tasks, 'ULOG', undefined, { T1: { at: 500, subject: 'feat: form' } }, null)
+  expect(lanes.map((l) => [l.label, l.kind, l.state])).toEqual([['ULOG-T1', 'task', 'working'], ['ULOG-T2', 'pr', 'waiting'], ['spec-verifier', 'agent', 'working']])
+  expect(lanes[0].steps).toEqual([{ tool: 'commit', detail: 'feat: form', at: 500 }])
+  expect(lanesOf(live, tasks, 'ULOG', { T2: 'merged' }, {}, 'T1').map((l) => [l.label, l.state])).toEqual([['ULOG-T2', 'done'], ['spec-verifier', 'working']])
+})
+
+test('the main SDD session is named and shows the idle live strip', async ($, on) => {
+  stubProject($, on, true)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ type: 'Text', text: 'Main SDD session' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Idle · / })).toBeDefined()
+    expect(await ui.find({ key: 'new-spec' })).toBeUndefined()
+    expect(await ui.find({ key: 'tab-ticket' })).toBeUndefined()
+    await ui.unmount()
+  }
+  // Expanded rows and the task filter are the session's, kept across redraws.
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'task-T2' })
+  expect(await ui.find({ key: 'fact-T2-acceptance' })).toBeDefined()
+  await ui.press({ key: 'tasks-open' })
+  expect(await ui.find({ key: 'task-T1' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a task session ticket shows the acceptance criteria from the spec', async ($, on) => {
+  stubProject($, on, true, { branch: 'feat/user-login--ULOG-T2', files: { 'specs/user-login/tasks.md': TASKS.replace('# Tasks: User Login', '# Tasks: User Login\n\n**Epic:** ULOG') } })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ key: 'tab-ticket' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'shows error' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '• form with inline errors' })).toBeDefined()
+  await ui.press({ key: 'open-spec' })
+  expect(await ui.find({ key: 'phase-card' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a task running in its own worktree is not handed over again: the next step is a plain implement run', () => {
+  const tasks = parseTasks('### T1: A\nstatus: in-progress\nbranch: feat/x--ULOG-T1\n### T2: B\nstatus: draft\ndepends_on: [T1]\n### T3: C\nstatus: in-progress\nbranch: feat/x--ULOG-T3\npr: #52\n')
+  const d = derive(feature({ planStatus: 'tasks-ready', tasks }))
+  expect(d.next?.command).toBe('/sdd:implement')
+  expect(d.next?.why).toContain('T1 runs in its own worktree and #52 waits for a merge')
+  const free = parseTasks('### T1: A\nstatus: in-progress\nbranch: feat/x--ULOG-T1\n### T2: B\nstatus: draft\n')
+  expect(derive(feature({ planStatus: 'tasks-ready', tasks: free })).next?.command).toBe('/sdd:implement T2')
 })

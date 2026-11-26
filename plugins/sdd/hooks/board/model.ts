@@ -1,6 +1,6 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
 import type { FeatureFiles } from '../../core/features.ts'
-import { taskBranchBase } from '../../core/merges.ts'
+import { taskBranchBase, taskOfBranch } from '../../core/merges.ts'
 import type { MergeState } from '../../core/merges.ts'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../../core/parse.ts'
 import type { PlanInfo, SpecInfo, Task, Verdict } from '../../core/parse.ts'
@@ -133,16 +133,21 @@ export function derive(f: Feature): Derived {
     // A merged task counts as implemented even before Reconcile records it.
     const open = tasks.filter((t) => !implemented(t, m))
     const waiting = open.filter((t) => t.pr)
-    const working = open.filter((t) => !t.pr)
+    // In progress on a task branch: it runs in its own worktree session, nothing to hand over again.
+    const elsewhere = open.filter((t) => !t.pr && t.status === 'in-progress' && t.branch)
+    const working = open.filter((t) => !t.pr && !elsewhere.includes(t))
     const closed = waiting.filter((t) => m?.[t.id] === 'closed').map((t) => t.id + ' ' + t.pr)
     const prs = waiting.map((t) => t.pr).join(', ')
     const note = (closed.length ? ' Closed without merging: ' + closed.join(', ') + '.' : '') + recorded
-    const ready = working.find((t) => blockedBy(t, tasks, m).length === 0) ?? (waiting.length ? undefined : working[0])
+    const ready = working.find((t) => blockedBy(t, tasks, m).length === 0) ?? (waiting.length || elsewhere.length ? undefined : working[0])
+    const runs = elsewhere.map((t) => t.id).join(', ')
     next = ready
       ? { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' + recorded }
-      : working.length
-        ? { command: '/sdd:implement all', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all starts the next tasks after the merge; if that session has ended, run it again.' + note }
-        : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement all names the review after the merge; otherwise review: it marks the merged tasks as review first.' + note }
+      : elsewhere.length
+        ? { command: '/sdd:implement', model: 'Sonnet', why: runs + (elsewhere.length === 1 ? ' runs' : ' run') + ' in its own worktree' + (waiting.length ? ' and ' + prs + ' waits for a merge' : '') + '. A running /sdd:implement starts the next tasks as they land; if that session has ended, run it again.' + note }
+        : working.length
+        ? { command: '/sdd:implement', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement starts the next tasks after the merge; if that session has ended, run it again.' + note }
+        : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement names the review after the merge; otherwise review: it marks the merged tasks as review first.' + note }
   } else if (status === 'planned' || f.planStatus !== null) {
     idx = 3
     next = { command: '/sdd:tasks', model: 'Sonnet', why: 'Split the plan into self-contained tasks.' }
@@ -195,9 +200,11 @@ export function gate(f: Feature): Gate | null {
   } else if (verb === '/sdd:implement') {
     const tasks = f.tasks ?? []
     const arg = command.split(' ')[1]
-    if (arg === 'all') {
+    if (arg === undefined || arg === 'all') {
       const prs = tasks.filter((t) => !implemented(t, f.merges) && t.pr)
-      checks.push({ key: 'merge', label: 'Task pull requests merged', ok: false, hint: prs.map((t) => t.id + ' ' + t.pr).join(', ') })
+      const elsewhere = tasks.filter((t) => !implemented(t, f.merges) && !t.pr && t.status === 'in-progress' && t.branch)
+      if (prs.length) checks.push({ key: 'merge', label: 'Task pull requests merged', ok: false, hint: prs.map((t) => t.id + ' ' + t.pr).join(', ') })
+      if (elsewhere.length) checks.push({ key: 'worktrees', label: 'Tasks in their worktrees finished', ok: false, hint: elsewhere.map((t) => t.id).join(', ') })
     } else {
       const target = tasks.find((t) => t.id === arg)
       const waits = target ? blockedBy(target, tasks, f.merges) : []
@@ -266,4 +273,41 @@ export function warnings(f: Feature, branch: string): string[] {
   if (d.phase !== 'done' && f.spec.branch && branch && f.spec.branch !== specBranch(branch)) out.push('You are on ' + branch + ', the spec belongs to ' + f.spec.branch)
   if (f.review === 'NOT READY') out.push('Last review: not ready')
   return out
+}
+
+// Which session the board is drawn in: the spec's own branch (the main SDD session, which owns tasks.md
+// and merges the task branches), a task branch of that spec (`<spec-branch>--<EPIC>-T<n>`), or neither.
+export type Session = { kind: 'main' } | { kind: 'task'; taskId: string; label: string } | { kind: 'none' }
+
+export function sessionOf(f: Feature | null, branch: string): Session {
+  if (!f || !f.spec.branch || !branch) return { kind: 'none' }
+  if (branch === f.spec.branch) return { kind: 'main' }
+  const full = taskOfBranch(branch)
+  if (full && taskBranchBase(branch) === f.spec.branch) {
+    // Task ids in tasks.md are `T<n>`; the branch carries the epic too (`ULOG-T3`).
+    const short = full.replace(/^.*-(T\d+)$/, '$1')
+    if ((f.tasks ?? []).some((t) => t.id === short)) return { kind: 'task', taskId: short, label: full }
+  }
+  return { kind: 'none' }
+}
+
+// How a task row reads: its status, or merged / closed while Reconcile has not recorded the merge,
+// or blocked while a dependency is open.
+export type TaskLook = 'done' | 'review' | 'in-progress' | 'merged' | 'closed' | 'blocked' | 'draft'
+
+export function taskLook(t: Task, tasks: Task[] | null, merges?: Merges): TaskLook {
+  if (t.status === 'done' || t.status === 'review') return t.status
+  const m = merges?.[t.id]
+  if (m === 'merged' || m === 'closed') return m
+  if (t.status === 'in-progress') return 'in-progress'
+  return blockedBy(t, tasks, merges).length ? 'blocked' : 'draft'
+}
+
+// A short duration for timers: '12s', '4m', '1h 5m'.
+export function clock(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  if (s < 60) return s + 's'
+  const m = Math.floor(s / 60)
+  if (m < 60) return m + 'm'
+  return Math.floor(m / 60) + 'h ' + (m % 60) + 'm'
 }

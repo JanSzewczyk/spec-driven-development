@@ -10,6 +10,8 @@ export type Task = {
   acceptance: string[] // AC ids the task serves
   branch: string // task branch while it runs in its own worktree; '' otherwise
   pr: string // pull request (number or URL) while it waits for a merge; '' otherwise
+  scope?: string[] // the `scope:` bullets
+  files?: string // the `files:` value
 }
 export type SpecInfo = {
   title: string
@@ -25,6 +27,7 @@ export type SpecInfo = {
   hasSummary: boolean
   storyCount: number
   edgeCases: number
+  criteria?: { id: string; text: string }[] // acceptance criteria by id (`- [ ] AC1: text`)
 }
 export type PlanInfo = { status: string; missing: string[]; openItems: number }
 
@@ -78,6 +81,10 @@ export function parseSpec(text: string): SpecInfo {
     hasSummary: summary.length > 0,
     storyCount: bullets(section(text, 'User stories')).length,
     edgeCases: bullets(section(text, 'Edge cases')).length,
+    criteria: ac.flatMap((l) => {
+      const m = l.match(/^- \[[ xX]\]\s*(AC\d+)\s*[:\-–·]?\s*(.*)$/)
+      return m ? [{ id: m[1], text: m[2].trim() }] : []
+    }),
   }
 }
 
@@ -105,14 +112,33 @@ export function parseEpicId(text: string): string {
 export function parseTasks(text: string): Task[] {
   const tasks: Task[] = []
   let task: Task | null = null
+  let inScope = false
   for (const raw of text.split('\n')) {
     const h = raw.match(/^###\s+(T\d+)\s*[:\-–·]\s*(.*)$/i)
     if (h) {
       task = { id: h[1].toUpperCase(), title: h[2].trim(), status: 'draft', project: '', dependsOn: [], acceptance: [], branch: '', pr: '' }
       tasks.push(task)
+      inScope = false
       continue
     }
     if (!task) continue
+    // `scope:` is followed by `- action` bullets; any other `key:` line ends the list.
+    const bullet = raw.match(/^\s*[-*]\s+(.+)$/)
+    if (inScope && bullet) {
+      task.scope = [...(task.scope ?? []), bullet[1].trim()]
+      continue
+    }
+    inScope = false
+    if (/^scope:\s*$/.test(raw)) {
+      inScope = true
+      task.scope = []
+      continue
+    }
+    const fl = raw.match(/^files:\s*(.*)$/)
+    if (fl) {
+      task.files = fl[1].trim()
+      continue
+    }
     const f = raw.match(/^(project|status|depends_on|acceptance|branch|pr):\s*(.*)$/)
     if (!f) continue
     const value = f[2].replace(/\s+#.*$/, '').trim()

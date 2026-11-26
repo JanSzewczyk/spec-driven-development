@@ -2,7 +2,7 @@
 // theme keys to, read from the Claude Desktop bundle. Desktop draws an Svg in its own frame without the
 // app's CSS variables, so each drawing carries a light and a dark value and switches with
 // prefers-color-scheme. The attribute on each shape is the fallback when a style is not applied.
-import type { Role, Step } from './model.ts'
+import type { Role, Step, TaskLook } from './model.ts'
 
 type Pair = [light: string, dark: string]
 
@@ -28,6 +28,8 @@ const ON_FILL = '#0b0b0b' // --on-success / --on-warning
 // Fallbacks for an unstyled drawing: mid tones that read on both themes.
 const MID = '#8b8d98'
 const MID_TRACK = '#8b8d9840'
+// Motion lives only inside drawings; a reader who asked for less motion gets none.
+const NO_MOTION = '@media (prefers-reduced-motion: reduce){*{animation:none!important}}'
 
 // rules: [selector, property, [light, dark]]
 function themed(rules: [string, string, Pair][]): string {
@@ -42,43 +44,6 @@ function svgDoc(width: number, height: number, body: string): string {
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// Pipeline stepper: circles on a line, check mark when done, ring on the current step.
-export function stepperSvg(steps: Step[], width: number): string {
-  const n = steps.length
-  const pad = 26
-  const gap = (width - pad * 2) / (n - 1)
-  const y = 20
-  let body = themed([
-    ['.track', 'stroke', CDS.borderStrong],
-    ['.todo', 'stroke', CDS.muted],
-    ['.l-done', 'fill', CDS.secondary],
-    ['.l-current', 'fill', CDS.primary],
-    ['.l-todo', 'fill', CDS.muted],
-  ])
-  for (let i = 0; i < n - 1; i++) {
-    const x1 = pad + gap * i + 11
-    const x2 = pad + gap * (i + 1) - 11
-    const line = steps[i].state === 'done' ? 'stroke="' + FILL.success + '"' : 'class="track" stroke="' + MID_TRACK + '"'
-    body += '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y + '" ' + line + ' stroke-width="2" stroke-linecap="round"/>'
-  }
-  steps.forEach((s, i) => {
-    const x = pad + gap * i
-    if (s.state === 'done') {
-      body += '<circle cx="' + x + '" cy="' + y + '" r="10" fill="' + FILL.success + '"/>'
-      body += '<path d="M' + (x - 4) + ' ' + y + ' l3 3.2 l5.2 -6" fill="none" stroke="' + ON_FILL + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-    } else if (s.state === 'current') {
-      body += '<circle cx="' + x + '" cy="' + y + '" r="13" fill="' + FILL.warning + '" fill-opacity="0.22"/>'
-      body += '<circle cx="' + x + '" cy="' + y + '" r="9" fill="' + FILL.warning + '"/>'
-      body += '<circle cx="' + x + '" cy="' + y + '" r="3" fill="' + ON_FILL + '"/>'
-    } else {
-      body += '<circle class="todo" cx="' + x + '" cy="' + y + '" r="9" fill="none" stroke="' + MID + '" stroke-width="2"/>'
-    }
-    const weight = s.state === 'current' ? '600' : '400'
-    body += '<text class="l-' + s.state + '" x="' + x + '" y="52" text-anchor="middle" font-size="11" font-weight="' + weight + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + esc(s.label) + '</text>'
-  })
-  return svgDoc(width, 62, body)
 }
 
 // Segmented progress bar: done, review, in-progress over a neutral track.
@@ -101,17 +66,6 @@ export function progressSvg(c: Record<string, number>, width: number): string {
   }
   body += '</g>'
   return svgDoc(width, 8, body)
-}
-
-// Six small dots, one per pipeline step, for the overview cards.
-export function dotsSvg(steps: Step[]): string {
-  let body = themed([['.todo', 'stroke', CDS.muted]])
-  steps.forEach((s, i) => {
-    const x = 6 + i * 16
-    if (s.state === 'todo') body += '<circle class="todo" cx="' + x + '" cy="6" r="4.2" fill="none" stroke="' + MID + '" stroke-width="1.5"/>'
-    else body += '<circle cx="' + x + '" cy="6" r="5" fill="' + (s.state === 'done' ? FILL.success : FILL.warning) + '"/>'
-  })
-  return svgDoc(steps.length * 16, 12, body)
 }
 
 // Flat tinted pill (bg-<role> fill, text-<role> label), as Claude Code tints a role. Used for statuses,
@@ -172,4 +126,122 @@ export function dotSvg(isSet: boolean): string {
     ? '<circle cx="4" cy="4" r="3" fill="' + FILL.success + '"/>'
     : themed([['circle', 'stroke', CDS.muted]]) + '<circle cx="4" cy="4" r="2.6" fill="none" stroke="' + MID + '" stroke-width="1"/>'
   return svgDoc(8, 8, body)
+}
+
+// Phase bar: one segment per pipeline step, the current one wider with stripes moving through it (red
+// and still when the last review was not ready); the step names under the segments.
+export function phaseBarSvg(steps: Step[], width: number, isAlert = false): string {
+  const gap = 4
+  const h = 10
+  const n = steps.length
+  const weights = steps.map((s) => (s.state === 'current' ? 2.2 : 1))
+  const unit = (width - gap * (n - 1)) / weights.reduce((a, b) => a + b, 0)
+  let body = themed([
+    ['.todo', 'fill', CDS.borderStrong],
+    ['.l', 'fill', CDS.muted],
+    ['.l-done', 'fill', CDS.secondary],
+    ['.l-current', 'fill', CDS.primary],
+  ])
+  body += '<defs><pattern id="st" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="10" fill="#fff" fill-opacity="0.28"/></pattern></defs>'
+  body += '<style>@keyframes mv{to{transform:translateX(14.14px)}}.mv{animation:mv 1.1s linear infinite}' + NO_MOTION + '</style>'
+  let x = 0
+  steps.forEach((s, i) => {
+    const w = unit * weights[i]
+    const fill = s.state === 'done' ? FILL.success : s.state === 'current' ? (isAlert ? FILL.danger : FILL.warning) : null
+    body += fill
+      ? '<rect x="' + x + '" y="0" width="' + w + '" height="' + h + '" rx="3" fill="' + fill + '"/>'
+      : '<rect class="todo" x="' + x + '" y="0" width="' + w + '" height="' + h + '" rx="3" fill="' + MID_TRACK + '"/>'
+    if (s.state === 'current' && !isAlert) {
+      body += '<clipPath id="c' + i + '"><rect x="' + x + '" y="0" width="' + w + '" height="' + h + '" rx="3"/></clipPath>'
+      body += '<g clip-path="url(#c' + i + ')"><rect class="mv" x="' + (x - 20) + '" y="0" width="' + (w + 40) + '" height="' + h + '" fill="url(#st)"/></g>'
+    }
+    const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'
+    const tx = i === 0 ? x : i === n - 1 ? x + w : x + w / 2
+    const weight = s.state === 'current' ? '600' : '400'
+    body += '<text class="l l-' + s.state + '" x="' + tx + '" y="27" text-anchor="' + anchor + '" font-size="11" font-weight="' + weight + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + esc(s.label) + '</text>'
+    x += w + gap
+  })
+  return svgDoc(width, 32, body)
+}
+
+// Five small bars, one per pipeline step, for the specs list.
+export function miniPhaseSvg(steps: Step[]): { source: string; width: number; height: number } {
+  const width = steps.length * 13 - 2
+  let body = themed([['.todo', 'fill', CDS.borderStrong]])
+  steps.forEach((s, i) => {
+    const x = i * 13
+    body += s.state === 'todo'
+      ? '<rect class="todo" x="' + x + '" y="0" width="11" height="5" rx="2.5" fill="' + MID_TRACK + '"/>'
+      : '<rect x="' + x + '" y="0" width="11" height="5" rx="2.5" fill="' + (s.state === 'done' ? FILL.success : FILL.warning) + '"/>'
+  })
+  return { source: svgDoc(width, 5, body), width, height: 5 }
+}
+
+// A dot that pulses while something runs, a hollow ring when nothing does.
+export function liveDotSvg(role: Role, isLive: boolean, size = 12): string {
+  const c = size / 2
+  if (!isLive) return svgDoc(size, size, themed([['circle', 'stroke', CDS.muted]]) + '<circle cx="' + c + '" cy="' + c + '" r="' + (c - 2.5) + '" fill="none" stroke="' + MID + '" stroke-width="1.5"/>')
+  const f = FILL[role]
+  return svgDoc(
+    size,
+    size,
+    '<style>@keyframes p{0%{r:' + (c - 3) + 'px;opacity:.7}100%{r:' + c + 'px;opacity:0}}.p{animation:p 1.6s ease-out infinite}' + NO_MOTION + '</style>' +
+      '<circle class="p" cx="' + c + '" cy="' + c + '" r="' + (c - 3) + '" fill="' + f + '"/><circle cx="' + c + '" cy="' + c + '" r="' + (c - 2.5) + '" fill="' + f + '"/>',
+  )
+}
+
+// One lane on the live strip's time axis: from its start (clamped to the window) to its end or now.
+// A waiting lane is hatched, a finished one faded, a failed one red.
+export function laneBarSvg(lane: { since: number; endedAt?: number; state: 'working' | 'waiting' | 'done' | 'failed' }, role: Role, now: number, windowMs: number, width: number): string {
+  const at = (t: number) => Math.max(0, Math.min(width, width * (1 - (now - t) / windowMs)))
+  const x0 = at(lane.since)
+  const x1 = Math.max(x0 + 3, at(lane.endedAt ?? now))
+  let body = themed([['.track', 'stroke', CDS.border]]) + '<line class="track" x1="0" y1="3" x2="' + width + '" y2="3" stroke="' + MID_TRACK + '" stroke-width="1" stroke-dasharray="2 3"/>'
+  if (lane.state === 'waiting') {
+    body += '<defs><pattern id="h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="' + FILL[role] + '"/></pattern></defs>'
+    body += '<rect x="' + x0 + '" y="0" width="' + (x1 - x0) + '" height="6" rx="3" fill="url(#h)" fill-opacity="0.7"/>'
+  } else {
+    const fill = lane.state === 'failed' ? FILL.danger : FILL[role]
+    body += '<rect x="' + x0 + '" y="0" width="' + (x1 - x0) + '" height="6" rx="3" fill="' + fill + '" fill-opacity="' + (lane.state === 'working' ? 1 : 0.45) + '"/>'
+  }
+  return svgDoc(width, 6, body)
+}
+
+// The live strip's time axis: four ticks from the window's start to now.
+export function axisSvg(windowMs: number, width: number): string {
+  const min = windowMs / 60_000
+  let body = themed([['text', 'fill', CDS.muted], ['line', 'stroke', CDS.borderStrong]])
+  const ticks: [number, string][] = [[1, '−' + min + 'm'], [2 / 3, '−' + Math.round((min * 2) / 3) + 'm'], [1 / 3, '−' + Math.round(min / 3) + 'm'], [0, 'now']]
+  ticks.forEach(([f, label], i) => {
+    const x = width * (1 - f)
+    const anchor = i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'
+    body += '<line x1="' + x + '" y1="0" x2="' + x + '" y2="3" stroke="' + MID + '"/>'
+    body += '<text x="' + x + '" y="13" font-size="10" text-anchor="' + anchor + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + label + '</text>'
+  })
+  return svgDoc(width, 15, body)
+}
+
+// Task status glyph: done (tick), review (dot), in progress (an arc, turning while its lane runs),
+// merged but not recorded (ringed tick), closed (red ring), blocked (dashed ring), draft (ring).
+export function taskGlyphSvg(look: TaskLook, isLive = false): string {
+  const ring = (attrs: string) => themed([['.r', 'stroke', CDS.muted]]) + '<circle class="r" cx="7" cy="7" r="5.2" fill="none" stroke="' + MID + '" stroke-width="1.4"' + attrs + '/>'
+  const tick = (stroke: string) => '<path d="M4.4 7.2l2 2.1 3.6-4" fill="none" stroke="' + stroke + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  switch (look) {
+    case 'done':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(ON_FILL))
+    case 'review':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.accent + '"/><circle cx="7" cy="7" r="2" fill="' + ON_FILL + '"/>')
+    case 'merged':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.success + '" stroke-width="1.6"/>' + tick(FILL.success))
+    case 'closed':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.danger + '" stroke-width="1.6"/><path d="M5 5l4 4M9 5l-4 4" stroke="' + FILL.danger + '" stroke-width="1.5" stroke-linecap="round"/>')
+    case 'in-progress': {
+      const spin = isLive ? '<style>@keyframes s{to{transform:rotate(360deg)}}.s{transform-origin:7px 7px;animation:s 2.4s linear infinite}' + NO_MOTION + '</style>' : ''
+      return svgDoc(14, 14, spin + '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.warning + '" stroke-opacity="0.3" stroke-width="1.6"/><path class="s" d="M7 1.8 A5.2 5.2 0 0 1 12.2 7" fill="none" stroke="' + FILL.warning + '" stroke-width="1.8" stroke-linecap="round"/>')
+    }
+    case 'blocked':
+      return svgDoc(14, 14, ring(' stroke-dasharray="2 2"'))
+    default:
+      return svgDoc(14, 14, ring(''))
+  }
 }

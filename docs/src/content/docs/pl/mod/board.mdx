@@ -13,14 +13,17 @@ Na starcie sesji otwiera się sam, gdy projekt ma `specs/`, a w oknie jest na ni
 
 ## Co pokazuje
 
-- **Current:** aktywny spec (z gałęzi git, przypięty przez Ciebie lub najnowszy w toku): status, stepper pipeline'u, checklistę gotowości, następną komendę `/sdd:*` z przyciskiem **Put in prompt**, postęp i listę zadań oraz przyciski otwierające `spec`, `plan`, `tasks`, `review`.
-- **All:** każdy spec z fazą i postępem zadań, z filtrowaniem. **Show** przypina wybrany jako bieżący.
-- **⚙ Config:** tylko do odczytu. Projekty, efektywne wartości `capabilities.yml` (ustawione vs domyślne), komendy per projekt z konstytucji §2 oraz przyciski dla `/sdd:capabilities` i `/sdd:doctor check`.
-- **+ New spec:** wstawia `/sdd:spec feat ` do promptu w dowolnym momencie, nawet gdy inna funkcja jest w toku.
+- **Pasek sesji:** na gałęzi speca board nazywa **główną sesję SDD**; na gałęzi zadania (`<spec-branch>--<EPIC>-T<n>`) nazywa **sesję zadania** i mówi, że statusy pochodzą z checkoutu gałęzi speca.
+- **Pasek na żywo** (góra zakładki Current): co teraz działa w tej sesji. Komenda `/sdd:*` tury z czasem, ostatnie wywołanie narzędzia i po jednym torze na subagenta (od `agent.spawn` do końca, z jego ostatnimi narzędziami), na zadanie działające we własnym worktree (z ostatnim commitem jego gałęzi) i na PR zadania czekający na merge. Tory subagentów leżą na 15-minutowej osi czasu. Każdy tor rozwija się i pokazuje, skąd go odczytano. Gdy nic nie działa, to jedna linia.
+- **Current:** aktywny spec (z gałęzi git, przypięty przez Ciebie lub najnowszy w toku): tytuł i status, **pasek faz** (Spec → Clarify → Plan → Tasks → Implement → Review, bieżąca faza szersza i animowana), karta fazy z postępem zadań, checklistą gotowości i następną komendą `/sdd:*` z przyciskiem **Put in prompt** (albo „running now”, gdy działa), lista zadań (filtr All / Open / Blocked; wiersz rozwija się do identyfikatorów AC, zależności, gałęzi i PR; najechanie na zadanie podświetla jego tor) oraz przyciski otwierające `spec`, `plan`, `tasks`, `review`.
+- **Ticket** (tylko w sesji zadania, otwierany jako pierwszy): zakres zadania, kryteria akceptacji z treścią ze `spec.md`, zależności, gałąź, PR i pliki. Spec jest o jedną zakładkę dalej.
+- **All:** każdy spec z małym paskiem faz i postępem zadań, z filtrowaniem. **Show** przypina wybrany jako bieżący.
+- **Config:** tylko do odczytu, we własnym panelu. Projekty, efektywne wartości `capabilities.yml` (ustawione vs domyślne), komendy per projekt z konstytucji §2 oraz przyciski dla `/sdd:capabilities` i `/sdd:doctor check`.
+- **+ New spec:** wstawia `/sdd:spec feat ` do promptu. Widoczny tylko na gałęzi bez speca, więc sesja speca nie ma przycisku do rozpoczęcia kolejnego.
 
 - **Brak SDD w projekcie:** tylko karta konfiguracji. **Init SDD in this project** uruchamia `/sdd:doctor init`; to jedyny przycisk, który uruchamia komendę, pozostałe tylko wypełniają prompt.
 - **Na żywo:** odświeża się po zapisie Claude lub sub-agenta w `specs/`, po zmianie gałęzi, po `git merge`, `git pull` i komendach `gh pr`, po każdej turze i co 4 s dla edycji wykonanych gdzie indziej. Gdy panel jest widoczny, najwyżej raz na minutę pyta GitHub o PR-y zadań i sprawdza gałęzie zadań przewinięte do gałęzi SDD, więc scalone zadanie widać jako scalone, zanim Reconcile je zapisze. W worktree zadania czyta statusy z checkoutu gałęzi SDD. Stopka podaje, kiedy dane odczytano ostatnio.
-- **Renderowanie:** SVG w Desktop i VS Code, tekst w terminalu.
+- **Renderowanie:** SVG w Desktop i VS Code (animacja tylko wewnątrz rysunków, wyłączona przy ograniczonym ruchu), tekst w terminalu.
 
 ## Jak wybiera następny krok
 
@@ -29,8 +32,8 @@ Na starcie sesji otwiera się sam, gdy projekt ma `specs/`, a w oknie jest na ni
 | spec `draft` | `/sdd:clarify` |
 | spec `clarified` | `/sdd:plan` |
 | spec `planned`, brak `tasks.md` | `/sdd:tasks` |
-| zadania istnieją, część niezaimplementowana | `/sdd:implement T<n>` dla pierwszego nieukończonego zadania, którego zależności są gotowe |
-| reszta czeka na PR-y zadań (`pr:`), a niedokończone zadania od nich zależą | zmerguj je; działające `/sdd:implement all` kontynuuje samo, inaczej uruchom je ponownie po merge'u |
+| zadania istnieją, część niezaimplementowana | `/sdd:implement T<n>` dla pierwszego nieukończonego zadania, którego zależności są gotowe i które nie działa we własnym worktree |
+| reszta działa we własnych worktree zadań (`branch:`) albo czeka na PR-y zadań (`pr:`), a niedokończone zadania od nich zależą | `/sdd:implement`: działające kontynuuje samo, gdy zadania wracają, inaczej uruchom je ponownie |
 | zostały tylko PR-y zadań (`pr:`) | `/sdd:review` po merge'u (najpierw oznacza zmergowane zadania jako `review`) |
 | każde zadanie w `review` lub `done` | `/sdd:review` |
 | spec `done` lub werdykt review READY | nic, otwórz PR |
