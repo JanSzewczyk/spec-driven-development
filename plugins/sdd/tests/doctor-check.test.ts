@@ -1,10 +1,14 @@
 import { expect, test } from 'claude-code/testing'
-import { commandOf, effectiveConfig, loadCapabilities, needs, parseCapabilities, parseCommandTable, parseLegacyCapabilities, runChecks } from '../hooks/core/check.ts'
-import { parseYaml } from '../hooks/core/yaml.ts'
-import { gather } from '../hooks/core/gather.ts'
-import type { Io } from '../hooks/core/gather.ts'
-import { parseEpicId, parseTasks } from '../hooks/core/parse.ts'
-import type { Snapshot } from '../hooks/core/check.ts'
+import { loadCapabilities, parseCapabilities, parseLegacyCapabilities } from '../core/capabilities.ts'
+import { needs, runChecks } from '../core/check.ts'
+import { effectiveConfig } from '../core/config.ts'
+import { commandOf, parseCommandTable } from '../core/constitution.ts'
+import { parseYaml } from '../core/yaml.ts'
+import { gather } from '../core/gather.ts'
+import type { Io } from '../core/io.ts'
+import { featureOfBranch, readFeatures } from '../core/features.ts'
+import { parseEpicId, parseTasks } from '../core/parse.ts'
+import type { Snapshot } from '../core/check.ts'
 
 const CONSTITUTION = `# Project Constitution
 
@@ -562,4 +566,21 @@ test('gather in ci mode reads specs and the workflow without running anything', 
   expect(s.features.map((f) => f.slug)).toEqual(['login'])
   expect(s.workflow).toContain('sdd-workflow')
   expect(runChecks(s).status).toBe('READY')
+})
+
+test('readFeatures keeps folders with any feature document and featureOfBranch finds the spec', async () => {
+  const files: Record<string, string> = {
+    'specs/a/spec.md': '# A\n\n**Branch:** feat/a\n',
+    'specs/b/tasks.md': '# Tasks\n',
+  }
+  const io: Io = {
+    read: async (p) => files[p] ?? null,
+    exists: async (p) => p in files || p === 'specs',
+    list: async () => [{ name: 'a', dir: true }, { name: 'b', dir: true }, { name: 'empty', dir: true }, { name: 'notes.md', dir: false }],
+    run: async () => null,
+  }
+  const features = await readFeatures(io)
+  expect(features.map((f) => f.slug)).toEqual(['a', 'b'])
+  expect(featureOfBranch(features, 'feat/a')?.slug).toBe('a')
+  expect(featureOfBranch(features, 'main')).toBe(null)
 })

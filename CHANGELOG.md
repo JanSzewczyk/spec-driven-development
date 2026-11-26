@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] — 2026-11-26
+
+`sdd` goes to 2.5.0. The `sdd-board` plugin is merged into it.
+
+### Added
+
+- The board side panel is part of `sdd`: `/sdd-dashboard` opens it, and it opens by itself at session start in a project with `specs/`. The `show_board` option (on by default) turns the auto-open off.
+
+### Changed
+
+- The marketplace no longer lists `sdd-board`; its `renames` entry moves `sdd-board` installs to `sdd`. The panel's saved tab and filter may reset once.
+- The panel polls `specs/` only once it has been drawn, so a session that never shows it does not poll.
+- The rules and parsers live once, in `plugins/sdd/core/`; the copy for the panel and `scripts/sync-core.sh` are gone (`scripts/gen-schema.sh` writes the schema module).
+- `plugins/sdd/core/` sits beside `hooks/` and `cli/`, the two hosts that use it. One `core/features.ts` decides which `specs/` folders are features for the doctor, the board and the CLI. Before, the CLI skipped a folder with only `plan.md` or `review.md` that the doctor listed.
+- The docs site has one changelog. The `sdd-board` release history (up to 0.9.7) is removed from `CHANGELOG.md`; it stays in git history. The board pages move under `/mod/` ("Claude Code mod": an overview of the mod and the board page); `/board/overview/` redirects there.
+
 ## [2.4.0] — 2026-11-26
 
 `sdd` goes to 2.4.0.
@@ -18,14 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/sdd:implement` with no argument runs every open task (same as `all`); without isolation it implements and commits one task after another, moving each status, until all are done or only blocked tasks remain.
 - `/sdd:implement` reads the worktree instructions only with `isolation: worktree:` (the wait loop only for several tasks) and no longer reads `references/capabilities.md`: about a third less text per run.
 
-## [0.9.7 sdd-board] — 2026-11-26
-
-`sdd-board` goes to 0.9.7.
-
-### Changed
-
-- Carries the shared core modules behind the SDD CLI; no visible change in the panel.
-
 ## [2.3.0] — 2026-11-25
 
 `sdd` goes to 2.3.0.
@@ -33,14 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - With worktree isolation, one `/sdd:implement all` runs every wave to the end. It resumes when task sessions finish and when a task PR is merged (one background `gh` check every 2 minutes), marks merged tasks `review`, starts the tasks they unblock, and names `/sdd:review` at the end. A PR closed without merging, or a `merge: auto` rebase conflict, blocks only that task's dependants instead of stopping the run. If the session ends, run `/sdd:implement all` again to continue.
-
-## [0.9.6 sdd-board] — 2026-11-25
-
-`sdd-board` goes to 0.9.6.
-
-### Changed
-
-- While task PRs wait for a merge, the next step says a running `/sdd:implement all` continues by itself; run it again only if that session ended.
 
 ## [2.2.0] — 2026-11-18
 
@@ -53,14 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - New Epic ids are capital letters from the slug only (`ULOG`, task `ULOG-T3`), without the `-<4 hex>` suffix. A clash with another spec appends the next slug letter. Existing ids such as `ULOG-7f3a` stay valid and are not rewritten.
-
-## [0.9.5 sdd-board] — 2026-11-18
-
-`sdd-board` goes to 0.9.5.
-
-### Changed
-
-- The Config pane accepts letters-only Epic ids (`ULOG`) as well as the older `ULOG-7f3a`.
 
 ## [2.1.0] — 2026-11-18
 
@@ -90,24 +82,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `effectiveConfig` marks `merge` and `parallel` with `parent: 'isolation'` (shared core, used by the `sdd-board` configuration pane). Their values and the `set` / `default` source are unchanged.
 
-## [0.9.4 sdd-board] — 2026-11-16
-
-`sdd-board` goes to 0.9.4.
-
-### Fixed
-
-- When only task pull requests (`pr:`) are left, the next step is `/sdd:review` after the merge instead of `/sdd:implement all`; its checklist lists the PRs still to merge.
-- A task blocked by a task PR is no longer suggested as `/sdd:implement T<n>`; the panel suggests `/sdd:implement all` after the merge.
-
-## [0.9.3 sdd-board] — 2026-11-16
-
-`sdd-board` goes to 0.9.3.
-
-### Fixed
-
-- The configuration pane draws `merge` and `parallel` under `isolation: worktree`, behind a connector, instead of as separate rows.
-- The three stat tiles have a visible border again (it was set to the tile's own background colour).
-
 ## [2.0.3] — 2026-11-15
 
 `sdd` releases are now tagged `v<version>` instead of `sdd--v<version>`.
@@ -116,14 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `scripts/release.sh` creates the `v<version>` tag itself and treats an existing `sdd--v<version>` tag as already released. Older `sdd--v` tags and their Releases are unchanged.
 - The `sdd-check` workflow template and the `capabilities.yml` `$schema` comment pin to `v<version>`.
-
-## [0.9.2 sdd-board] — 2026-11-15
-
-`sdd-board` goes to 0.9.2.
-
-### Fixed
-
-- The generated copy of `shared/sdd-core` strips HTML comments until none are left (code scanning alert).
 
 ## [2.0.2] — 2026-11-15
 
@@ -134,14 +100,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `stripComments` removes HTML comments until none are left, so a removed comment cannot join its surroundings into a new one.
 - `sdd-check` escapes backslashes before pipes in the summary table (code scanning alerts).
 
-## [0.9.1 sdd-board] — 2026-11-15
-
-`sdd-board` goes to 0.9.1.
-
-### Changed
-
-- The generated copy of `shared/sdd-core` now reads keys, values and defaults of `capabilities.yml` from the JSON Schema.
-
 ## [2.0.1] — 2026-11-15
 
 `sdd` goes to 2.0.1.
@@ -149,14 +107,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `capabilities.schema.json` is the single source of the `capabilities.yml` keys, allowed values, defaults and patterns. `formats.ts` reads them from it instead of repeating them; `format` is a `const` in the schema, so an editor flags a file written for an older format. The schema is edited in `shared/sdd-core/` and `scripts/sync-core.sh` copies it to `plugins/sdd/schemas/` (same published URL).
-
-## [0.9.0 sdd-board] — 2026-11-15
-
-`sdd-board` goes to 0.9.0.
-
-### Changed
-
-- The Config pane reads `specs/capabilities.yml` and shows its path; a format-2 `capabilities.md` is still shown, with a button that runs `/sdd:doctor init` to migrate it. `merge` and `parallel` appear only with `isolation: worktree:`.
 
 ## [2.0.0] — 2026-11-15
 
@@ -182,14 +132,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `/sdd:doctor check` lists every check in the report table (✅ with its summary, ⚠️/❌ with the finding count), followed by a Findings section per failing check with `init` / manual tags and numbered next steps.
 
-## [0.8.0 sdd-board] — 2026-11-15
-
-`sdd-board` goes to 0.8.0.
-
-### Added
-
-- The Current tab shows the epic id, a task's PR or branch, and a "waiting for merge" next step (`/sdd:implement all`) while task PRs are open.
-
 ## [1.3.0] — 2026-11-15
 
 `sdd` goes to 1.3.0.
@@ -206,35 +148,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/sdd:implement` now commits by default** (`commit: task`). Set `commit: off` under `## Implementation` to leave the work uncommitted for `/sdd:review`.
 - `/sdd:doctor init` is the update path: it repairs every finding tagged `fix: init` (format marker `<!-- sdd-format: 2 -->`, new keys, epic ids, an outdated workflow).
 - Reading a project moved to `shared/sdd-core/gather.ts`, shared by the `doctor_check` tool and the action.
-
-## [0.7.0 sdd-board] — 2026-11-15
-
-`sdd-board` goes to 0.7.0.
-
-### Changed
-
-- **`sdd-board` command renamed**: `/sdd-board` is now `/sdd-dashboard`. The old name no longer exists.
-
-### Fixed
-
-- **`sdd-board` no longer shows "SDD is not set up in this project" while an `/sdd:*` skill runs.** A failed read during a scan replaced the panel state with an empty one. A failed scan now keeps the last good data, and `tool.call` hooks scan only for the main conversation (a subagent's cwd can differ).
-
-## [0.6.1 sdd-board] — 2026-11-14
-
-`sdd-board` goes to 0.6.1.
-
-### Changed
-
-- **`sdd-board` Config pane redesign**: counters (projects, customised values, commands set), project kind pills, `agent:` / `skill:` values split into type, namespace and name, a filled dot for set values and an empty one for defaults, collapsible per-project commands with a bar per command, and row separators. Colors follow Claude Code: theme keys (`success`, `warning`, `userMessageBackground`) for text and surfaces, and the CDS role colors with a light and a dark variant in the drawings.
-- **`sdd-board` Current and All tabs use Claude Code colors**: statuses map to CDS roles (status pills, stepper, progress bar, step dots, readiness checks) and text uses theme keys (`success`, `warning`, `error`, `permission`, `merged`, `inactive`) instead of ANSI names, so both themes read correctly.
-
-## [0.6.0 sdd-board] — 2026-11-14
-
-`sdd-board` goes to 0.6.0.
-
-### Added
-
-- **`sdd-board` Config pane** (`⚙ Config`, top right): read-only view of the effective `capabilities.md` values (set vs default), projects and the §2 commands, with buttons for `/sdd:capabilities` and `/sdd:doctor check`.
 
 ## [1.2.0] — 2026-11-14
 
@@ -343,20 +256,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The constitution's §2 Run/build table gains `coverage` and `ui-preview` rows and is the single source for those commands; `/sdd:doctor init` fills it from the detected tooling when it seeds the constitution, and `check` warns when the `test` row is empty.
-
-## [sdd-board 0.2.0] — 2026-11-12
-
-### Added
-
-- **Setup card** for projects without `specs/`: only a card is drawn, and **Init SDD in this project** runs `/sdd:doctor init` in the session. The tabs appear on their own once `specs/` exists.
-- **Readiness checklist** above the next-step card in every phase (spec content, open questions, plan sections, task routing, review verdict). The card is yellow while a check is open and green when all pass.
-- **Phase-aware Current tab**: a "Feature done" card for finished features, tasks and stories only in Implement and Review, **+ New spec** in the tab bar, and "Nothing in progress" when no feature is open.
-- **Documents open in their own pane** (spec, plan, tasks, review) instead of expanding below; pill status badge; stepper and progress bar sized to the pane; panel title "Spec-driven Development by Szum-Tech".
-
-### Fixed
-
-- "All resolved" and "none" notes in Open questions no longer count as open questions.
-- A `# comment` after a task `status:` no longer turns the task into a draft.
 
 ## [0.7.4] — 2026-11-11
 

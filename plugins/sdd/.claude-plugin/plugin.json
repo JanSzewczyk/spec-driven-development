@@ -3,7 +3,7 @@
   "name": "sdd",
   "displayName": "Spec-Driven Development",
   "description": "Spec-Driven Development framework for Claude Code — canonical SDD flow (spec → clarify → plan → tasks → implement → review), self-contained Jira-like tasks handed to your own implementation flow, and verification against the spec.",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "author": {
     "name": "Szum Tech Team",
     "email": "szum.tech@gmail.com",
@@ -16,12 +16,23 @@
     "sdd",
     "specification",
     "workflow",
-    "agents"
+    "agents",
+    "mod",
+    "panel",
+    "dashboard"
   ],
   "skills": "./skills/",
   "agents": [
     "./agents/spec-verifier.md",
     "./agents/reviewer.md",
     "./agents/codebase-surveyor.md"
-  ]
+  ],
+  "userConfig": {
+    "show_board": {
+      "type": "boolean",
+      "title": "Open the SDD board at session start",
+      "description": "Open the SDD side panel when a session starts in a project with specs/. Off, it opens only with /sdd-dashboard.",
+      "default": true
+    }
+  }
 }

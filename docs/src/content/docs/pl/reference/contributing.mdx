@@ -5,16 +5,16 @@ description: Konfiguracja środowiska i sposób zmiany pluginów.
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
-Zachowanie żyje w **promptach Markdown**: treść każdego `skills/<name>/SKILL.md` i `agents/*.md` to zestaw instrukcji wykonywanych przez Claude. Jedyny kod to TypeScript: mod rejestrujący `doctor_check`, [SDD CLI](/spec-driven-development/pl/reference/cli/) (`plugins/sdd/cli/`) oraz reguły i parsery w `shared/sdd-core/`. Deterministyczny odczyt albo edycja plików SDD należy do komendy SDD CLI, nie do prozy skilla.
+Zachowanie żyje w **promptach Markdown**: treść każdego `skills/<name>/SKILL.md` i `agents/*.md` to zestaw instrukcji wykonywanych przez Claude. Jedyny kod to TypeScript: mod rejestrujący `doctor_check` i panel board, [SDD CLI](/spec-driven-development/pl/reference/cli/) (`plugins/sdd/cli/`) oraz reguły i parsery w `plugins/sdd/core/`. Deterministyczny odczyt albo edycja plików SDD należy do komendy SDD CLI, nie do prozy skilla.
 
 <Steps>
 
 1. Zrób fork i gałąź z nazewnictwem Conventional Commits (`git checkout -b feat/new-check`).
-2. Zmień plugin (`plugins/sdd/skills/`, `agents/`, `references/`, `skills/doctor/templates/`) lub panel (`plugins/sdd-board/hooks/`). Wspólny TypeScript jest w `shared/sdd-core/`; potem uruchom `scripts/sync-core.sh`.
-3. Uruchom `claude plugin test` w obu pluginach, a potem przećwicz doctora na świeżym projekcie (`check` → `init` → `check`).
+2. Zmień plugin (`plugins/sdd/skills/`, `agents/`, `references/`, `skills/doctor/templates/`) lub panel (`plugins/sdd/hooks/board/`). Po edycji `plugins/sdd/schemas/capabilities.schema.json` uruchom `scripts/gen-schema.sh`.
+3. Uruchom `claude plugin test` w `plugins/sdd`, a potem przećwicz doctora na świeżym projekcie (`check` → `init` → `check`).
 4. Zaktualizuj README i tę dokumentację oraz podbij wersję zmienionego pluginu (`plugin.json`, `marketplace.json`, dla `sdd` badge w README) wraz z sekcją w `CHANGELOG.md`.
-5. Otwórz PR. Plugin Checks odrzuci go przy rozjeździe manifestów lub dokumentacji, zmienionym pluginie bez podbicia wersji, pluginie, który się nie ładuje lub nie instaluje, nieudanym audycie skilla, rozjechanej kopii `hooks/core/` lub nieprzechodzącym teście.
-6. Po merge workflow wydania taguje nową wersję `sdd` i tworzy GitHub Release. `sdd-board` nie jest tagowany.
+5. Otwórz PR. Plugin Checks odrzuci go przy rozjeździe manifestów lub dokumentacji, zmienionym pluginie bez podbicia wersji, pluginie, który się nie ładuje lub nie instaluje, nieudanym audycie skilla, rozjechanego `core/capabilities.schema.ts` lub nieprzechodzącym teście.
+6. Po merge workflow wydania taguje nową wersję `sdd` i tworzy GitHub Release.
 
 </Steps>
 

@@ -31,24 +31,24 @@ SDD creates or edits only `specs/constitution.md`, `specs/template.md`, `specs/c
 
 <FileTree>
 - .claude-plugin/
-  - marketplace.json marketplace: sdd + sdd-board
+  - marketplace.json marketplace: sdd (renames sdd-board → sdd)
 - .github/workflows/
   - plugin-checks.yml
   - release.yml
   - docs.yml
 - actions/sdd-check/ GitHub Action running the doctor rules elsewhere
 - docs/ this documentation site
-- shared/sdd-core/ TypeScript used by both plugins and the action
-- scripts/ sync-core.sh, release.sh
+- scripts/ gen-schema.sh, check-capabilities.ts, release.sh
 - tests/fixtures/ sdd-ok and sdd-broken projects
 - plugins/
-  - sdd-board/ Desktop side panel (mod), requires sdd
   - sdd/
     - .claude-plugin/plugin.json
     - bin/sdd SDD CLI wrapper (on the Bash PATH)
     - cli/ SDD CLI: main.ts, command.ts, commands/&lt;group&gt;-&lt;action&gt;.ts
-    - hooks/ register.ts (doctor_check tool), core/ (copy of shared)
-    - tests/ doctor check rules, SDD CLI
+    - core/ rules and parsers, used by the mod, the CLI and the action
+    - hooks/ register.ts (doctor_check tool + board), board/ (side panel)
+    - schemas/ capabilities.schema.json
+    - tests/ doctor check rules, SDD CLI, board
     - references/ shared by the skills
     - skills/ 11 skills, each /sdd:&lt;name&gt;
     - agents/

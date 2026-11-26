@@ -1,13 +1,13 @@
 // Entry point of the sdd-check GitHub Action: reads the repository with node:fs, runs the shared
-// rules (shared/sdd-core) in `ci` mode and writes annotations, a job summary and an exit code.
+// rules (plugins/sdd/core) in `ci` mode and writes annotations, a job summary and an exit code.
 // Usage: node run.ts [--path <dir>] [--fail-on fail|warn] [--json]
 import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
-import { runChecks } from '../../shared/sdd-core/check.ts'
-import type { CheckResult, Finding, Report } from '../../shared/sdd-core/check.ts'
-import { gather } from '../../shared/sdd-core/gather.ts'
-import type { Io } from '../../shared/sdd-core/gather.ts'
+import { runChecks } from '../../plugins/sdd/core/check.ts'
+import type { CheckResult, Finding, Report } from '../../plugins/sdd/core/check.ts'
+import { gather } from '../../plugins/sdd/core/gather.ts'
+import type { Io } from '../../plugins/sdd/core/io.ts'
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf('--' + name)

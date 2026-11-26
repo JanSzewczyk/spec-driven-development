@@ -1,5 +1,5 @@
 // `sdd task next [<id> | all]`: the open tasks of the current branch's feature, in dependency order.
-import { nextTasks } from '../../hooks/core/next.ts'
+import { nextTasks } from '../../core/next.ts'
 import type { Command } from '../command.ts'
 
 export const command: Command = {

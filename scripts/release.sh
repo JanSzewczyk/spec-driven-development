@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Tags the main plugin's (sdd) version `v<version>` when it has no tag yet and creates a GitHub
-# Release for every `v<version>` tag that has none. Other plugins (sdd-board) are versioned in their manifests
-# only: no tag, no Release. Run by .github/workflows/release.yml on merge to main.
+# Release for every `v<version>` tag that has none. Run by .github/workflows/release.yml on merge to main.
 # Usage: scripts/release.sh                         tag (git tag -a + push) and release
 #        scripts/release.sh --dry-run               print what would happen, change nothing
 #        scripts/release.sh --notes <name> <ver>    print that version's CHANGELOG.md section

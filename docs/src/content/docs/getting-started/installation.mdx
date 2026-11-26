@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Install the sdd plugin and the optional sdd-board panel.
+description: Install the sdd plugin.
 ---
 
 import { Tabs, TabItem, Steps, Aside, FileTree } from '@astrojs/starlight/components';
@@ -61,14 +61,9 @@ Once per machine.
 
 The 11 skills, 3 agents, the `doctor_check` tool and the `sdd` CLI are now available in **every** project. Nothing is copied per project.
 
-## Install sdd-board (optional)
+## The board panel
 
-```text
-/plugin install sdd-board@spec-driven-development
-/sdd-dashboard
-```
-
-It declares `sdd` as a dependency, so installing it installs `sdd` too. See [sdd-board](/spec-driven-development/board/overview/).
+The side panel comes with `sdd`: `/sdd-dashboard` opens it, and it opens by itself in a project with `specs/` unless the `show_board` option is off. If you installed the former `sdd-board` plugin, the marketplace moves it to `sdd`. See [Claude Code mod](/spec-driven-development/mod/overview/).
 
 ## Fork for your organization
 

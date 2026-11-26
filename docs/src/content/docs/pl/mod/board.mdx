@@ -1,0 +1,36 @@
+---
+title: Board
+description: "Panel boczny SDD: na jakim etapie jest każdy spec i co uruchomić dalej."
+---
+
+Board to panel boczny [moda sdd](/spec-driven-development/pl/mod/overview/). Tylko **czyta** `specs/`, nigdy tam nie zapisuje.
+
+```text
+/sdd-dashboard
+```
+
+Na starcie sesji otwiera się sam, gdy projekt ma `specs/`, a w oknie jest na niego miejsce; inaczej komunikat podpowiada `/sdd-dashboard`. Zamknięty board nie wraca, dopóki nie uruchomisz `/sdd-dashboard`. Żeby otwierać go tylko ręcznie, wyłącz opcję `show_board`. Wypróbuj bez instalacji: `claude --plugin-dir plugins/sdd`.
+
+## Co pokazuje
+
+- **Current:** aktywny spec (z gałęzi git, przypięty przez Ciebie lub najnowszy w toku): status, stepper pipeline'u, checklistę gotowości, następną komendę `/sdd:*` z przyciskiem **Put in prompt**, postęp i listę zadań oraz przyciski otwierające `spec`, `plan`, `tasks`, `review`.
+- **All:** każdy spec z fazą i postępem zadań, z filtrowaniem. **Show** przypina wybrany jako bieżący.
+- **⚙ Config:** tylko do odczytu. Projekty, efektywne wartości `capabilities.yml` (ustawione vs domyślne), komendy per projekt z konstytucji §2 oraz przyciski dla `/sdd:capabilities` i `/sdd:doctor check`.
+- **+ New spec:** wstawia `/sdd:spec feat ` do promptu w dowolnym momencie, nawet gdy inna funkcja jest w toku.
+
+- **Brak SDD w projekcie:** tylko karta konfiguracji. **Init SDD in this project** uruchamia `/sdd:doctor init`; to jedyny przycisk, który uruchamia komendę, pozostałe tylko wypełniają prompt.
+- **Na żywo:** odświeża się po zapisie Claude w `specs/`, po zmianie gałęzi, po każdej turze i co 4 s dla edycji wykonanych gdzie indziej.
+- **Renderowanie:** SVG w Desktop i VS Code, tekst w terminalu.
+
+## Jak wybiera następny krok
+
+| Na dysku | Dalej |
+|---|---|
+| spec `draft` | `/sdd:clarify` |
+| spec `clarified` | `/sdd:plan` |
+| spec `planned`, brak `tasks.md` | `/sdd:tasks` |
+| zadania istnieją, część niezaimplementowana | `/sdd:implement T<n>` dla pierwszego nieukończonego zadania, którego zależności są gotowe |
+| reszta czeka na PR-y zadań (`pr:`), a niedokończone zadania od nich zależą | zmerguj je; działające `/sdd:implement all` kontynuuje samo, inaczej uruchom je ponownie po merge'u |
+| zostały tylko PR-y zadań (`pr:`) | `/sdd:review` po merge'u (najpierw oznacza zmergowane zadania jako `review`) |
+| każde zadanie w `review` lub `done` | `/sdd:review` |
+| spec `done` lub werdykt review READY | nic, otwórz PR |

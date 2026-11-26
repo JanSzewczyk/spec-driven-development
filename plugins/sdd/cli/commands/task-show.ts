@@ -1,6 +1,6 @@
 // `sdd task show <id>`: one task's fields as written in tasks.md, with its full id.
-import { parseEpicId } from '../../hooks/core/parse.ts'
-import { taskBlock, taskFields, taskIdOf } from '../../hooks/core/tasks-edit.ts'
+import { parseEpicId } from '../../core/parse.ts'
+import { taskBlock, taskFields, taskIdOf } from '../../core/tasks-edit.ts'
 import type { Command } from '../command.ts'
 import { fail, noFeature } from '../command.ts'
 
