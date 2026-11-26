@@ -196,27 +196,27 @@ export type GraphNode = { id: string; title: string; look: TaskLook; isLive: boo
 const NODE_ROLE: Record<TaskLook, Role | 'blocked'> = { done: 'success', merged: 'success', review: 'accent', 'in-progress': 'warning', closed: 'danger', draft: 'neutral', blocked: 'blocked' }
 const IMPLEMENTED: TaskLook[] = ['done', 'merged', 'review']
 
-// The tasks as a dependency graph: one row per wave (tasks that can run side by side), top to bottom,
-// a line from each dependency down to the task waiting on it. Hovering a node names the task.
+// The tasks as a dependency graph, left to right: one column per wave (tasks that can run side by side),
+// a line from each dependency to the task waiting on it. Hovering a node names the task.
 export function taskGraphSvg(waves: GraphNode[][]): { source: string; width: number; height: number } {
-  const LABEL = 20
-  const W = 50
+  const TOP = 16 // the wave numbers above the columns
+  const W = 46
   const H = 22
-  const GAP = 12
-  const ROW = 42
+  const GAP = 8 // between the nodes of a column
+  const COL = W + 30 // a column and the room for lines to the next one
   const most = Math.max(...waves.map((w) => w.length))
-  const span = most * W + (most - 1) * GAP
-  const width = LABEL + span + 2
-  const height = (waves.length - 1) * ROW + H + 2
-  const at = new Map<string, { x: number; y: number; row: number; look: TaskLook }>()
+  const span = most * H + (most - 1) * GAP
+  const width = (waves.length - 1) * COL + W + 2
+  const height = TOP + span + 2
+  const at = new Map<string, { x: number; y: number; col: number; look: TaskLook }>()
   waves.forEach((wave, i) => {
-    const row = wave.length * W + (wave.length - 1) * GAP
-    wave.forEach((n, j) => at.set(n.id, { x: LABEL + (span - row) / 2 + j * (W + GAP) + 1, y: i * ROW + 1, row: i, look: n.look }))
+    const col = wave.length * H + (wave.length - 1) * GAP
+    wave.forEach((n, j) => at.set(n.id, { x: i * COL + 1, y: TOP + (span - col) / 2 + j * (H + GAP) + 1, col: i, look: n.look }))
   })
-  // Where a line may cross a row it skips: the gaps beside and between that row's nodes.
+  // Where a line may cross a column it skips: the gaps above, between and below that column's nodes.
   const gaps = waves.map((wave) => {
-    const xs = wave.map((n) => at.get(n.id)!.x)
-    return [xs[0] - GAP / 2, ...xs.map((x) => x + W + GAP / 2)]
+    const ys = wave.map((n) => at.get(n.id)!.y)
+    return [ys[0] - GAP / 2, ...ys.map((y) => y + H + GAP / 2)]
   })
   const roles: Role[] = ['success', 'accent', 'warning', 'danger', 'neutral']
   let body = themed([
@@ -228,25 +228,25 @@ export function taskGraphSvg(waves: GraphNode[][]): { source: string; width: num
     ['.w', 'fill', CDS.muted],
   ])
   body += '<style>@keyframes pl{50%{stroke-opacity:0.25}}.live rect{animation:pl 1.4s ease-in-out infinite}' + NO_MOTION + '</style>'
-  const curve = (x1: number, y1: number, x2: number, y2: number) => ' C' + x1 + ' ' + (y1 + y2) / 2 + ' ' + x2 + ' ' + (y1 + y2) / 2 + ' ' + x2 + ' ' + y2
+  const curve = (x1: number, y1: number, x2: number, y2: number) => ' C' + (x1 + x2) / 2 + ' ' + y1 + ' ' + (x1 + x2) / 2 + ' ' + y2 + ' ' + x2 + ' ' + y2
   for (const wave of waves) {
     for (const n of wave) {
       const to = at.get(n.id)!
       for (const id of n.deps) {
         const from = at.get(id)
-        if (!from || from.row >= to.row) continue
-        const x2 = to.x + W / 2
-        const y2 = to.y - 1
-        let x = from.x + W / 2
-        let y = from.y + H
+        if (!from || from.col >= to.col) continue
+        const x2 = to.x - 1
+        const y2 = to.y + H / 2
+        let x = from.x + W
+        let y = from.y + H / 2
         let d = 'M' + x + ' ' + y
-        for (let k = from.row + 1; k < to.row; k++) {
-          const want = x + ((x2 - x) * 1) / (to.row - k + 1)
-          const gx = gaps[k].reduce((best, g) => (Math.abs(g - want) < Math.abs(best - want) ? g : best))
-          const top = k * ROW + 1
-          d += curve(x, y, gx, top) + ' L' + gx + ' ' + (top + H)
-          x = gx
-          y = top + H
+        for (let k = from.col + 1; k < to.col; k++) {
+          const want = y + (y2 - y) / (to.col - k + 1)
+          const gy = gaps[k].reduce((best, g) => (Math.abs(g - want) < Math.abs(best - want) ? g : best))
+          const left = k * COL + 1
+          d += curve(x, y, left, gy) + ' L' + (left + W) + ' ' + gy
+          x = left + W
+          y = gy
         }
         d += curve(x, y, x2, y2)
         const isMet = IMPLEMENTED.includes(from.look)
@@ -256,7 +256,7 @@ export function taskGraphSvg(waves: GraphNode[][]): { source: string; width: num
     }
   }
   waves.forEach((wave, i) => {
-    body += '<text class="w" x="2" y="' + (i * ROW + 1 + H / 2 + 4) + '" font-size="10" fill="' + MID + '" font-family="system-ui,sans-serif">' + (i + 1) + '</text>'
+    body += '<text class="w" x="' + (i * COL + 1 + W / 2) + '" y="10" text-anchor="middle" font-size="10" fill="' + MID + '" font-family="system-ui,sans-serif">' + (i + 1) + '</text>'
     for (const n of wave) {
       const p = at.get(n.id)!
       const role = NODE_ROLE[n.look]

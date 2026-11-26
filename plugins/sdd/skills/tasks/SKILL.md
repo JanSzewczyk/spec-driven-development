@@ -70,7 +70,7 @@ without it.
 ## Flow
 
 ```mermaid
-flowchart TD
+flowchart LR
   T1["T1 <short title>"] --> T2["T2 <short title>"]
   T3["T3 <short title>"] --> T4["T4 <short title>"]
   T2 --> T4

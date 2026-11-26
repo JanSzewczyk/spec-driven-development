@@ -513,7 +513,7 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
 }
 
 // The order the tasks run in, from their depends_on: one row per wave of tasks that can run side by side.
-// Shown once some task waits on another; a graph on Desktop and VS Code, a line per wave in the terminal.
+// Shown once some task waits on another; a graph left to right on Desktop and VS Code, one line in the terminal.
 function taskFlow(el: any, ctx: Ctx, f: Feature, running: Set<string | undefined>) {
   const { Box, Text, Svg } = el
   const tasks = f.tasks ?? []
@@ -524,10 +524,7 @@ function taskFlow(el: any, ctx: Ctx, f: Feature, running: Set<string | undefined
     const alt = 'Task flow: ' + waves.map((w, i) => 'wave ' + (i + 1) + ' ' + w.map((t) => t.id).join(' and ')).join(', then ')
     return Box({ key: 'task-flow', flexDirection: 'column', overflow: 'hidden', paddingY: 'xs', children: [Svg({ alt, width: g.width, height: g.height, source: g.source, isInteractive: true })] })
   }
-  return Box({
-    key: 'task-flow', flexDirection: 'column',
-    children: waves.map((w, i) => Text({ key: 'wave-' + i, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [(i + 1) + '  ' + w.map((t) => t.id).join(' ∥ ')] })),
-  })
+  return Text({ key: 'task-flow', size: 'footnote', dimColor: true, wrap: 'wrap', children: [waves.map((w) => w.map((t) => t.id).join(' ∥ ')).join(' → ')] })
 }
 
 // A task's facts: scope, acceptance criteria, dependencies, branch and pull request.
