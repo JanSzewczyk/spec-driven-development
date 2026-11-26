@@ -160,7 +160,7 @@ export function derive(f: Feature, running: string | null = null): Derived {
     next = ready
       ? { command: '/sdd:implement ' + ready.id, model: 'Sonnet', why: 'Hand the task to the implementation flow.' + recorded }
       : elsewhere.length
-        ? { command: '/sdd:implement', model: 'Sonnet', why: runs + (elsewhere.length === 1 ? ' runs' : ' run') + ' in its own worktree' + (waiting.length ? ' and ' + prs + ' waits for a merge' : '') + '. A running /sdd:implement starts the next tasks as they land; if that session has ended, run it again.' + note }
+        ? { command: '/sdd:implement', model: 'Sonnet', why: runs + (elsewhere.length === 1 ? ' runs in its own worktree' : ' run in their own worktrees') + (waiting.length ? ' and ' + prs + ' waits for a merge' : '') + '. A running /sdd:implement starts the next tasks as they land; if that session has ended, run it again.' + note }
         : working.length
         ? { command: '/sdd:implement', model: 'Sonnet', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement starts the next tasks after the merge; if that session has ended, run it again.' + note }
         : { command: '/sdd:review', model: 'Opus', why: 'Waiting for ' + prs + ' to be merged. A running /sdd:implement names the review after the merge; otherwise review: it marks the merged tasks as review first.' + note }
@@ -178,8 +178,10 @@ export function derive(f: Feature, running: string | null = null): Derived {
   let at = STEP_LABELS.findIndex(([key]) => key === verb)
   // /sdd:spec on a feature past its draft writes another feature: nothing of this one runs.
   if (at === 0 && idx > 1) at = -1
-  const isRunning = at >= 0
-  const shown = isRunning ? at : f.review === 'NOT READY' && idx === 5 ? 5 : -1
+  // Tasks in progress (in their own sessions, or waiting on a PR) keep Implement moving while this session is idle.
+  const working = at < 0 && idx === 4 && tasks.some((t) => t.status === 'in-progress' && !implemented(t, m))
+  const isRunning = at >= 0 || working
+  const shown = at >= 0 ? at : working ? 4 : f.review === 'NOT READY' && idx === 5 ? 5 : -1
   const steps: Step[] = STEP_LABELS.map(([key, label], i) => ({
     key,
     label,

@@ -1109,6 +1109,17 @@ test('a task session ticket shows the acceptance criteria from the spec', async 
   await ui.unmount()
 })
 
+test('tasks in progress elsewhere keep the Implement step current and moving', () => {
+  const two = parseTasks('### T1: A\nstatus: in-progress\nbranch: feat/x--ULOG-T1\n### T2: B\nstatus: in-progress\nbranch: feat/x--ULOG-T2\n### T3: C\nstatus: draft\ndepends_on: [T1]\n')
+  const d = derive(feature({ planStatus: 'in-progress', tasks: two }))
+  expect(d.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'current', 'todo'])
+  expect(d.isRunning).toBe(true)
+  expect(d.next?.why).toContain('T1, T2 run in their own worktrees')
+  const idle = derive(feature({ planStatus: 'tasks-ready', tasks: parseTasks('### T1: A\nstatus: draft\n') }))
+  expect(idle.steps[4].state).toBe('todo')
+  expect(idle.isRunning).toBe(false)
+})
+
 test('a task running in its own worktree is not handed over again: the next step is a plain implement run', () => {
   const tasks = parseTasks('### T1: A\nstatus: in-progress\nbranch: feat/x--ULOG-T1\n### T2: B\nstatus: draft\ndepends_on: [T1]\n### T3: C\nstatus: in-progress\nbranch: feat/x--ULOG-T3\npr: #52\n')
   const d = derive(feature({ planStatus: 'tasks-ready', tasks }))
