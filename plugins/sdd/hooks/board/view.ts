@@ -3,9 +3,11 @@ import { ROLE_KEY, STATUS_ROLE, STEP_LABELS, ago, blockedBy, clock, derive, gate
 import type { Feature, Session, TaskLook } from './model.ts'
 import type { Config } from '../../core/config.ts'
 import type { Task } from '../../core/parse.ts'
+import { prNumber } from '../../core/merges.ts'
+import type { PrState, TaskPr } from '../../core/merges.ts'
 import { WINDOW_MS } from './live.ts'
 import type { Lane, Live } from './live.ts'
-import { axisSvg, branchSvg, checkSvg, dividerSvg, dotSvg, laneBarSvg, liveDotSvg, miniPhaseSvg, phaseBarSvg, pillSvg, pipsSvg, progressSvg } from './svg.ts'
+import { axisSvg, branchSvg, checkSvg, dividerSvg, dotSvg, laneBarSvg, liveDotSvg, miniPhaseSvg, phaseBarSvg, pillSvg, pipsSvg, prIconSvg, progressSvg, taskGlyphSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
 export type Tab = 'current' | 'all' | 'ticket'
@@ -48,6 +50,9 @@ const LOOK_KEY: Record<TaskLook, string | undefined> = { done: 'success', review
 const LANE_ROLE: Record<Lane['kind'], Role> = { agent: 'pro', task: 'warning', pr: 'accent' }
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
 const SURFACE = 'userMessageBackground' // the surface Claude Code draws its own message bubbles on
+const ROW_HOVER = '#8b8d9824' // a mid grey at low opacity: a row under the pointer, on both themes
+const PR_KEY: Record<PrState, string> = { OPEN: 'success', MERGED: 'merged', CLOSED: 'error' }
+const PR_WORD: Record<PrState, string> = { OPEN: 'open', MERGED: 'merged', CLOSED: 'closed without merging' }
 
 // Svg sizes are CSS pixels, the pane reports columns. Estimate the content width from the columns and
 // draw at that size inside a clipping box. A drawing without a width gets a much taller box than its
@@ -353,7 +358,7 @@ function taskMeta(t: Task, f: Feature, look: TaskLook): { text: string; color?: 
 }
 
 function taskRows(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Button } = el
+  const { Box, Text, Button, Svg } = el
   const tasks = f.tasks ?? []
   if (tasks.length === 0) return null
   const isRich = rich(ctx.surface)
@@ -368,25 +373,32 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
     const meta = taskMeta(t, f, look)
     const isOpen = (ctx.open ?? []).includes('task-' + t.id)
     const isRunning = running.has(t.id)
-    // One Button per row, so a press and the pointer's highlight cover the whole row: a Button holds only
-    // strings and Text, so the glyph is a coloured character here and the meta trails the title.
+    const toggle = () => ctx.actions.toggle?.('task-' + t.id)
+    // Desktop draws a Button only as wide as its text and drops the colours of the Text inside it, so the
+    // glyph and a status meta (PR, waits on) stay outside; the title and the project each press the row.
+    const metaEl = !meta.text
+      ? null
+      : meta.text === t.project
+        ? Button({ key: 'task-' + t.id + '-meta', label: meta.text, plain: true, dimColor: true, onPress: toggle })
+        : Text({ size: 'caption', color: meta.color, dimColor: !meta.color, wrap: 'truncate-end', children: [meta.text] })
     return Box({
-      key: 'taskbox-' + t.id, flexDirection: 'column', rowGap: isOpen ? 1 : 0, paddingX: isRich ? 1 : 0, ...(isRich ? { paddingY: 'xs' } : {}),
-      hover: { scope: 'task-' + t.id, backgroundColor: SURFACE },
+      key: 'taskbox-' + t.id, flexDirection: 'column', rowGap: isOpen && isRich ? 'sm' : 0, paddingX: isRich ? 1 : 0, ...(isRich ? { paddingY: 'xs', hover: { scope: 'task-' + t.id, backgroundColor: ROW_HOVER } } : {}),
       children: [
         Box({
-          flexGrow: 1, flexDirection: 'column', alignItems: 'stretch',
+          flexDirection: 'row', columnGap: 1, alignItems: 'center',
           children: [
-            Button({
-              key: 'task-' + t.id, plain: true, onPress: () => ctx.actions.toggle?.('task-' + t.id),
+            isRich ? Svg({ alt: look, width: 14, height: 14, source: taskGlyphSvg(look, isRunning), isInteractive: isRunning }) : Text({ color: LOOK_KEY[look], dimColor: !LOOK_KEY[look], children: [GLYPH[look]] }),
+            Box({
+              flexGrow: 1, flexDirection: 'row',
               children: [
-                Text({ color: isRunning ? 'warning' : LOOK_KEY[look], dimColor: !isRunning && !LOOK_KEY[look], children: [(isRunning ? '◉' : GLYPH[look]) + ' '] }),
-                Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }),
-                Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] }),
-                meta.text ? Text({ size: 'caption', color: meta.color, dimColor: !meta.color, children: ['  ·  ' + meta.text] }) : null,
-              ].filter(Boolean),
+                Button({
+                  key: 'task-' + t.id, plain: true, onPress: toggle,
+                  children: [Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }), Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] })],
+                }),
+              ],
             }),
-          ],
+            metaEl,
+          ].filter(Boolean),
         }),
         isOpen ? taskFacts(el, ctx, f, t, true) : null,
       ].filter(Boolean),
@@ -413,18 +425,35 @@ function taskFacts(el: any, ctx: Ctx, f: Feature, t: Task, isCompact: boolean) {
       key: 'fact-' + t.id + '-' + k, flexDirection: 'row', columnGap: 1,
       children: [Box({ width: 12, children: [Text({ size: 'footnote', dimColor: true, children: [k] })] }), Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ size: 'footnote', weight: 'semibold', wrap: 'wrap', mono: opts.mono, color: opts.color, children: [v] })] })],
     })
-  const merge = f.merges?.[t.id]
   return Box({
     key: 'facts-' + t.id, flexDirection: 'column', rowGap: rich(ctx.surface) ? 'xs' : 0, paddingLeft: isCompact ? (rich(ctx.surface) ? 3 : 2) : 0, paddingBottom: isCompact && rich(ctx.surface) ? 'sm' : 0,
     children: [
-      isCompact && t.scope?.length ? Box({ key: 'scope-' + t.id, paddingBottom: rich(ctx.surface) ? 'sm' : 0, children: [Text({ size: 'footnote', wrap: 'wrap', children: [t.scope.join('; ')] })] }) : null,
+      isCompact && t.scope?.length ? Box({ key: 'scope-' + t.id, paddingBottom: rich(ctx.surface) ? 'sm' : 0, children: [Text({ size: 'footnote', dimColor: true, wrap: 'wrap', children: [t.scope.join('; ')] })] }) : null,
+      prLine(el, ctx, f, t),
       t.acceptance.length ? line('acceptance', t.acceptance.join(', ')) : null,
       t.dependsOn.length ? line('depends on', t.dependsOn.map((id) => { const d = tasks.find((x) => x.id === id); return id + (d && implemented(d, f.merges) ? ' ✓' : '') }).join(', ')) : null,
       line('project', t.project || '—'),
       t.branch ? line('branch', t.branch, { mono: true }) : null,
-      t.pr ? line('pull req.', t.pr + (merge === 'merged' ? ' · merged' : merge === 'closed' ? ' · closed' : ' · open'), { color: merge === 'merged' ? 'success' : merge === 'closed' ? 'error' : 'permission' }) : null,
       !isCompact && t.files ? line('files', t.files, { mono: true }) : null,
     ].filter(Boolean),
+  })
+}
+
+// A task's pull request: GitHub's icon in the colour of its state, the number as a link, the state.
+// Number, state and link come from `gh pr list`; until it answers, the `pr:` value alone.
+function prLine(el: any, ctx: Ctx, f: Feature, t: Task) {
+  if (!t.pr) return null
+  const { Box, Text, Svg, Link } = el
+  const pr: TaskPr = f.prs?.[t.id] ?? { number: prNumber(t.pr), state: null, url: null }
+  const label = 'PR ' + (pr.number !== null ? '#' + pr.number : t.pr)
+  const isRich = rich(ctx.surface)
+  return Box({
+    key: 'pr-' + t.id, flexDirection: 'row', columnGap: 1, alignItems: 'center', paddingBottom: isRich ? 'sm' : 0,
+    children: [
+      isRich ? Svg({ alt: 'pull request ' + (pr.state ? PR_WORD[pr.state] : ''), width: 16, height: 16, source: prIconSvg(pr.state) }) : Text({ color: pr.state ? PR_KEY[pr.state] : undefined, dimColor: !pr.state, children: ['⇅'] }),
+      Text({ size: 'footnote', weight: 'semibold', children: [pr.url && Link ? Link({ href: pr.url, children: [label] }) : label] }),
+      pr.state ? Text({ size: 'footnote', color: PR_KEY[pr.state], children: [PR_WORD[pr.state]] }) : Text({ size: 'caption', dimColor: true, children: ['state not checked yet'] }),
+    ],
   })
 }
 

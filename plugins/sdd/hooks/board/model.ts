@@ -1,7 +1,7 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
 import type { FeatureFiles } from '../../core/features.ts'
 import { taskBranchBase, taskOfBranch } from '../../core/merges.ts'
-import type { MergeState } from '../../core/merges.ts'
+import type { MergeState, TaskPr } from '../../core/merges.ts'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../../core/parse.ts'
 import type { PlanInfo, SpecInfo, Task, Verdict } from '../../core/parse.ts'
 
@@ -15,6 +15,7 @@ export type Feature = {
   review: Verdict | null
   modified: number
   merges?: Record<string, MergeState> // isolated tasks whose merge state is known (git, gh), by task id
+  prs?: Record<string, TaskPr> // tasks with `pr:`, with the PR's state and link once GitHub answered, by task id
 }
 
 // A feature's files, parsed for the board. Call only with a spec (the board lists a feature once it has one).

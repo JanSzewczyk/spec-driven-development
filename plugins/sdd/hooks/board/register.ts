@@ -5,8 +5,8 @@ import { FEATURE_DOCS, featurePath, readFeatures } from '../../core/features.ts'
 import type { FeatureDoc } from '../../core/features.ts'
 import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../../core/formats.ts'
 import type { Io } from '../../core/io.ts'
-import { mergeState, prStates, taskBranchBase, worktreeOf } from '../../core/merges.ts'
-import type { MergeState, PrState } from '../../core/merges.ts'
+import { mergeState, prList, taskBranchBase, taskPrs, worktreeOf } from '../../core/merges.ts'
+import type { MergeState, PrInfo, PrState } from '../../core/merges.ts'
 import { ioOf } from '../io.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, prune, toolDetail } from './live.ts'
 import type { Commit, Live } from './live.ts'
@@ -51,7 +51,7 @@ let live: Live = emptyLive()
 let openKeys: string[] = [] // expanded lanes and task rows
 let taskFilter = 'all'
 let commits: Record<string, Commit> = {} // last commit of each running task branch, by task id
-const prCache = new Map<string, { at: number; states: Map<number, PrState> }>()
+const prCache = new Map<string, { at: number; prs: Map<number, PrInfo> }>()
 
 async function now($: any): Promise<number> {
   try {
@@ -99,36 +99,36 @@ async function runCommand($: any, command: string, args: string): Promise<void> 
   }
 }
 
-// The state of the pull requests into `base`, from a cache of PR_TTL; null when GitHub cannot be asked.
-// Asked only while the panel is drawn, one `gh pr list` per spec branch.
-async function prStatesOf(io: Io, base: string, isForced: boolean, at: number): Promise<Map<number, PrState> | null> {
+// The state and link of the pull requests into `base`, from a cache of PR_TTL; null when GitHub cannot be
+// asked. Asked only while the panel is drawn, one `gh pr list` per spec branch.
+async function prListOf(io: Io, base: string, isForced: boolean, at: number): Promise<Map<number, PrInfo> | null> {
   const cached = prCache.get(base)
-  if (!isPolling) return cached?.states ?? null
-  if (cached && !isForced && at - cached.at < PR_TTL) return cached.states
-  if (at < ghRetryAt) return cached?.states ?? null
-  const r = await io.run(['gh', 'pr', 'list', '--base', base, '--state', 'all', '--limit', '100', '--json', 'number,state'])
-  let states: Map<number, PrState> | null = null
+  if (!isPolling) return cached?.prs ?? null
+  if (cached && !isForced && at - cached.at < PR_TTL) return cached.prs
+  if (at < ghRetryAt) return cached?.prs ?? null
+  const r = await io.run(['gh', 'pr', 'list', '--base', base, '--state', 'all', '--limit', '100', '--json', 'number,state,url'])
+  let prs: Map<number, PrInfo> | null = null
   try {
-    if (r && r.exitCode === 0) states = prStates(r.stdout)
+    if (r && r.exitCode === 0) prs = prList(r.stdout)
   } catch {
     // not the JSON we asked for
   }
-  if (states === null) {
+  if (prs === null) {
     ghRetryAt = at + GH_BACKOFF
-    return cached?.states ?? null
+    return cached?.prs ?? null
   }
-  prCache.set(base, { at, states })
+  prCache.set(base, { at, prs })
   checkedAt = at
-  return states
+  return prs
 }
 
 // Isolated tasks that reached the SDD branch before Reconcile recorded them: `pr:` tasks from GitHub,
 // `branch:` tasks (merge: auto) from git, run in the checkout specs/ is read from.
-async function mergesOf(io: Io, f: Feature, isForced: boolean, at: number): Promise<Record<string, MergeState> | undefined> {
+async function mergesOf(io: Io, f: Feature, prs: Map<number, PrInfo> | null): Promise<Record<string, MergeState> | undefined> {
   const base = f.spec.branch
   const open = (f.tasks ?? []).filter((t) => t.status !== 'review' && t.status !== 'done' && (t.pr || t.branch))
   if (!base || open.length === 0) return undefined
-  const states = open.some((t) => t.pr) ? await prStatesOf(io, base, isForced, at) : null
+  const states: Map<number, PrState> | null = prs === null ? null : new Map([...prs].map(([n, p]) => [n, p.state]))
   const out: Record<string, MergeState> = {}
   for (const t of open) {
     let isAncestor: boolean | null = null
@@ -216,8 +216,12 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
     return false
   }
   for (const f of found) {
-    const merges = await mergesOf(io, f, isForced, at)
+    // Every task PR, recorded ones too, so an expanded row can link it and say whether it merged.
+    const withPr = (f.tasks ?? []).some((t) => t.pr)
+    const prs = withPr && f.spec.branch ? await prListOf(io, f.spec.branch, isForced, at) : null
+    const merges = await mergesOf(io, f, prs)
     if (merges) f.merges = merges
+    if (withPr) f.prs = taskPrs(f.tasks ?? [], prs)
   }
   const last = await commitsOf(io, found.find((f) => f.slug === currentSlug(found, next, pinned)) ?? null)
   const sig = JSON.stringify([any, next, root, found, cfg, last])

@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
 import { blockedBy, clock, currentSlug, derive, freshness, gate, sessionOf, taskLook, warnings } from '../hooks/board/model.ts'
-import { mergeState, prNumber, prStates, taskBranchBase, taskOfBranch, worktreeOf } from '../core/merges.ts'
+import { mergeState, prList, prNumber, prStates, taskBranchBase, taskOfBranch, taskPrs, worktreeOf } from '../core/merges.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, toolDetail } from '../hooks/board/live.ts'
 import type { Feature } from '../hooks/board/model.ts'
 
@@ -746,6 +746,33 @@ test('a PR merged on GitHub shows as merged, asking GitHub at most once a minute
   expect(asked()).toBe(1)
   await stub.clock.advance(24_000)
   expect(asked()).toBe(2)
+})
+
+test('taskPrs joins every task PR, recorded ones too, with its state and link', () => {
+  const tasks = parseTasks('### T1: A\nstatus: done\npr: #12\n### T2: B\nstatus: in-progress\npr: https://github.com/o/r/pull/13\n### T3: C\nstatus: draft\n')
+  const list = prList('[{"number":12,"state":"MERGED","url":"https://github.com/o/r/pull/12"}]')
+  expect(taskPrs(tasks, list)).toEqual({
+    T1: { number: 12, state: 'MERGED', url: 'https://github.com/o/r/pull/12' },
+    T2: { number: 13, state: null, url: 'https://github.com/o/r/pull/13' },
+  })
+  expect(taskPrs(tasks, null).T1).toEqual({ number: 12, state: null, url: null })
+})
+
+test('an expanded task links its PR and says it merged, also once the task is done', async ($, on) => {
+  const stub = stubProject($, on, true, {
+    files: { 'specs/user-login/tasks.md': TASKS.replace('status: done\n', 'status: done\npr: #11\n') },
+    run: (argv) => (argv[0] === 'gh' ? { exitCode: 0, stdout: '[{"number":11,"state":"MERGED","url":"https://github.com/o/r/pull/11"}]' } : undefined),
+  })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.unmount()
+  await stub.clock.advance(4000)
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'task-T1' })
+  expect(await ui.find({ key: 'pr-T1' })).toBeDefined()
+  expect(await ui.find({ type: 'Link', href: 'https://github.com/o/r/pull/11' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'merged' })).toBeDefined()
+  await ui.unmount()
 })
 
 test('gh failing leaves the PR state unknown and backs off', async ($, on) => {

@@ -2,7 +2,7 @@
 // theme keys to, read from the Claude Desktop bundle. Desktop draws an Svg in its own frame without the
 // app's CSS variables, so each drawing carries a light and a dark value and switches with
 // prefers-color-scheme. The attribute on each shape is the fallback when a style is not applied.
-import type { Role, Step } from './model.ts'
+import type { Role, Step, TaskLook } from './model.ts'
 
 type Pair = [light: string, dark: string]
 
@@ -220,4 +220,44 @@ export function axisSvg(windowMs: number, width: number): string {
     body += '<text x="' + x + '" y="13" font-size="10" text-anchor="' + anchor + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + label + '</text>'
   })
   return svgDoc(width, 15, body)
+}
+
+// Task status glyph: done (tick), review (dot), in progress (an arc, turning while its lane runs),
+// merged but not recorded (ringed tick), closed (red ring), blocked (dashed ring), draft (ring).
+export function taskGlyphSvg(look: TaskLook, isLive = false): string {
+  const ring = (attrs: string) => themed([['.r', 'stroke', CDS.muted]]) + '<circle class="r" cx="7" cy="7" r="5.2" fill="none" stroke="' + MID + '" stroke-width="1.4"' + attrs + '/>'
+  const tick = (stroke: string) => '<path d="M4.4 7.2l2 2.1 3.6-4" fill="none" stroke="' + stroke + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  switch (look) {
+    case 'done':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(ON_FILL))
+    case 'review':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.accent + '"/><circle cx="7" cy="7" r="2" fill="' + ON_FILL + '"/>')
+    case 'merged':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.success + '" stroke-width="1.6"/>' + tick(FILL.success))
+    case 'closed':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.danger + '" stroke-width="1.6"/><path d="M5 5l4 4M9 5l-4 4" stroke="' + FILL.danger + '" stroke-width="1.5" stroke-linecap="round"/>')
+    case 'in-progress': {
+      const spin = isLive ? '<style>@keyframes s{to{transform:rotate(360deg)}}.s{transform-origin:7px 7px;animation:s 2.4s linear infinite}' + NO_MOTION + '</style>' : ''
+      return svgDoc(14, 14, spin + '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.warning + '" stroke-opacity="0.3" stroke-width="1.6"/><path class="s" d="M7 1.8 A5.2 5.2 0 0 1 12.2 7" fill="none" stroke="' + FILL.warning + '" stroke-width="1.8" stroke-linecap="round"/>')
+    }
+    case 'blocked':
+      return svgDoc(14, 14, ring(' stroke-dasharray="2 2"'))
+    default:
+      return svgDoc(14, 14, ring(''))
+  }
+}
+
+// A pull request's icon in GitHub's colors for its state: open (green branch with an arrow), merged
+// (purple merge), closed (red branch with a cross); unknown state (gh not asked) in a mid tone.
+export function prIconSvg(state: 'OPEN' | 'MERGED' | 'CLOSED' | null): string {
+  const color = state === 'OPEN' ? FILL.success : state === 'MERGED' ? FILL.pro : state === 'CLOSED' ? FILL.danger : MID
+  const s = ' fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"'
+  const dot = (x: number, y: number) => '<circle cx="' + x + '" cy="' + y + '" r="1.9"' + s + '/>'
+  const body =
+    state === 'MERGED'
+      ? dot(4, 3.5) + dot(4, 12.5) + dot(12, 9) + '<path d="M4 5.4v5.2M4 5.4c0 2.6 2.4 3.6 6.1 3.6"' + s + '/>'
+      : state === 'CLOSED'
+        ? dot(4, 3.5) + dot(4, 12.5) + dot(12, 12.5) + '<path d="M4 5.4v5.2M12 7.5v3.1M10.2 2.2l3.6 3.6M13.8 2.2l-3.6 3.6"' + s + '/>'
+        : dot(4, 3.5) + dot(4, 12.5) + dot(12, 12.5) + '<path d="M4 5.4v5.2M12 10.6V6.5c0-1.7-1-2.9-2.9-2.9H7.4M8.9 1.9L7.2 3.6l1.7 1.7"' + s + '/>'
+  return svgDoc(16, 16, body)
 }
