@@ -36,7 +36,7 @@ export function featureFrom(files: FeatureFiles & { spec: string }, modified: nu
 export type StepState = 'done' | 'current' | 'todo'
 export type Step = { key: string; label: string; state: StepState }
 export type Next = { command: string; model: string; why: string }
-export type Derived = { phase: string; steps: Step[]; next: Next | null }
+export type Derived = { phase: string; steps: Step[]; next: Next | null; isRunning: boolean }
 
 export const STEP_LABELS: [string, string][] = [
   ['spec', 'Spec'],
@@ -108,7 +108,9 @@ export function unrecorded(f: Feature): string[] {
   return (f.tasks ?? []).filter((t) => !taskDone(t) && isMerged(t, f.merges)).map((t) => t.id)
 }
 
-export function derive(f: Feature): Derived {
+// `running` is the /sdd:* command of the turn running now for this feature: only its step is
+// 'current' (animated). With nothing running no step is, except a review that was not ready (red).
+export function derive(f: Feature, running: string | null = null): Derived {
   const tasks = f.tasks ?? []
   const hasTasks = tasks.length > 0
   const m = f.merges
@@ -159,13 +161,19 @@ export function derive(f: Feature): Derived {
     idx = 1
     next = { command: '/sdd:clarify', model: 'Opus', why: 'Answer the gap questions so the spec is ready for planning.' }
   }
+  const verb = running?.match(/^\/sdd:([a-z]+)/)?.[1] ?? ''
+  let at = STEP_LABELS.findIndex(([key]) => key === verb)
+  // /sdd:spec on a feature past its draft writes another feature: nothing of this one runs.
+  if (at === 0 && idx > 1) at = -1
+  const isRunning = at >= 0
+  const shown = isRunning ? at : f.review === 'NOT READY' && idx === 5 ? 5 : -1
   const steps: Step[] = STEP_LABELS.map(([key, label], i) => ({
     key,
     label,
-    state: i < idx ? 'done' : i === idx ? 'current' : 'todo',
+    state: i === shown ? 'current' : i < idx ? 'done' : 'todo',
   }))
   const phase = idx >= 6 ? 'done' : STEP_LABELS[idx][0]
-  return { phase, steps, next }
+  return { phase, steps, next, isRunning }
 }
 
 export type Check = { key: string; label: string; ok: boolean; hint?: string }

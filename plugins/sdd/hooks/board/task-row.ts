@@ -16,10 +16,10 @@ export default function TaskRow(props: RowProps, surface: any) {
     if (e.type === 'up' && e.button === 'left') surface.post({ toggle: props.id })
   })
   return Box({
-    flexDirection: 'row', columnGap: 1, alignItems: 'center', flexGrow: 1,
+    flexDirection: 'row', columnGap: 1, alignItems: 'center', flexGrow: 1, flexShrink: 1, minWidth: 0,
     children: [
       Text({ mono: true, size: 'footnote', dimColor: true, underline: isHovered, children: [props.id] }),
-      Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ size: 'footnote', dimColor: props.isDone, underline: isHovered, wrap: 'truncate-end', children: [props.title] })] }),
+      Box({ flexGrow: 1, flexShrink: 1, minWidth: 0, flexDirection: 'row', children: [Text({ size: 'footnote', dimColor: props.isDone, underline: isHovered, wrap: 'truncate-end', children: [props.title] })] }),
       props.meta ? Text({ size: 'caption', color: props.metaColor ?? undefined, dimColor: !props.metaColor, wrap: 'truncate-end', children: [props.meta] }) : null,
     ].filter(Boolean),
   })

@@ -147,6 +147,17 @@ test('derive walks the pipeline', () => {
   expect(derive(feature({ planStatus: 'tasks-ready', tasks, review: 'READY' })).next).toBeNull()
 })
 
+test('only the step of the running command is current', () => {
+  const draft = feature({ spec: { ...parseSpec(SPEC), status: 'draft' } })
+  const states = (d: { steps: { state: string }[] }) => d.steps.map((s) => s.state).join(' ')
+  expect(states(derive(draft))).toBe('done todo todo todo todo todo')
+  expect(states(derive(draft, '/sdd:spec'))).toBe('current todo todo todo todo todo')
+  expect(states(derive(draft, '/sdd:clarify'))).toBe('done current todo todo todo todo')
+  // /sdd:spec on a feature past its draft writes another one.
+  expect(states(derive(feature({}), '/sdd:spec'))).toBe('done done done todo todo todo')
+  expect(derive(feature({}), '/sdd:spec').isRunning).toBe(false)
+})
+
 const DRAFT = `# Feature: Flagship
 
 **Status:** clarified

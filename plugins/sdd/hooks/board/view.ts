@@ -54,6 +54,8 @@ const ROW_HOVER = '#4a86d424' // the permission blue at low opacity, as the desi
 // Desktop rounds a Box's corners only through `borderStyle: 'round'`. The border stays clear: a tinted one
 // would lie over the tinted background and draw a darker ring.
 const CLEAR = '#00000000'
+// A row's middle part that takes the free width and gives it back, so truncate-end cuts its text at the edge.
+const SHRINK = { flexGrow: 1, flexShrink: 1, minWidth: 0, flexDirection: 'row' } as const
 const roundBg = (bg: string) => ({ borderStyle: 'round', borderColor: CLEAR, backgroundColor: bg })
 const PR_KEY: Record<PrState, string> = { OPEN: 'success', MERGED: 'merged', CLOSED: 'error' }
 const PR_WORD: Record<PrState, string> = { OPEN: 'open', MERGED: 'merged', CLOSED: 'closed without merging' }
@@ -160,17 +162,17 @@ function liveStrip(el: any, ctx: Ctx) {
         flexDirection: 'row', columnGap: 1, alignItems: 'center',
         children: [
           liveDot(el, ctx, 'warning', true),
-          Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, weight: 'semibold', wrap: 'truncate-end', children: [live?.command ?? 'Turn running'] })] }),
+          Box({ ...SHRINK, children: [Text({ mono: true, weight: 'semibold', wrap: 'truncate-end', children: [live?.command ?? 'Turn running'] })] }),
           Text({ dimColor: true, tabular: true, size: 'footnote', children: [clock(ctx.now - turn.since)] }),
         ],
       })
     : Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [liveDot(el, ctx, 'neutral', false), Text({ dimColor: true, size: 'footnote', wrap: 'truncate-end', children: ['This session is idle · ' + active.length + ' running elsewhere'] })] })
   const tool = turn && live?.tool
     ? Box({
-        flexDirection: 'row', columnGap: 1, paddingLeft: isRich ? 3 : 2,
+        flexDirection: 'row', columnGap: 1, paddingLeft: isRich ? 3 : 2, minWidth: 0,
         children: [
           Text({ size: 'footnote', weight: 'medium', children: [live.tool.tool] }),
-          Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [live.tool.detail] })] }),
+          Box({ ...SHRINK, children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [live.tool.detail] })] }),
           Text({ dimColor: true, tabular: true, size: 'caption', children: [clock(ctx.now - live.tool.at)] }),
         ],
       })
@@ -208,7 +210,7 @@ function laneRow(el: any, ctx: Ctx, l: Lane) {
       Button({ key: l.key + '-chevron', plain: true, dimColor: true, label: isOpen ? '▾' : '▸', onPress: toggle }),
       glyph,
       Box({
-        flexGrow: 1, flexDirection: 'row',
+        ...SHRINK,
         children: [Button({ key: l.key, plain: true, onPress: toggle, children: [Text({ mono: true, size: 'footnote', weight: 'medium', children: [l.label + ' '] }), Text({ size: 'footnote', dimColor: l.state === 'done' || l.state === 'failed', wrap: 'truncate-end', children: [l.title] })] })],
       }),
     ],
@@ -227,7 +229,7 @@ function laneRow(el: any, ctx: Ctx, l: Lane) {
               key: l.key + '-step-' + i, flexDirection: 'row', columnGap: 1,
               children: [
                 Text({ size: 'footnote', weight: 'medium', children: [s.tool] }),
-                Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [s.detail] })] }),
+                Box({ ...SHRINK, children: [Text({ mono: true, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [s.detail] })] }),
                 Text({ size: 'caption', dimColor: true, tabular: true, children: [clock(ctx.now - s.at)] }),
               ],
             }),
@@ -240,7 +242,7 @@ function laneRow(el: any, ctx: Ctx, l: Lane) {
     key: 'lanebox-' + l.key, flexDirection: 'column', rowGap: isRich ? 1 : 0,
     ...(l.taskId && isRich ? { borderStyle: 'round', borderColor: CLEAR, paddingX: 1, hover: { scope: 'task-' + l.taskId, backgroundColor: ROW_HOVER } } : {}),
     children: [
-      Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ flexGrow: 1, flexDirection: 'row', children: [row] }), Text({ size: 'caption', tabular: true, color: l.state === 'waiting' ? 'permission' : l.state === 'failed' ? 'error' : undefined, dimColor: l.state !== 'waiting' && l.state !== 'failed', children: [status] })] }),
+      Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ ...SHRINK, children: [row] }), Text({ size: 'caption', tabular: true, color: l.state === 'waiting' ? 'permission' : l.state === 'failed' ? 'error' : undefined, dimColor: l.state !== 'waiting' && l.state !== 'failed', children: [status] })] }),
       bar,
       details,
     ].filter(Boolean),
@@ -265,11 +267,17 @@ function specHeader(el: any, ctx: Ctx, f: Feature) {
 // The pipeline as one bar: done segments green, the current one wider and moving.
 function phaseBar(el: any, ctx: Ctx, f: Feature) {
   const { Text } = el
-  const d = derive(f)
-  if (rich(ctx.surface)) return fit(el, 'Phase: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), phaseBarSvg(d.steps, fullWidth(ctx), f.review === 'NOT READY' && d.phase === 'review'), fullWidth(ctx), 32, 'phase-bar', true)
+  const d = derive(f, runningCommand(ctx))
+  if (rich(ctx.surface)) return fit(el, 'Phase: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), phaseBarSvg(d.steps, fullWidth(ctx), !d.isRunning), fullWidth(ctx), 32, 'phase-bar', true)
   const i = d.steps.findIndex((s) => s.state === 'current')
   const bar = d.steps.map((s) => (s.state === 'done' ? '██' : s.state === 'current' ? '▓▓▓▓' : '░░')).join(' ')
-  return Text({ key: 'phase-bar', wrap: 'wrap', children: [bar + '  ' + (i >= 0 ? i + 1 + '/' + d.steps.length + ' ' + d.steps[i].label : 'Done')] })
+  const next = STEP_LABELS.find(([key]) => key === d.phase)?.[1]
+  return Text({ key: 'phase-bar', wrap: 'wrap', children: [bar + '  ' + (d.isRunning ? i + 1 + '/' + d.steps.length + ' ' + d.steps[i].label + ' running' : next ? 'Next: ' + next : 'Done')] })
+}
+
+// The /sdd:* command of the turn running now, or null.
+function runningCommand(ctx: Ctx): string | null {
+  return ctx.live?.turn ? (ctx.live.command ?? ctx.running) : null
 }
 
 function doneCard(el: any, ctx: Ctx) {
@@ -335,7 +343,7 @@ function nextBlock(el: any, ctx: Ctx, f: Feature) {
   const open = g ? g.open : 0
   const cmd = d.next.command
   const verb = cmd.split(' ')[0]
-  const isRunning = !!ctx.live?.turn && (ctx.live.command ?? ctx.running) === verb
+  const isRunning = runningCommand(ctx) === verb
   const isBlocked = open > 0
   const status = isRunning ? 'running now' : isBlocked ? 'waiting on ' + open + (open === 1 ? ' check' : ' checks') : 'model: ' + d.next.model
   return Box({
@@ -400,7 +408,7 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
               ? [Client({ key: 'task-' + t.id, module: './task-row.ts', flexGrow: 1, props: { id: t.id, title: t.title, meta: meta.text ?? '', metaColor: meta.color ?? null, isDone: look === 'done' } })]
               : [
                 Box({
-                  flexGrow: 1, flexDirection: 'row',
+                  ...SHRINK,
                   children: [
                     Button({
                       key: 'task-' + t.id, plain: true, onPress: toggle, hover: { scope: 'task-' + t.id, underline: true },
@@ -435,7 +443,7 @@ function taskFacts(el: any, ctx: Ctx, f: Feature, t: Task, isCompact: boolean) {
   const line = (k: string, v: string, opts: { mono?: boolean; color?: string } = {}) =>
     Box({
       key: 'fact-' + t.id + '-' + k, flexDirection: 'row', columnGap: 1,
-      children: [Box({ width: 12, children: [Text({ size: 'footnote', dimColor: true, children: [k] })] }), Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ size: 'footnote', weight: 'semibold', wrap: 'wrap', mono: opts.mono, color: opts.color, children: [v] })] })],
+      children: [Box({ width: 12, children: [Text({ size: 'footnote', dimColor: true, children: [k] })] }), Box({ ...SHRINK, children: [Text({ size: 'footnote', weight: 'semibold', wrap: 'wrap', mono: opts.mono, color: opts.color, children: [v] })] })],
     })
   return Box({
     key: 'facts-' + t.id, flexDirection: 'column', rowGap: rich(ctx.surface) ? 'xs' : 0, paddingLeft: isCompact ? (rich(ctx.surface) ? 3 : 2) : 0, paddingBottom: isCompact && rich(ctx.surface) ? 'sm' : 0,
@@ -588,16 +596,16 @@ export function renderAll(el: any, ctx: Ctx) {
     return ctx.filter === 'all' || (ctx.filter === 'done' ? p === 'done' : p !== 'done')
   })
   const cards = filtered.map((f) => {
-    const d = derive(f)
-    const c = taskCounts(f.tasks, f.merges)
     const isCurrent = ctx.current?.slug === f.slug
+    const d = derive(f, isCurrent ? runningCommand(ctx) : null)
+    const c = taskCounts(f.tasks, f.merges)
     const label = d.phase === 'done' ? 'Done' : STEP_LABELS.find((s) => s[0] === d.phase)?.[1] ?? d.phase
     const mini = miniPhaseSvg(d.steps)
     return Box({
       key: 'spec-' + f.slug, borderStyle: 'round', borderColor: isCurrent ? 'permission' : undefined, paddingX: 1, flexDirection: 'column', rowGap: isRich ? 1 : 0,
       ...(isRich ? { paddingY: 'xs', hover: { borderColor: isCurrent ? 'permission' : 'inactive' } } : {}),
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] })] }), statusPill(el, ctx, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
+        Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ ...SHRINK, children: [Text({ weight: 'semibold', wrap: 'truncate-end', children: [f.spec.title || f.slug] })] }), statusPill(el, ctx, d.phase === 'done' ? 'done' : f.spec.status || 'draft')] }),
         Box({
           flexDirection: 'row', columnGap: 1, alignItems: 'center',
           children: [
@@ -665,7 +673,7 @@ const TILE_BG = SURFACE
 function valueNode(el: any, isRich: boolean, e: { key: string; value: string; source: string }) {
   const { Box, Text } = el
   const m = FLOW.exec(e.value)
-  if (!m) return Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ mono: true, size: 'footnote', wrap: 'truncate-end', dimColor: e.source === 'default', children: [e.value] })] })
+  if (!m) return Box({ ...SHRINK, children: [Text({ mono: true, size: 'footnote', wrap: 'truncate-end', dimColor: e.source === 'default', children: [e.value] })] })
   const parts = m[2].split(':')
   const name = parts.pop() as string
   return Box({
@@ -878,7 +886,7 @@ export function renderConfig(el: any, ctx: ConfigCtx) {
                   flexDirection: 'row', columnGap: 1, alignItems: 'center',
                   children: [
                     Box({
-                      flexGrow: 1, flexDirection: 'row',
+                      ...SHRINK,
                       children: [Button({ key: 'cmd-toggle-' + r.project, plain: true, onPress: () => ctx.actions.toggle(r.project), children: [Text({ dimColor: true, children: [isOpen ? '▾ ' : '▸ '] }), Text({ mono: true, weight: 'medium', children: [r.project] })] })],
                     }),
                     pips,
