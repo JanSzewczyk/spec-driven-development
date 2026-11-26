@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] — 2026-11-26
+
+`sdd` goes to 2.5.0. The `sdd-board` plugin is merged into it.
+
+### Added
+
+- The board side panel is part of `sdd`: `/sdd-dashboard` opens it, and it opens by itself at session start in a project with `specs/`. The `show_board` option (on by default) turns the auto-open off.
+
+### Changed
+
+- The marketplace no longer lists `sdd-board`; its `renames` entry moves `sdd-board` installs to `sdd`. The panel's saved tab and filter reset once.
+- The panel polls `specs/` only once it has been drawn, so a session that never shows it does not poll.
+- The rules and parsers live once, in `plugins/sdd/hooks/core/`; the copy for the panel and `scripts/sync-core.sh` are gone (`scripts/gen-schema.sh` writes the schema module).
+
 ## [2.4.0] — 2026-11-26
 
 `sdd` goes to 2.4.0.
