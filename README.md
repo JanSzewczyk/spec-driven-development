@@ -63,7 +63,7 @@ The unique contribution of this framework: it **manages the thinking and the ver
 - **🗂️ [Projects, not one stack](#-monorepos-several-repositories-any-kind-of-app)** — single app, monorepo (Nx, Turborepo, workspaces) or several repositories; web, backend and mobile projects side by side, each with its own commands
 - **🔧 No fixed list of supported stacks** — `/sdd:doctor init` reads each project's scripts, CI and tool config to find its test, coverage, typecheck and lint commands
 
-### 🖥️ Desktop panel
+### 🖥️ Side panel
 
 - **📊 [Board](plugins/sdd/README.md#board)** — a side panel in the `sdd` plugin: the current spec's phase, next command and tasks, plus an overview of every spec
 

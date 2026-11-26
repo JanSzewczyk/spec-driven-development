@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The marketplace no longer lists `sdd-board`; its `renames` entry moves `sdd-board` installs to `sdd`. The panel's saved tab and filter reset once.
+- The marketplace no longer lists `sdd-board`; its `renames` entry moves `sdd-board` installs to `sdd`. The panel's saved tab and filter may reset once.
 - The panel polls `specs/` only once it has been drawn, so a session that never shows it does not poll.
 - The rules and parsers live once, in `plugins/sdd/hooks/core/`; the copy for the panel and `scripts/sync-core.sh` are gone (`scripts/gen-schema.sh` writes the schema module).
 
