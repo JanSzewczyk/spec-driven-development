@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# SDD CLI: reads and edits the SDD files of the repository it runs in (`sdd help`).
+# On the Bash PATH while the sdd plugin is enabled. Needs Node.js 22.18+ (runs TypeScript natively);
+# without it, exit 127 and the skills do the step by hand.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+if ! command -v node >/dev/null 2>&1; then
+  echo 'sdd: Node.js 22.18+ is required and node is not on PATH; do this step by hand' >&2
+  exit 127
+fi
+if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>22||(a===22&&b>=18)?0:1)'; then
+  echo "sdd: Node.js 22.18+ is required (found $(node --version)); do this step by hand" >&2
+  exit 127
+fi
+exec node --disable-warning=ExperimentalWarning "$here/../cli/main.ts" "$@"

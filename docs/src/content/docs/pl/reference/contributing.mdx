@@ -5,7 +5,7 @@ description: Konfiguracja środowiska i sposób zmiany pluginów.
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
-Zachowanie żyje w **promptach Markdown**: treść każdego `skills/<name>/SKILL.md` i `agents/*.md` to zestaw instrukcji wykonywanych przez Claude. Jedyny kod to TypeScript: mod rejestrujący `doctor_check` oraz reguły i parsery w `shared/sdd-core/`.
+Zachowanie żyje w **promptach Markdown**: treść każdego `skills/<name>/SKILL.md` i `agents/*.md` to zestaw instrukcji wykonywanych przez Claude. Jedyny kod to TypeScript: mod rejestrujący `doctor_check`, [SDD CLI](/spec-driven-development/pl/reference/cli/) (`plugins/sdd/cli/`) oraz reguły i parsery w `shared/sdd-core/`. Deterministyczny odczyt albo edycja plików SDD należy do komendy SDD CLI, nie do prozy skilla.
 
 <Steps>
 

@@ -19,15 +19,16 @@ both are removed when the task is merged and set to `review`. Only the orchestra
 `review|done`. A task sub-session never sets its own status: `review` means merged into the SDD
 branch, which happens after the sub-session ends. For every task that still has `branch:` or `pr:`:
 
-- `pr:` → `gh pr view <pr> --json state`. `MERGED` → `git pull --ff-only` on the SDD branch, set
-  `status: review`, remove `branch:` and `pr:`, remove the task's worktree and local branch.
-  `CLOSED` → report it; the task stays `in-progress`. `OPEN` → still waiting.
+- `pr:` → `gh pr view <pr> --json state`. `MERGED` → `git pull --ff-only` on the SDD branch,
+  `sdd task status <id> review` (sets `review`, removes `branch:` and `pr:`; by hand when `sdd` exits
+  127), remove the task's worktree and local branch. `CLOSED` → report it; the task stays
+  `in-progress`. `OPEN` → still waiting.
 - no `pr:` (`merge: auto`) → `git merge-base --is-ancestor <branch> <spec-branch>` succeeds → the
-  merge happened but the status was not written: set `status: review`, remove `branch:`, clean up as
-  above. Fails → the task is still running or was not merged; leave it.
+  merge happened but the status was not written: `sdd task status <id> review`, clean up as above.
+  Fails → the task is still running or was not merged; leave it.
 
 Report the tasks this moved in one line. Reconcile checks once and never waits; waiting for the
-merges belongs to `/sdd:implement all` (see its `isolation.md`).
+merges belongs to `/sdd:implement` (see its `worktree-all.md`).
 
 Set a status only forward, never over a later one. Two moves go backwards: `/sdd:review` sets a task
 with unmet acceptance criteria back to `in-progress`, and a `/sdd:tasks` re-run sets a started task

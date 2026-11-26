@@ -108,7 +108,7 @@ The marketplace `spec-driven-development` ([`.claude-plugin/marketplace.json`](.
 
 | Plugin | Description | Skills | Agents | Mod |
 | --- | --- | --- | --- | --- |
-| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec | 11 | 3 | `doctor_check` tool |
+| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec; the `sdd` CLI for task and config edits | 11 | 3 | `doctor_check` tool |
 | [**sdd-board**](./plugins/sdd-board/.claude-plugin/plugin.json) | Claude Code Desktop side panel (a mod): current spec with phase, next command and tasks, plus an overview of all specs. Requires `sdd` (installed with it) | | | panel |
 
 See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Reference](#-sub-agents-reference) for each one.
@@ -261,7 +261,7 @@ flowchart TD
 | **Clarify** | `/sdd:clarify` | AI finds the gaps in spec.md, asks up to 5 questions (with proposed answers) and writes the answers into the spec in one run |
 | **Plan** | `/sdd:plan` | Generate `plan.md`: decisions, contracts, file-by-file change list, risks (diagrams, data model, API surface only when they help). **Run in Plan Mode.** |
 | **Tasks** | `/sdd:tasks` | Split the plan into self-contained, Jira-like tasks (project, scope, acceptance criteria, dependencies) under one Epic |
-| **Implement** | `/sdd:implement <task-id or all>` | Build a brief from the task and hand it to the flow configured in `capabilities.yml` (or implement in the session). Does not verify on its own |
+| **Implement** | `/sdd:implement [task-id]` | Build a brief from the task and hand it to the flow configured in `capabilities.yml` (or implement in the session); no argument (or `all`) runs every open task in dependency order. Does not verify on its own |
 | **Review** | `/sdd:review` | Tests, `spec-verifier` and your extra checks in parallel, then `reviewer` → verdict READY/NOT READY → AC ticked in the spec → commit + PR |
 | **Retro** | `/sdd:retro` | Optional, after review: turns the repeatable mistakes in `review.md` into WHAT NOT TO DO entries (with a reason) in the constitution |
 | **Analyze** | `/sdd:analyze` | Diagnostic — find drift between spec ↔ plan ↔ tasks ↔ code (run anytime) |
@@ -351,7 +351,7 @@ implementation:
 - `merge: pr` — human in the loop: each task opens a PR into the SDD branch and the orchestrator waits (`status: in-progress`, `pr:` in the task, the board shows "waiting for merge"). You merge; the running `/sdd:implement all` waits for the merges (session events and one background check every 2 minutes, never a tight loop), marks the merged tasks `review`, starts the tasks they unblock and repeats until every task is `review|done`. A PR closed without merging is reported and only its dependants stay blocked. If that session has ended, run `/sdd:implement all` (or `/sdd:review` after the last merge) again: both pick up the merges first.
 - `merge: auto` — the orchestrator rebases the task branch onto the SDD branch and fast-forwards it, then starts the next tasks, without asking again after one up-front confirmation. A conflict is reported and blocks only that task's dependants.
 
-Dependent tasks start only after their dependencies are merged. Task branches are never stacked: each is cut from the SDD branch and its PR targets the SDD branch. Projects in sibling repositories run in place. Details: [isolation.md](plugins/sdd/skills/implement/references/isolation.md).
+Dependent tasks start only after their dependencies are merged. Task branches are never stacked: each is cut from the SDD branch and its PR targets the SDD branch. Projects in sibling repositories run in place. Details: [worktree.md](plugins/sdd/skills/implement/references/worktree.md) and, for several tasks, [worktree-all.md](plugins/sdd/skills/implement/references/worktree-all.md).
 
 ### 🔁 Status lifecycle
 
@@ -499,9 +499,9 @@ Phase 4 — Tasks. Split `plan.md` into a list of **self-contained tasks** (form
 - **Commits the documentation.** It ends by committing `specs/<slug>/` (spec, plan, tasks) as `docs(<slug>): add spec, plan and tasks` with an `Epic:` trailer, so the documentation is in git before any task starts and is visible to worktrees.
 - Does not choose agents or models and writes no code; ends with a one-line `Order:` such as `T1 → T2 ∥ T3 → T4`.
 
-### 🔨 `/sdd:implement <task-id | all>`
+### 🔨 `/sdd:implement [task-id | all]`
 
-Phase 5 — Implement. A dispatcher, not an implementer: it checks `depends_on`, builds the brief, hands the task to the flow configured in `capabilities.yml` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies. It commits any documentation `/sdd:tasks` left uncommitted before the first task, and each finished task's files with a `Task: <EPIC>-T<n>` trailer. With `isolation: worktree:` it orchestrates sub-sessions instead (see [Isolated tasks](#-isolated-tasks-opt-in)).
+Phase 5 — Implement. A dispatcher, not an implementer: it reads the open tasks, their order and flows with the [SDD CLI](#-sdd-cli) (`sdd task next`), builds the brief, hands the task to the flow configured in `capabilities.yml` (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status. Independent tasks may go to a background flow together; otherwise one after another. In a sibling repository it makes sure the feature branch exists first. It runs no tests itself — the implementer does, and `/sdd:review` verifies. It commits any documentation `/sdd:tasks` left uncommitted before the first task, and each finished task's files with a `Task: <EPIC>-T<n>` trailer. No argument (or `all`) runs every open task: without isolation it implements, commits and moves the status (`sdd task status`) of one task after another until all are done or only blocked ones remain. With `isolation: worktree:` it orchestrates sub-sessions instead (see [Isolated tasks](#-isolated-tasks-opt-in)).
 
 ### 🔍 `/sdd:review`
 
@@ -546,6 +546,20 @@ Optional, after `/sdd:doctor init`. Scans the session's skills and agents, insta
 Diagnostic — run anytime to find where spec ↔ plan ↔ tasks ↔ code disagree. It runs `spec-verifier` once over the feature diff and reports, in a few lines, acceptance criteria that are met, **pending** (their task is not implemented yet) or a **gap** (implemented, not covered), plus the findings with `file:line` and the next command for each. Useful mid-feature, after changing the spec, and before `/sdd:review`.
 
 ⛔ Read-only — never edits files and runs no tests.
+
+### 🧮 SDD CLI
+
+`sdd` ([`plugins/sdd/bin/sdd`](plugins/sdd/bin/sdd), on the Bash `PATH` while the plugin is enabled) reads and edits the SDD files of the repository it runs in, so skills do not parse or hand-edit them. Needs Node.js 22.18+; without it (exit `127`) a skill does the step by hand. Output is JSON; exit `2` means refused, with an `error` saying what to do.
+
+| Command | What it does |
+|---|---|
+| `sdd task next [<id> \| all]` | Feature of the current branch, epic, isolation, open tasks in dependency order with `ready`, `blockedBy` and flow |
+| `sdd task show <id>` | One task's fields and full id |
+| `sdd task status <id> <status> [--branch] [--pr]` | Moves a task forward; the first `in-progress` moves `spec.md` / `plan.md`; `review` drops `branch:` / `pr:` |
+| `sdd config get [<key>]` | A `capabilities.yml` value, set or default |
+| `sdd config set <key> <value>` | Changes one value, keeping comments; refused when `/sdd:doctor check` would flag it |
+
+A new command is one file in `plugins/sdd/cli/commands/` with its logic in `shared/sdd-core/` ([cli/README.md](plugins/sdd/cli/README.md)).
 
 ---
 
@@ -796,12 +810,15 @@ spec-driven-development/                    # or your own forked plugin path
     └── sdd/                               # the SDD plugin
         ├── .claude-plugin/plugin.json     # plugin manifest (explicit `agents` array)
         ├── README.md                      # short plugin summary, points here
+        ├── bin/sdd                        # SDD CLI wrapper (on the Bash PATH; Node 22.18+)
+        ├── cli/                           # SDD CLI: main.ts, command.ts, context.ts, commands/<group>-<action>.ts
         ├── hooks/                         # hooks.json + register.ts (the doctor_check tool), core/ (copy of shared)
-        ├── tests/                         # doctor check rules, run with `claude plugin test`
+        ├── tests/                         # doctor check rules and the SDD CLI, run with `claude plugin test`
         ├── references/                    # shared by the skills: feature-diff, capabilities, status-lifecycle, sibling-repos, formats
         ├── skills/                        # 11 skills, each `/sdd:<name>`
         │   ├── constitution/ spec/ clarify/ plan/ tasks/
-        │   ├── implement/ review/ retro/ analyze/ capabilities/    # SKILL.md each
+        │   ├── implement/                 # SKILL.md, references/worktree.md + worktree-all.md (isolation only)
+        │   ├── review/ retro/ analyze/ capabilities/    # SKILL.md each
         │   └── doctor/
         │       ├── SKILL.md               # `check` (tool + fallback)
         │       ├── references/

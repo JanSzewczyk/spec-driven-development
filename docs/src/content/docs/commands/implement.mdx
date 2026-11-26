@@ -6,8 +6,8 @@ description: Hand tasks to your implementation flow.
 import { Aside } from '@astrojs/starlight/components';
 
 ```text
+/sdd:implement           # every open task, in dependency order (same as `all`)
 /sdd:implement T2        # one task
-/sdd:implement all       # every ready task
 ```
 
 A **dispatcher**, not an implementer. It checks `depends_on`, builds the brief, hands the task to the flow configured in [`capabilities.yml`](/spec-driven-development/configuration/capabilities/) (`skill:`, `agent:`, `command:` or `in-session`) and tracks the status.
@@ -17,8 +17,10 @@ A **dispatcher**, not an implementer. It checks `depends_on`, builds the brief, 
 | Parallelism | Independent tasks may go to a background flow together; otherwise one after another. |
 | Sibling repos | Makes sure the feature branch exists in that repository first. |
 | Verification | Runs **no tests itself**: the implementer does, and [`/sdd:review`](/spec-driven-development/commands/review/) verifies. |
+| Several tasks | Without `isolation`, it implements and commits one task after another, moving each status itself, until every task is done or only blocked tasks remain. |
 | Commits | Commits any documentation `/sdd:tasks` left uncommitted before the first task, then each finished task's files with a `Task: <EPIC>-T<n>` trailer. |
-| Isolation | With `isolation: worktree:` it orchestrates sub-sessions instead; `all` waits for the task merges and keeps launching until every task is `review` or `done`. See [Isolated tasks](/spec-driven-development/concepts/isolation/). |
+| Files | Reads the tasks, flows and isolation mode and writes the statuses with the [SDD CLI](/spec-driven-development/reference/cli/) (`sdd task next`, `sdd task status`); without Node.js 22.18+ it does the same by hand. |
+| Isolation | With `isolation: worktree:` it orchestrates sub-sessions instead; with several tasks it waits for the task merges and keeps launching until every task is `review` or `done`. See [Isolated tasks](/spec-driven-development/concepts/isolation/). |
 
 <Aside type="tip">
 Open a fresh session per task. `tasks.md` status is the handover document, so nothing is lost.

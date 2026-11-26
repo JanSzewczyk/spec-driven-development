@@ -6,8 +6,8 @@ description: Przekaż zadania do swojego flow implementacji.
 import { Aside } from '@astrojs/starlight/components';
 
 ```text
+/sdd:implement           # każde otwarte zadanie, w kolejności zależności (to samo co `all`)
 /sdd:implement T2        # jedno zadanie
-/sdd:implement all       # każde gotowe zadanie
 ```
 
 **Dyspozytor**, nie implementator. Sprawdza `depends_on`, buduje brief, przekazuje zadanie do flow skonfigurowanego w [`capabilities.yml`](/spec-driven-development/pl/configuration/capabilities/) (`skill:`, `agent:`, `command:` lub `in-session`) i śledzi status.
@@ -17,8 +17,10 @@ import { Aside } from '@astrojs/starlight/components';
 | Równoległość | Niezależne zadania mogą trafić razem do flow w tle; w przeciwnym razie jedno po drugim. |
 | Sąsiednie repo | Najpierw dba o to, by gałąź funkcji istniała w tym repozytorium. |
 | Weryfikacja | **Sam nie uruchamia testów**: robi to implementator, a [`/sdd:review`](/spec-driven-development/pl/commands/review/) weryfikuje. |
+| Kilka zadań | Bez `isolation` implementuje i commituje zadanie po zadaniu, sam przestawiając statusy, aż wszystkie będą gotowe albo zostaną tylko zablokowane. |
 | Commity | Commituje dokumentację, którą `/sdd:tasks` zostawiło niezacommitowaną, przed pierwszym zadaniem, a potem pliki każdego ukończonego zadania z trailerem `Task: <EPIC>-T<n>`. |
-| Izolacja | Z `isolation: worktree:` orkiestruje sub-sesje; `all` czeka na merge zadań i uruchamia kolejne, aż każde będzie `review` lub `done`. Zobacz [Izolowane zadania](/spec-driven-development/pl/concepts/isolation/). |
+| Pliki | Zadania, flow i tryb izolacji czyta, a statusy zapisuje przez [SDD CLI](/spec-driven-development/pl/reference/cli/) (`sdd task next`, `sdd task status`); bez Node.js 22.18+ robi to samo ręcznie. |
+| Izolacja | Z `isolation: worktree:` orkiestruje sub-sesje; przy kilku zadaniach czeka na merge zadań i uruchamia kolejne, aż każde będzie `review` lub `done`. Zobacz [Izolowane zadania](/spec-driven-development/pl/concepts/isolation/). |
 
 <Aside type="tip">
 Otwieraj świeżą sesję na zadanie. Status w `tasks.md` jest dokumentem przekazania, więc nic się nie gubi.

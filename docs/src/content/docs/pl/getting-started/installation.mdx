@@ -11,6 +11,7 @@ import { Tabs, TabItem, Steps, Aside, FileTree } from '@astrojs/starlight/compon
 |---|---|
 | [Claude Code](https://claude.com/claude-code) **2.1.287+** | Pierwsza wersja z modami. `sdd` rejestruje narzędzie `doctor_check` jako mod. |
 | **Git** | Każda funkcja żyje na własnej gałęzi. |
+| [Node.js](https://nodejs.org/) **22.18+** (zalecane) | Uruchamia [SDD CLI](/spec-driven-development/pl/reference/cli/), którego skille używają do edycji zadań i konfiguracji; bez niego robią te kroki ręcznie. |
 | [GitHub CLI](https://cli.github.com/) (`gh`), zalogowany | `/sdd:review` otwiera nim PR, gdy nie skonfigurowano akcji `pr`. |
 
 <Aside type="caution">
@@ -58,7 +59,7 @@ Raz na maszynę.
 
 </Steps>
 
-11 skilli, 3 agenty i narzędzie `doctor_check` są teraz dostępne w **każdym** projekcie. Nic nie jest kopiowane do projektów.
+11 skilli, 3 agenty, narzędzie `doctor_check` i CLI `sdd` są teraz dostępne w **każdym** projekcie. Nic nie jest kopiowane do projektów.
 
 ## Instalacja sdd-board (opcjonalnie)
 

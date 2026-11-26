@@ -114,6 +114,7 @@ export default defineConfig({
           translations: { pl: "Referencja" },
           items: [
             "reference/file-structure",
+            "reference/cli",
             "reference/design-decisions",
             "reference/contributing",
           ],
