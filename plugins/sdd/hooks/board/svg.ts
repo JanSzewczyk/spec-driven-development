@@ -2,7 +2,7 @@
 // theme keys to, read from the Claude Desktop bundle. Desktop draws an Svg in its own frame without the
 // app's CSS variables, so each drawing carries a light and a dark value and switches with
 // prefers-color-scheme. The attribute on each shape is the fallback when a style is not applied.
-import type { Role, Step, TaskLook } from './model.ts'
+import type { Role, Step } from './model.ts'
 
 type Pair = [light: string, dark: string]
 
@@ -220,29 +220,4 @@ export function axisSvg(windowMs: number, width: number): string {
     body += '<text x="' + x + '" y="13" font-size="10" text-anchor="' + anchor + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + label + '</text>'
   })
   return svgDoc(width, 15, body)
-}
-
-// Task status glyph: done (tick), review (dot), in progress (an arc, turning while its lane runs),
-// merged but not recorded (ringed tick), closed (red ring), blocked (dashed ring), draft (ring).
-export function taskGlyphSvg(look: TaskLook, isLive = false): string {
-  const ring = (attrs: string) => themed([['.r', 'stroke', CDS.muted]]) + '<circle class="r" cx="7" cy="7" r="5.2" fill="none" stroke="' + MID + '" stroke-width="1.4"' + attrs + '/>'
-  const tick = (stroke: string) => '<path d="M4.4 7.2l2 2.1 3.6-4" fill="none" stroke="' + stroke + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
-  switch (look) {
-    case 'done':
-      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(ON_FILL))
-    case 'review':
-      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.accent + '"/><circle cx="7" cy="7" r="2" fill="' + ON_FILL + '"/>')
-    case 'merged':
-      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.success + '" stroke-width="1.6"/>' + tick(FILL.success))
-    case 'closed':
-      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.danger + '" stroke-width="1.6"/><path d="M5 5l4 4M9 5l-4 4" stroke="' + FILL.danger + '" stroke-width="1.5" stroke-linecap="round"/>')
-    case 'in-progress': {
-      const spin = isLive ? '<style>@keyframes s{to{transform:rotate(360deg)}}.s{transform-origin:7px 7px;animation:s 2.4s linear infinite}' + NO_MOTION + '</style>' : ''
-      return svgDoc(14, 14, spin + '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.warning + '" stroke-opacity="0.3" stroke-width="1.6"/><path class="s" d="M7 1.8 A5.2 5.2 0 0 1 12.2 7" fill="none" stroke="' + FILL.warning + '" stroke-width="1.8" stroke-linecap="round"/>')
-    }
-    case 'blocked':
-      return svgDoc(14, 14, ring(' stroke-dasharray="2 2"'))
-    default:
-      return svgDoc(14, 14, ring(''))
-  }
 }

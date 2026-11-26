@@ -5,7 +5,7 @@ import type { Config } from '../../core/config.ts'
 import type { Task } from '../../core/parse.ts'
 import { WINDOW_MS } from './live.ts'
 import type { Lane, Live } from './live.ts'
-import { axisSvg, branchSvg, checkSvg, dividerSvg, dotSvg, laneBarSvg, liveDotSvg, miniPhaseSvg, phaseBarSvg, pillSvg, pipsSvg, progressSvg, taskGlyphSvg } from './svg.ts'
+import { axisSvg, branchSvg, checkSvg, dividerSvg, dotSvg, laneBarSvg, liveDotSvg, miniPhaseSvg, phaseBarSvg, pillSvg, pipsSvg, progressSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
 export type Tab = 'current' | 'all' | 'ticket'
@@ -353,7 +353,7 @@ function taskMeta(t: Task, f: Feature, look: TaskLook): { text: string; color?: 
 }
 
 function taskRows(el: any, ctx: Ctx, f: Feature) {
-  const { Box, Text, Button, Svg } = el
+  const { Box, Text, Button } = el
   const tasks = f.tasks ?? []
   if (tasks.length === 0) return null
   const isRich = rich(ctx.surface)
@@ -367,24 +367,25 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
     const look = taskLook(t, tasks, f.merges)
     const meta = taskMeta(t, f, look)
     const isOpen = (ctx.open ?? []).includes('task-' + t.id)
+    const isRunning = running.has(t.id)
+    // One Button per row, so a press and the pointer's highlight cover the whole row: a Button holds only
+    // strings and Text, so the glyph is a coloured character here and the meta trails the title.
     return Box({
-      key: 'taskbox-' + t.id, flexDirection: 'column', paddingX: isRich ? 1 : 0, ...(isRich ? { paddingY: 'xs' } : {}),
+      key: 'taskbox-' + t.id, flexDirection: 'column', rowGap: isOpen ? 1 : 0, paddingX: isRich ? 1 : 0, ...(isRich ? { paddingY: 'xs' } : {}),
       hover: { scope: 'task-' + t.id, backgroundColor: SURFACE },
       children: [
         Box({
-          flexDirection: 'row', columnGap: 1, alignItems: 'center',
+          flexGrow: 1, flexDirection: 'column', alignItems: 'stretch',
           children: [
-            isRich ? Svg({ alt: look, width: 14, height: 14, source: taskGlyphSvg(look, running.has(t.id)), isInteractive: running.has(t.id) }) : Text({ color: LOOK_KEY[look], dimColor: !LOOK_KEY[look], children: [GLYPH[look]] }),
-            Box({
-              flexGrow: 1, flexDirection: 'row',
+            Button({
+              key: 'task-' + t.id, plain: true, onPress: () => ctx.actions.toggle?.('task-' + t.id),
               children: [
-                Button({
-                  key: 'task-' + t.id, plain: true, onPress: () => ctx.actions.toggle?.('task-' + t.id),
-                  children: [Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }), Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] })],
-                }),
-              ],
+                Text({ color: isRunning ? 'warning' : LOOK_KEY[look], dimColor: !isRunning && !LOOK_KEY[look], children: [(isRunning ? '◉' : GLYPH[look]) + ' '] }),
+                Text({ mono: true, size: 'footnote', dimColor: true, children: [t.id + ' '] }),
+                Text({ size: 'footnote', dimColor: look === 'done', wrap: 'truncate-end', children: [t.title] }),
+                meta.text ? Text({ size: 'caption', color: meta.color, dimColor: !meta.color, children: ['  ·  ' + meta.text] }) : null,
+              ].filter(Boolean),
             }),
-            Text({ size: 'caption', color: meta.color, dimColor: !meta.color, wrap: 'truncate-end', children: [meta.text] }),
           ],
         }),
         isOpen ? taskFacts(el, ctx, f, t, true) : null,
@@ -410,13 +411,13 @@ function taskFacts(el: any, ctx: Ctx, f: Feature, t: Task, isCompact: boolean) {
   const line = (k: string, v: string, opts: { mono?: boolean; color?: string } = {}) =>
     Box({
       key: 'fact-' + t.id + '-' + k, flexDirection: 'row', columnGap: 1,
-      children: [Box({ width: 12, children: [Text({ size: 'footnote', dimColor: true, children: [k] })] }), Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ size: 'footnote', wrap: 'wrap', mono: opts.mono, color: opts.color, children: [v] })] })],
+      children: [Box({ width: 12, children: [Text({ size: 'footnote', dimColor: true, children: [k] })] }), Box({ flexGrow: 1, flexDirection: 'row', children: [Text({ size: 'footnote', weight: 'semibold', wrap: 'wrap', mono: opts.mono, color: opts.color, children: [v] })] })],
     })
   const merge = f.merges?.[t.id]
   return Box({
-    key: 'facts-' + t.id, flexDirection: 'column', paddingLeft: isCompact ? (rich(ctx.surface) ? 3 : 2) : 0,
+    key: 'facts-' + t.id, flexDirection: 'column', rowGap: rich(ctx.surface) ? 'xs' : 0, paddingLeft: isCompact ? (rich(ctx.surface) ? 3 : 2) : 0, paddingBottom: isCompact && rich(ctx.surface) ? 'sm' : 0,
     children: [
-      isCompact && t.scope?.length ? Text({ size: 'footnote', dimColor: true, wrap: 'wrap', children: [t.scope.join('; ')] }) : null,
+      isCompact && t.scope?.length ? Box({ key: 'scope-' + t.id, paddingBottom: rich(ctx.surface) ? 'sm' : 0, children: [Text({ size: 'footnote', wrap: 'wrap', children: [t.scope.join('; ')] })] }) : null,
       t.acceptance.length ? line('acceptance', t.acceptance.join(', ')) : null,
       t.dependsOn.length ? line('depends on', t.dependsOn.map((id) => { const d = tasks.find((x) => x.id === id); return id + (d && implemented(d, f.merges) ? ' ✓' : '') }).join(', ')) : null,
       line('project', t.project || '—'),
