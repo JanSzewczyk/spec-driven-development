@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] — 2026-11-26
+
+`sdd` goes to 2.4.0.
+
+### Added
+
+- SDD CLI: `sdd`, on the Bash `PATH` while the plugin is enabled (Node.js 22.18+): `sdd task next|show|status` and `sdd config get|set`. `config set` changes one `capabilities.yml` value, keeps comments and refuses what `/sdd:doctor check` would flag. Skills use it for task order and statuses; without Node they do those steps by hand.
+
+### Changed
+
+- `/sdd:implement` with no argument runs every open task (same as `all`); without isolation it implements and commits one task after another, moving each status, until all are done or only blocked tasks remain.
+- `/sdd:implement` reads the worktree instructions only with `isolation: worktree:` (the wait loop only for several tasks) and no longer reads `references/capabilities.md`: about a third less text per run.
+
+## [0.9.7 sdd-board] — 2026-11-26
+
+`sdd-board` goes to 0.9.7.
+
+### Changed
+
+- Carries the shared core modules behind the SDD CLI; no visible change in the panel.
+
 ## [2.3.0] — 2026-11-25
 
 `sdd` goes to 2.3.0.
