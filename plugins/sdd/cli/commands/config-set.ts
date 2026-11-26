@@ -1,7 +1,7 @@
 // `sdd config set <key> <value>`: changes one value in specs/capabilities.yml, keeping comments
 // and order; refused when the doctor's rules would flag the result.
-import { setConfigValue } from '../../hooks/core/config-edit.ts'
-import { CAPABILITIES_PATH } from '../../hooks/core/formats.ts'
+import { setConfigValue } from '../../core/config-edit.ts'
+import { CAPABILITIES_PATH } from '../../core/formats.ts'
 import type { Command } from '../command.ts'
 import { fail } from '../command.ts'
 

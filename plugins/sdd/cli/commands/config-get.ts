@@ -1,6 +1,6 @@
 // `sdd config get [<key>]`: what the flow uses from specs/capabilities.yml, set or default.
-import { loadCapabilities } from '../../hooks/core/capabilities.ts'
-import { configValues } from '../../hooks/core/config-edit.ts'
+import { loadCapabilities } from '../../core/capabilities.ts'
+import { configValues } from '../../core/config-edit.ts'
 import type { Command } from '../command.ts'
 import { fail } from '../command.ts'
 

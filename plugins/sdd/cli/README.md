@@ -25,11 +25,11 @@ Output is one JSON object on stdout. Exit `0` ok, `1` wrong usage, `2` refused b
 | `cli/context.ts` | The real `Ctx`: repository root, `node:fs`, git |
 | `cli/args.ts` | Argument parsing and `sdd help` |
 | `cli/commands/<group>-<action>.ts` | One command each |
-| `hooks/core/` | The rules and parsers, shared with the mod |
+| `core/` | The rules and parsers, shared with the mod |
 
 ## Adding a command
 
-1. Put the logic in `hooks/core/` as a pure function (text in, text or data out).
+1. Put the logic in `core/` as a pure function (text in, text or data out).
 2. Add `cli/commands/<group>-<action>.ts` exporting `command: Command` (`group`, `action`,
    `summary`, `usage`, `readOnly`, `run(ctx, args, flags)`). Read and write only through `ctx`.
    `main.ts` finds it by itself and `sdd help` lists it.

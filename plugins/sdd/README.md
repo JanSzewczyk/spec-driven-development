@@ -57,4 +57,4 @@ It opens by itself at session start when the project has `specs/` (at least 144 
 
 ### Develop
 
-`hooks/register.ts` registers the doctor tool and the board; the board's hooks are in `hooks/board/register.ts`, phase logic in `hooks/board/model.ts`, drawing in `hooks/board/view.ts` and `hooks/board/svg.ts`, parsing in `hooks/core/parse.ts`. Tests: `tests/board.test.ts` (`claude plugin test`).
+`hooks/register.ts` composes the doctor tool (`hooks/doctor.ts`) and the board; the board's hooks are in `hooks/board/register.ts`, phase logic in `hooks/board/model.ts`, drawing in `hooks/board/view.ts` and `hooks/board/svg.ts`, parsing in `core/parse.ts`. Tests: `tests/board.test.ts` (`claude plugin test`).

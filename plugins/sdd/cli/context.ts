@@ -1,11 +1,11 @@
 // The Ctx of a real run (see command.ts): the repository the CLI runs in, node:fs relative to its
-// root, git for the branch. The rules live in ../hooks/core (shared with the mod).
+// root, git for the branch. The rules live in ../core (shared with the mod).
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseSpec } from '../hooks/core/parse.ts'
-import type { FeatureFiles } from '../hooks/core/check.ts'
-import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../hooks/core/formats.ts'
+import { featureOf, featureOfBranch, featurePath } from '../core/features.ts'
+import type { FeatureFiles } from '../core/features.ts'
+import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../core/formats.ts'
 import type { Ctx } from './command.ts'
 
 export class Context implements Ctx {
@@ -56,17 +56,12 @@ export class Context implements Ctx {
       if (!existsSync(dir)) return []
       return readdirSync(dir, { withFileTypes: true })
         .filter((e) => e.isDirectory())
-        .map((e) => {
-          const base = `specs/${e.name}/`
-          return { slug: e.name, spec: this.read(base + 'spec.md'), plan: this.read(base + 'plan.md'), tasks: this.read(base + 'tasks.md'), review: this.read(base + 'review.md') }
-        })
-        .filter((f) => f.spec !== null || f.tasks !== null)
+        .map((e) => featureOf(e.name, (doc) => this.read(featurePath(e.name, doc))))
+        .filter((f): f is FeatureFiles => f !== null)
     })
   }
 
-  // The feature whose spec.md has `**Branch:**` equal to the current branch.
   feature(): FeatureFiles | null {
-    const branch = this.branch()
-    return this.features().find((f) => f.spec !== null && parseSpec(f.spec).branch === branch) ?? null
+    return featureOfBranch(this.features(), this.branch())
   }
 }

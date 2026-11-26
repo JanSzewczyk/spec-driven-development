@@ -1,9 +1,11 @@
 // Read and change specs/capabilities.yml by dotted key. A change is written only when the doctor's
 // capabilities rules find nothing new in the result, so the CLI and `/sdd:doctor check` agree on
 // what a valid file is. Pure. No mods API in here.
-import { effectiveConfig, runChecks } from './check.ts'
-import type { Capabilities, Finding, Snapshot } from './check.ts'
 import { parseCapabilities } from './capabilities.ts'
+import type { Capabilities } from './capabilities.ts'
+import { runChecks } from './check.ts'
+import type { Finding, Snapshot } from './check.ts'
+import { effectiveConfig } from './config.ts'
 import { WORKFLOW_VERSION } from './formats.ts'
 import { setYamlScalar } from './yaml-edit.ts'
 

@@ -3,7 +3,7 @@
 // Pure: takes already-read files. No mods API in here.
 import { isolationOf, loadCapabilities, overrides, section, text } from './capabilities.ts'
 import type { Isolation } from './capabilities.ts'
-import type { FeatureFiles } from './check.ts'
+import type { FeatureFiles } from './features.ts'
 import { IMPLEMENTATION_DEFAULT } from './formats.ts'
 import { parseEpicId, parseSpec, parseTasks } from './parse.ts'
 import { taskIdOf } from './tasks-edit.ts'

@@ -1,7 +1,7 @@
 // The contract every SDD CLI command implements, and the helpers they share. Pure (no node: imports),
 // so command files load in `claude plugin test`; context.ts gives them the real files at run time.
-import { parseSpec } from '../hooks/core/parse.ts'
-import type { FeatureFiles } from '../hooks/core/check.ts'
+import { parseSpec } from '../core/parse.ts'
+import type { FeatureFiles } from '../core/features.ts'
 
 export type Flags = Record<string, string | true>
 // code 1: wrong usage; code 2: the files or a rule refuse it (the message says what to do).

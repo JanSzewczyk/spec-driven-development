@@ -1,28 +1,14 @@
 // Reads a project into a Snapshot for runChecks. Everything goes through `Io`, so the same code
 // runs in the doctor tool (mods API) and in the sdd-check GitHub Action (node:fs).
-import { flowRefs, loadCapabilities, needs } from './check.ts'
-import type { FeatureFiles, Mode, Snapshot } from './check.ts'
+import { loadCapabilities } from './capabilities.ts'
+import { needs } from './check.ts'
+import type { Mode, Snapshot } from './check.ts'
+import { flowRefs } from './config.ts'
+import { readFeatures } from './features.ts'
 import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH, WORKFLOW_PATH } from './formats.ts'
+import type { Io } from './io.ts'
 
-export type Io = {
-  read(path: string): Promise<string | null> // null: absent or unreadable
-  exists(path: string): Promise<boolean>
-  list(dir: string): Promise<{ name: string; dir: boolean }[]> // [] when the directory is absent
-  run(argv: string[]): Promise<{ exitCode: number; stdout: string } | null> // null: could not start
-}
 export type GatherOptions = { mode?: Mode; offline?: boolean }
-
-async function readFeatures(io: Io): Promise<FeatureFiles[]> {
-  const out: FeatureFiles[] = []
-  for (const entry of await io.list('specs')) {
-    if (!entry.dir) continue
-    const base = 'specs/' + entry.name + '/'
-    const [spec, plan, tasks, review] = await Promise.all(['spec', 'plan', 'tasks', 'review'].map((n) => io.read(base + n + '.md')))
-    if (spec === null && plan === null && tasks === null && review === null) continue
-    out.push({ slug: entry.name, spec, plan, tasks, review })
-  }
-  return out
-}
 
 async function toolResolves(io: Io, exe: string, dir: string | null): Promise<boolean> {
   const bases = [dir ?? '.', '.']

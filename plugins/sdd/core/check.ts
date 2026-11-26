@@ -2,23 +2,23 @@
 // the same code runs in the doctor tool and in tests. No mods API in here.
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from './parse.ts'
 import type { Task } from './parse.ts'
-import { generatedPaths, headings, isMap, isolationOf, loadCapabilities, overrides, reviewChecks, section, sectionLines, stripComments, text } from './capabilities.ts'
+import { headings, isMap, isolationOf, loadCapabilities, overrides, reviewChecks, section, sectionLines, stripComments, text } from './capabilities.ts'
 import type { Capabilities, Project, YamlMap } from './capabilities.ts'
+import { commandOf, parseCommandTable } from './constitution.ts'
+import { effectiveConfig, flowRefs } from './config.ts'
+import type { FeatureFiles } from './features.ts'
 import {
   ACTION_KEYS,
   CAPABILITIES_KEYS,
   CAPABILITIES_PATH,
   COMMAND_COLUMNS,
-  COMMAND_COLUMN_ALIASES,
   CONSTITUTION_SECTIONS,
   EPIC_ID,
   FLOW_VALUE,
-  IMPLEMENTATION_DEFAULT,
   IMPLEMENTATION_KEYS,
   LEGACY_CAPABILITIES_PATH,
   PLAN_STATUSES,
   PROJECT_KEYS,
-  REVIEW_DEFAULTS,
   REVIEW_KEYS,
   SPEC_STATUSES,
   SPEC_TEMPLATE_PLACEHOLDERS,
@@ -28,20 +28,15 @@ import {
   WORKFLOW_MARKER,
   WORKFLOW_PATH,
   WORKFLOW_VERSION,
-  WORKTREE_DEFAULTS,
   WORKTREE_KEYS,
   taskBranch,
 } from './formats.ts'
 import type { Level } from './formats.ts'
-export type { Capabilities, Project } from './capabilities.ts'
-export { keyValues, loadCapabilities, parseCapabilities, parseLegacyCapabilities } from './capabilities.ts'
 
 // fix: 'init' — `/sdd:doctor init` repairs it by itself; absent — the user has to change something.
 export type Finding = { level: 'warn' | 'fail'; text: string; fix?: 'init' | 'manual' }
 export type CheckResult = { id: number; name: string; status: Level; summary: string; findings: Finding[] }
 export type Verdict = 'READY' | 'PARTIAL' | 'NOT_READY'
-export type CommandRow = { project: string; path: string; commands: Record<string, string> }
-export type FeatureFiles = { slug: string; spec: string | null; plan: string | null; tasks: string | null; review: string | null }
 // session: the doctor in a Claude Code session; ci: the sdd-check GitHub Action (no gh, tools, sibling repos or installed skills to probe).
 export type Mode = 'session' | 'ci'
 export type GitProbe = {
@@ -70,136 +65,6 @@ export type ToolNeed = { key: string; exe: string; dir: string | null; project: 
 
 function isFilled(lines: string[]): boolean {
   return stripComments(lines.join('\n')).replace(/---/g, '').trim() !== ''
-}
-
-function cell(v: string): string {
-  return v.replace(/`/g, '').trim()
-}
-
-// ---------- constitution §2 ----------
-
-export function parseCommandTable(constitution: string): CommandRow[] | null {
-  const body = sectionLines(constitution, (t) => /run\s*\/\s*build/i.test(t))
-  if (!body) return null
-  const rows = stripComments(body.join('\n'))
-    .split('\n')
-    .filter((l) => /^\s*\|/.test(l))
-    .map((l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()))
-    .filter((cells) => !cells.every((c) => /^:?-*:?$/.test(c)))
-  if (rows.length === 0) return null
-  const header = rows[0].map((h) => h.toLowerCase())
-  const data = rows.slice(1)
-  if (/project/.test(header[0] ?? '')) {
-    const cols = header.map((h) => COMMAND_COLUMN_ALIASES[h] ?? h)
-    return data.map((r) => {
-      const commands: Record<string, string> = {}
-      for (const name of COMMAND_COLUMNS) {
-        const i = cols.indexOf(name)
-        commands[name] = i >= 0 ? cell(r[i] ?? '') : ''
-      }
-      const pathAt = cols.indexOf('path')
-      return { project: cell(r[0] ?? ''), path: pathAt >= 0 ? cell(r[pathAt] ?? '') : '', commands }
-    })
-  }
-  if (header.some((h) => /command/.test(h))) {
-    // Legacy `Command | Purpose` list: one project, `root`.
-    const commands: Record<string, string> = {}
-    for (const name of COMMAND_COLUMNS) commands[name] = ''
-    const test = data.find((r) => /\btest/i.test(r.join(' ')) && !/coverage|typecheck|lint/i.test(r.join(' ')))
-    if (test) commands.test = cell(test[0] ?? '')
-    return [{ project: 'root', path: '.', commands }]
-  }
-  return null
-}
-
-// First executable of a command, after `cd <dir> &&` and leading `VAR=value` words.
-export function commandOf(command: string): { dir: string | null; exe: string } | null {
-  let rest = command.trim()
-  let dir: string | null = null
-  for (;;) {
-    const m = rest.match(/^cd\s+(\S+)\s*&&\s*/)
-    if (!m) break
-    dir = m[1]
-    rest = rest.slice(m[0].length)
-  }
-  const tokens = rest.split(/\s+/).filter((t) => t !== '' && !/^[A-Za-z_][A-Za-z0-9_]*=/.test(t))
-  return tokens.length > 0 ? { dir, exe: tokens[0] } : null
-}
-
-// ---------- effective configuration ----------
-
-export type FlowRef = { kind: 'skill' | 'agent' | 'command'; name: string; where: string }
-// `parent` names the entry an option belongs to (merge and parallel belong to isolation: worktree); a view nests it under that entry.
-export type ConfigEntry = { key: string; value: string; source: 'set' | 'default'; parent?: string }
-export type ConfigSection = { title: string; entries: ConfigEntry[] }
-export type Config = { path: string; legacy: boolean; projects: Project[]; commands: CommandRow[]; sections: ConfigSection[]; generated: number; configured: boolean }
-
-const SESSION_GIT = 'the session (git + gh)'
-
-// Every `skill:` / `agent:` / `command:` value the user set in implementation, actions and review.
-export function flowRefs(caps: Capabilities): FlowRef[] {
-  const out: FlowRef[] = []
-  const add = (value: string, where: string) => {
-    const m = value.trim().match(/^(skill|agent|command):(\S.*)$/)
-    if (m) out.push({ kind: m[1] as FlowRef['kind'], name: m[2].trim(), where })
-  }
-  add(text(section(caps, 'implementation').default), 'Implementation default')
-  for (const [k, v] of overrides(caps, 'implementation')) add(v, 'Implementation ' + k)
-  for (const [k, v] of Object.entries(section(caps, 'actions'))) add(text(v), 'Actions ' + k)
-  add(text(section(caps, 'review').default), 'Review default')
-  for (const [k, v] of overrides(caps, 'review')) add(v, 'Review ' + k)
-  for (const c of reviewChecks(caps)) add(c, 'Review checks')
-  return out
-}
-
-// What `/sdd:implement`, `/sdd:review` and the git actions will really use: the user's value, or the default.
-export function effectiveConfig(caps: Capabilities, constitution: string | null): Config {
-  const entry = (key: string, value: string, fallback: string): ConfigEntry => {
-    const set = value !== '' && value !== fallback
-    return { key, value: value !== '' ? value : fallback, source: set ? 'set' : 'default' }
-  }
-  const perProject = (own: Map<string, string>, fallback: string, all: boolean): ConfigEntry[] =>
-    caps.projects
-      .filter((p) => all || own.has(p.name))
-      .map((p) => {
-        const v = own.get(p.name)
-        return v ? { key: p.name, value: v, source: v === fallback ? 'default' : 'set' } : { key: p.name, value: fallback, source: 'default' }
-      })
-
-  const impl = section(caps, 'implementation')
-  const implDefault = entry('default', text(impl.default), IMPLEMENTATION_DEFAULT)
-  const implementation: ConfigEntry[] = [implDefault, ...perProject(new Map(overrides(caps, 'implementation')), implDefault.value, true)]
-  const iso = isolationOf(caps)
-  implementation.push(entry('isolation', iso.mode === 'worktree' ? 'worktree' : '', 'none'))
-  if (iso.mode === 'worktree') {
-    for (const k of Object.keys(WORKTREE_KEYS)) implementation.push({ ...entry(k, iso[k as 'merge' | 'parallel'], WORKTREE_DEFAULTS[k]), parent: 'isolation' })
-  }
-
-  const act = section(caps, 'actions')
-  const actions: ConfigEntry[] = ACTION_KEYS.map((k) => (text(act[k]) ? { key: k, value: text(act[k]), source: 'set' } : { key: k, value: SESSION_GIT, source: 'default' }))
-
-  const rev = section(caps, 'review')
-  const revDefault = entry('default', text(rev.default), REVIEW_DEFAULTS.default)
-  const review: ConfigEntry[] = [entry('tests', text(rev.tests), REVIEW_DEFAULTS.tests), entry('publish', text(rev.publish), REVIEW_DEFAULTS.publish), revDefault]
-  review.push(...perProject(new Map(overrides(caps, 'review')), revDefault.value, false))
-  review.push(entry('ci', text(rev.ci), 'unset'))
-  const checks = reviewChecks(caps)
-  review.push({ key: 'checks', value: checks.length ? checks.join(', ') : 'none', source: checks.length ? 'set' : 'default' })
-
-  const sections: ConfigSection[] = [
-    { title: 'Implementation', entries: implementation },
-    { title: 'Actions', entries: actions },
-    { title: 'Review', entries: review },
-  ]
-  return {
-    path: caps.path,
-    legacy: caps.legacy,
-    projects: caps.projects,
-    commands: constitution ? (parseCommandTable(constitution) ?? []) : [],
-    sections,
-    generated: generatedPaths(caps).length,
-    configured: sections.some((sec) => sec.entries.some((e) => e.source === 'set' && e.key !== 'ci')), // ci is about CI, not about who does a step
-  }
 }
 
 // ---------- what the doctor has to probe ----------

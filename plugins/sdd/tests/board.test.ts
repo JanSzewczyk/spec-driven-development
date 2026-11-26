@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/core/parse.ts'
+import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
 import { blockedBy, currentSlug, derive, gate } from '../hooks/board/model.ts'
 import type { Feature } from '../hooks/board/model.ts'
 

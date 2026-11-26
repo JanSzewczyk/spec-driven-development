@@ -1,6 +1,6 @@
 // `sdd task status <id> <status> [--branch <name>] [--pr <url>]`: moves a task forward in tasks.md;
 // the first `in-progress` also moves spec.md and plan.md; `review` drops `branch:` and `pr:`.
-import { applyTaskStatus } from '../../hooks/core/tasks-edit.ts'
+import { applyTaskStatus } from '../../core/tasks-edit.ts'
 import type { Command } from '../command.ts'
 import { fail, noFeature } from '../command.ts'
 

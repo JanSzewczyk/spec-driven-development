@@ -1,5 +1,7 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
-import type { PlanInfo, SpecInfo, Task } from '../core/parse.ts'
+import type { FeatureFiles } from '../../core/features.ts'
+import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../../core/parse.ts'
+import type { PlanInfo, SpecInfo, Task, Verdict } from '../../core/parse.ts'
 
 export type Feature = {
   slug: string
@@ -10,6 +12,21 @@ export type Feature = {
   epic?: string // `**Epic:**` id from tasks.md; '' or absent in files written before epic ids
   review: Verdict | null
   modified: number
+}
+
+// A feature's files, parsed for the board. Call only with a spec (the board lists a feature once it has one).
+export function featureFrom(files: FeatureFiles & { spec: string }, modified: number): Feature {
+  const plan = files.plan === null ? null : parsePlan(files.plan)
+  return {
+    slug: files.slug,
+    spec: parseSpec(files.spec),
+    planStatus: plan === null ? null : plan.status || 'draft',
+    plan,
+    tasks: files.tasks === null ? null : parseTasks(files.tasks),
+    epic: files.tasks === null ? '' : parseEpicId(files.tasks),
+    review: files.review === null ? null : parseReview(files.review),
+    modified,
+  }
 }
 
 export type StepState = 'done' | 'current' | 'todo'

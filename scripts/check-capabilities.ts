@@ -4,7 +4,7 @@
 // Usage: node scripts/check-capabilities.ts   (exit 1 and one line per mismatch)
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseCapabilities } from '../plugins/sdd/hooks/core/capabilities.ts'
+import { parseCapabilities } from '../plugins/sdd/core/capabilities.ts'
 import {
   ACTION_KEYS,
   CI_VALUES,
@@ -16,7 +16,7 @@ import {
   SDD_FORMAT,
   TESTS_VALUES,
   WORKTREE_DEFAULTS,
-} from '../plugins/sdd/hooks/core/formats.ts'
+} from '../plugins/sdd/core/formats.ts'
 
 const root = join(import.meta.dirname, '..')
 const sdd = join(root, 'plugins/sdd')

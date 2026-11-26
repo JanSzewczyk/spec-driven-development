@@ -555,7 +555,7 @@ Diagnostic — run anytime to find where spec ↔ plan ↔ tasks ↔ code disagr
 | `sdd config get [<key>]` | A `capabilities.yml` value, set or default |
 | `sdd config set <key> <value>` | Changes one value, keeping comments; refused when `/sdd:doctor check` would flag it |
 
-A new command is one file in `plugins/sdd/cli/commands/` with its logic in `plugins/sdd/hooks/core/` ([cli/README.md](plugins/sdd/cli/README.md)).
+A new command is one file in `plugins/sdd/cli/commands/` with its logic in `plugins/sdd/core/` ([cli/README.md](plugins/sdd/cli/README.md)).
 
 ---
 
@@ -794,7 +794,7 @@ spec-driven-development/                    # or your own forked plugin path
 ├── actions/sdd-check/                     # GitHub Action: runs the doctor rules in another repository (action.yml, run.ts)
 ├── tests/fixtures/                        # sdd-ok / sdd-broken projects the action's CI job runs on
 ├── README.md / CLAUDE.md / CHANGELOG.md / LICENSE
-├── scripts/gen-schema.sh                  # writes hooks/core/capabilities.schema.ts from schemas/capabilities.schema.json
+├── scripts/gen-schema.sh                  # writes core/capabilities.schema.ts from schemas/capabilities.schema.json
 ├── scripts/check-capabilities.ts          # checks the schema, template and key table agree
 ├── scripts/release.sh                     # tags an untagged sdd version, creates missing sdd Releases (--dry-run, --notes)
 └── plugins/
@@ -803,7 +803,8 @@ spec-driven-development/                    # or your own forked plugin path
         ├── README.md                      # short plugin summary and the board guide
         ├── bin/sdd                        # SDD CLI wrapper (on the Bash PATH; Node 22.18+)
         ├── cli/                           # SDD CLI: main.ts, command.ts, context.ts, commands/<group>-<action>.ts
-        ├── hooks/                         # hooks.json + register.ts (doctor_check tool + board), board/ (panel), core/ (rules and parsers, also used by the CLI and the action)
+        ├── core/                          # rules and parsers (pure TS): used by the mod, the CLI, the tests and the sdd-check action
+        ├── hooks/                         # the mod: register.ts (composes doctor.ts and board/), io.ts (mods API as core's Io), board/ (panel)
         ├── schemas/                       # capabilities.schema.json, the source of the capabilities.yml keys
         ├── tests/                         # doctor check rules, the SDD CLI and the board, run with `claude plugin test`
         ├── references/                    # shared by the skills: feature-diff, capabilities, status-lifecycle, sibling-repos, formats
@@ -918,8 +919,8 @@ Why this framework looks the way it does:
 
 ## 📏 Conventions
 
-- **Behavior lives in Markdown prompts.** The body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes; to change what a skill or agent does, edit its prose. The only code is TypeScript: the mod (the `doctor_check` tool and the board), the SDD CLI, and the rules and parsers in `plugins/sdd/hooks/core/`, which all of them and the `sdd-check` action use.
-- **The schema is edited once.** Change `plugins/sdd/schemas/capabilities.schema.json`, then run `scripts/gen-schema.sh`: a mod loads only code files, so `hooks/core/capabilities.schema.ts` is generated from it (CI fails when it drifts).
+- **Behavior lives in Markdown prompts.** The body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes; to change what a skill or agent does, edit its prose. The only code is TypeScript: the mod (the `doctor_check` tool and the board), the SDD CLI, and the rules and parsers in `plugins/sdd/core/`, which all of them and the `sdd-check` action use.
+- **The schema is edited once.** Change `plugins/sdd/schemas/capabilities.schema.json`, then run `scripts/gen-schema.sh`: a mod loads only code files, so `core/capabilities.schema.ts` is generated from it (CI fails when it drifts).
 - **Skills** carry `name`, `description` (the skill runs only when the user asks for it, so Claude starts a phase on request, e.g. "run plan", never on its own), `argument-hint` and `allowed-tools`; `"*"` only where the skill hands work to flows the user picks (`/sdd:implement`, `/sdd:review`). Text two or more skills repeat lives in `plugins/sdd/references/`.
 - **Agents** are Markdown with `name`, `description`, `tools`, `model` and `color` frontmatter. `plugins/sdd/.claude-plugin/plugin.json` lists them in an explicit `agents` array: a new agent file must be added there or it never loads.
 - **Conventional Commits** for commit messages and branch names (`feat`, `fix`, `chore`, `refactor`, `docs`).
@@ -935,7 +936,7 @@ Contributions are welcome! The development setup, test commands and the map of w
 In short:
 
 1. Fork the repository and create a branch named with Conventional Commits (`git checkout -b feat/new-check`)
-2. Make changes inside the plugin (`plugins/sdd/skills/`, `plugins/sdd/agents/`, `plugins/sdd/references/`, `plugins/sdd/skills/doctor/templates/`) or the panel (`plugins/sdd/hooks/board/`); rules and parsers live in `plugins/sdd/hooks/core/`
+2. Make changes inside the plugin (`plugins/sdd/skills/`, `plugins/sdd/agents/`, `plugins/sdd/references/`, `plugins/sdd/skills/doctor/templates/`) or the panel (`plugins/sdd/hooks/board/`); rules and parsers live in `plugins/sdd/core/`
 3. Run `claude plugin test` in `plugins/sdd`, then exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
 4. Update the README's File Structure / reference sections and bump the version (`plugin.json`, the README badge) with a matching `CHANGELOG.md` section
 5. Open a Pull Request — the [Plugin Checks](.github/workflows/plugin-checks.yml) workflow fails it on manifest or docs drift, a changed plugin without a version bump, a plugin that does not load or install, a failed skill audit, a drifted `capabilities.schema.ts` or a failing plugin test

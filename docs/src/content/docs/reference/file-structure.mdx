@@ -45,7 +45,8 @@ SDD creates or edits only `specs/constitution.md`, `specs/template.md`, `specs/c
     - .claude-plugin/plugin.json
     - bin/sdd SDD CLI wrapper (on the Bash PATH)
     - cli/ SDD CLI: main.ts, command.ts, commands/&lt;group&gt;-&lt;action&gt;.ts
-    - hooks/ register.ts (doctor_check tool + board), board/ (side panel), core/ (rules and parsers)
+    - core/ rules and parsers, used by the mod, the CLI and the action
+    - hooks/ register.ts (doctor_check tool + board), board/ (side panel)
     - schemas/ capabilities.schema.json
     - tests/ doctor check rules, SDD CLI, board
     - references/ shared by the skills

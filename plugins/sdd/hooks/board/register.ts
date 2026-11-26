@@ -1,8 +1,11 @@
-import { effectiveConfig, loadCapabilities } from '../core/check.ts'
-import type { Config } from '../core/check.ts'
-import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../core/formats.ts'
-import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
-import { currentSlug, sortFeatures } from './model.ts'
+import { loadCapabilities } from '../../core/capabilities.ts'
+import { effectiveConfig } from '../../core/config.ts'
+import type { Config } from '../../core/config.ts'
+import { FEATURE_DOCS, featurePath, readFeatures } from '../../core/features.ts'
+import type { FeatureDoc } from '../../core/features.ts'
+import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../../core/formats.ts'
+import { ioOf } from '../io.ts'
+import { currentSlug, featureFrom, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
 
@@ -33,12 +36,6 @@ function startPolling($: any): void {
   $.clock.every(4000, async () => {
     if (await scan($)) $.ui.invalidate('ui.render')
   })
-}
-
-// null only when the file does not exist; a read that fails throws, so scan() keeps its last good state.
-async function readText($: any, path: string): Promise<string | null> {
-  if (!(await $.fs.exists(path))) return null
-  return String(await $.fs.read(path))
 }
 
 async function modifiedOf($: any, path: string): Promise<number> {
@@ -74,34 +71,19 @@ async function scan($: any): Promise<boolean> {
   const found: Feature[] = []
   let any: boolean
   let cfg: Config | null = null
+  const io = ioOf($, { strict: true })
   try {
-    any = !!(await $.fs.exists('specs'))
+    any = await io.exists('specs')
     if (any) {
-      const entries: any[] = await $.fs.list('specs')
-      for (const entry of entries) {
-        if (entry.kind !== 'directory' && entry.kind !== 'dir') continue
-        const base = 'specs/' + entry.name + '/'
-        const spec = await readText($, base + 'spec.md')
-        if (spec === null) continue
-        const plan = await readText($, base + 'plan.md')
-        const tasks = await readText($, base + 'tasks.md')
-        const review = await readText($, base + 'review.md')
+      for (const files of await readFeatures(io)) {
+        if (files.spec === null) continue // the board shows a feature once it has a spec
         let modified = 0
-        for (const f of ['spec.md', 'plan.md', 'tasks.md', 'review.md']) modified = Math.max(modified, await modifiedOf($, base + f))
-        found.push({
-          slug: entry.name,
-          spec: parseSpec(spec),
-          planStatus: plan === null ? null : parsePlan(plan).status || 'draft',
-          plan: plan === null ? null : parsePlan(plan),
-          tasks: tasks === null ? null : parseTasks(tasks),
-          epic: tasks === null ? '' : parseEpicId(tasks),
-          review: review === null ? null : parseReview(review),
-          modified,
-        })
+        for (const doc of FEATURE_DOCS) modified = Math.max(modified, await modifiedOf($, featurePath(files.slug, doc)))
+        found.push(featureFrom({ ...files, spec: files.spec }, modified))
       }
-      const yml = await readText($, CAPABILITIES_PATH)
-      const caps = loadCapabilities(yml, yml === null ? await readText($, LEGACY_CAPABILITIES_PATH) : null)
-      if (caps !== null) cfg = effectiveConfig(caps, await readText($, 'specs/constitution.md'))
+      const yml = await io.read(CAPABILITIES_PATH)
+      const caps = loadCapabilities(yml, yml === null ? await io.read(LEGACY_CAPABILITIES_PATH) : null)
+      if (caps !== null) cfg = effectiveConfig(caps, await io.read('specs/constitution.md'))
     }
   } catch {
     return false
@@ -217,7 +199,7 @@ export function registerBoard(on) {
     if (e.requestId === DOC_PANE) {
       const el = $.ui.resolve(e)
       const view = docView
-      const text = view ? await readText($, 'specs/' + view.slug + '/' + view.kind + '.md') : null
+      const text = view ? await ioOf($).read(featurePath(view.slug, view.kind as FeatureDoc)) : null
       return renderDoc(el, { slug: view ? view.slug : '', kind: view ? view.kind : '', text })
     }
     if (e.requestId === CONFIG_PANE) {
