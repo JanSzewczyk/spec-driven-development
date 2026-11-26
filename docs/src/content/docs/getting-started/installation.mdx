@@ -11,6 +11,7 @@ import { Tabs, TabItem, Steps, Aside, FileTree } from '@astrojs/starlight/compon
 |---|---|
 | [Claude Code](https://claude.com/claude-code) **2.1.287+** | First version with mods. `sdd` registers the `doctor_check` tool as a mod. |
 | **Git** | Every feature lives on its own branch. |
+| [Node.js](https://nodejs.org/) **22.18+** (recommended) | Runs the [SDD CLI](/spec-driven-development/reference/cli/) the skills use for task and config edits; without it they do those steps by hand. |
 | [GitHub CLI](https://cli.github.com/) (`gh`), authenticated | `/sdd:review` opens the PR with it when no `pr` action is configured. |
 
 <Aside type="caution">
@@ -58,7 +59,7 @@ Once per machine.
 
 </Steps>
 
-The 11 skills, 3 agents and the `doctor_check` tool are now available in **every** project. Nothing is copied per project.
+The 11 skills, 3 agents, the `doctor_check` tool and the `sdd` CLI are now available in **every** project. Nothing is copied per project.
 
 ## Install sdd-board (optional)
 

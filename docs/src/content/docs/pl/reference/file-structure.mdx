@@ -45,8 +45,10 @@ SDD tworzy lub edytuje tylko `specs/constitution.md`, `specs/template.md`, `spec
   - sdd-board/ panel boczny Desktop (mod), wymaga sdd
   - sdd/
     - .claude-plugin/plugin.json
+    - bin/sdd wrapper SDD CLI (na PATH w Bash)
+    - cli/ SDD CLI: main.ts, command.ts, commands/&lt;group&gt;-&lt;action&gt;.ts
     - hooks/ register.ts (narzędzie doctor_check), core/ (kopia shared)
-    - tests/ reguły doctor check
+    - tests/ reguły doctor check, SDD CLI
     - references/ współdzielone przez skille
     - skills/ 11 skilli, każdy /sdd:&lt;name&gt;
     - agents/

@@ -1,0 +1,40 @@
+---
+title: SDD CLI
+description: The sdd command the skills use to read and edit SDD files.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`sdd` reads and edits the SDD files of the repository it runs in, so the skills do not parse or hand-edit them. It ships in the `sdd` plugin (`bin/sdd`) and is on the Bash `PATH` while the plugin is enabled. It needs **Node.js 22.18+**.
+
+```bash
+sdd help
+sdd task next              # open tasks of the current branch's feature, in dependency order
+sdd task status T2 in-progress --branch feat/x--ULOG-T2
+sdd config set implementation.isolation.worktree.merge auto
+```
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `sdd task next [<id> \| all]` | The feature of the current branch, its epic and isolation mode, and the open tasks in dependency order with `ready`, `blockedBy` and the flow that implements each. Read-only. |
+| `sdd task show <id>` | One task's fields and its full id `<EPIC>-T<n>`. Read-only. |
+| `sdd task status <id> <status> [--branch <b>] [--pr <url>]` | Moves a task forward in `tasks.md`. The first `in-progress` also moves `spec.md` and `plan.md`; `review` removes `branch:` and `pr:`. |
+| `sdd config get [<key>]` | The value a key of `specs/capabilities.yml` has, set or default. Without a key: every key and the projects. |
+| `sdd config set <key> <value>` | Changes one value by dotted key, keeping comments and order. Refused when [`/sdd:doctor check`](/spec-driven-development/commands/doctor/) would flag the result. |
+
+## Output
+
+One JSON object on stdout. A command that writes adds `changed`, the files it wrote.
+
+| Exit | Meaning |
+|---|---|
+| `0` | done |
+| `1` | wrong usage (`sdd help`) |
+| `2` | refused by the files or a rule; `error` says what to do |
+| `127` | Node.js 22.18+ missing; the skill does the step by hand |
+
+<Aside type="tip">
+A new operation is one file in `plugins/sdd/cli/commands/` with its logic in `shared/sdd-core/`; `sdd help` lists it without other changes. See `plugins/sdd/cli/README.md`.
+</Aside>

@@ -5,7 +5,7 @@ description: Development setup and how to change the plugins.
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
-Behavior lives in **Markdown prompts**: the body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes. The only code is TypeScript: the mod that registers `doctor_check` and the rules and parsers in `shared/sdd-core/`.
+Behavior lives in **Markdown prompts**: the body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes. The only code is TypeScript: the mod that registers `doctor_check`, the [SDD CLI](/spec-driven-development/reference/cli/) (`plugins/sdd/cli/`) and the rules and parsers in `shared/sdd-core/`. A deterministic read or edit of SDD files belongs in an SDD CLI command, not in skill prose.
 
 <Steps>
 
