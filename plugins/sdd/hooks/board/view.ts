@@ -51,10 +51,10 @@ const LANE_ROLE: Record<Lane['kind'], Role> = { agent: 'pro', task: 'warning', p
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
 const SURFACE = 'userMessageBackground' // the surface Claude Code draws its own message bubbles on
 const ROW_HOVER = '#4a86d424' // the permission blue at low opacity, as the design lights a row under the pointer
-// Desktop rounds a Box's corners only through `borderStyle: 'round'`; a border in the colour of the
-// background (or none) keeps the tint's corners round without drawing a line.
+// Desktop rounds a Box's corners only through `borderStyle: 'round'`. The border stays clear: a tinted one
+// would lie over the tinted background and draw a darker ring.
 const CLEAR = '#00000000'
-const roundBg = (bg: string) => ({ borderStyle: 'round', borderColor: bg, backgroundColor: bg })
+const roundBg = (bg: string) => ({ borderStyle: 'round', borderColor: CLEAR, backgroundColor: bg })
 const PR_KEY: Record<PrState, string> = { OPEN: 'success', MERGED: 'merged', CLOSED: 'error' }
 const PR_WORD: Record<PrState, string> = { OPEN: 'open', MERGED: 'merged', CLOSED: 'closed without merging' }
 
@@ -238,7 +238,7 @@ function laneRow(el: any, ctx: Ctx, l: Lane) {
     : null
   return Box({
     key: 'lanebox-' + l.key, flexDirection: 'column', rowGap: isRich ? 1 : 0,
-    ...(l.taskId && isRich ? { borderStyle: 'round', borderColor: CLEAR, paddingX: 1, hover: { scope: 'task-' + l.taskId, backgroundColor: ROW_HOVER, borderColor: ROW_HOVER } } : {}),
+    ...(l.taskId && isRich ? { borderStyle: 'round', borderColor: CLEAR, paddingX: 1, hover: { scope: 'task-' + l.taskId, backgroundColor: ROW_HOVER } } : {}),
     children: [
       Box({ flexDirection: 'row', columnGap: 1, alignItems: 'center', children: [Box({ flexGrow: 1, flexDirection: 'row', children: [row] }), Text({ size: 'caption', tabular: true, color: l.state === 'waiting' ? 'permission' : l.state === 'failed' ? 'error' : undefined, dimColor: l.state !== 'waiting' && l.state !== 'failed', children: [status] })] }),
       bar,
@@ -387,8 +387,8 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
         : Text({ size: 'caption', color: meta.color, dimColor: !meta.color, wrap: 'truncate-end', children: [meta.text] })
     return Box({
       key: 'taskbox-' + t.id, flexDirection: 'column', rowGap: isOpen && isRich ? 'sm' : 0, paddingX: isRich ? 1 : 0,
-      // An open row is drawn as the design draws it, without the tint; a closed one lights under the pointer.
-      ...(isRich ? { paddingY: 'xs', borderStyle: 'round', borderColor: CLEAR, ...(isOpen ? {} : { hover: { scope: 'task-' + t.id, backgroundColor: ROW_HOVER, borderColor: ROW_HOVER } }) } : {}),
+      // An open row keeps the tint a row gets under the pointer, facts included.
+      ...(isRich ? { paddingY: 'xs', ...(isOpen ? roundBg(ROW_HOVER) : { borderStyle: 'round', borderColor: CLEAR }), hover: { scope: 'task-' + t.id, backgroundColor: ROW_HOVER } } : {}),
       children: [
         Box({
           flexDirection: 'row', columnGap: 1, alignItems: 'center',
