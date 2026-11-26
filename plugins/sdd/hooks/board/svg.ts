@@ -174,8 +174,10 @@ export function prIconSvg(state: 'OPEN' | 'MERGED' | 'CLOSED' | null): string {
 
 // The bars (phase, progress, lanes) are rows of Boxes, so the layout gives them the pane's width; a
 // drawing only gives a Box its height, or stripes the Box clips at its edge.
-export function spacerSvg(height: number): string {
-  return svgDoc(1, height, '')
+// A bar's rounded end in `color`: half of a pill as wide as half the bar is high.
+export function capSvg(side: 'left' | 'right', height: number, color: string): { width: number; source: string } {
+  const r = height / 2
+  return { width: r, source: svgDoc(r, height, '<rect x="' + (side === 'left' ? 0 : -r) + '" y="0" width="' + height + '" height="' + height + '" rx="' + r + '" fill="' + color + '"/>') }
 }
 
 // Wider than any pane: the Box holding it cuts it at its own edge.

@@ -7,7 +7,7 @@ import { prNumber } from '../../core/merges.ts'
 import type { PrState, TaskPr } from '../../core/merges.ts'
 import { WINDOW_MS } from './live.ts'
 import type { Lane, Live } from './live.ts'
-import { branchSvg, checkSvg, dividerSvg, dotSvg, FILL, liveDotSvg, MID_TRACK, miniPhaseSvg, pillSvg, pipsSvg, prIconSvg, spacerSvg, STRIPES_WIDTH, stripesSvg, taskGlyphSvg, taskGraphSvg } from './svg.ts'
+import { branchSvg, capSvg, checkSvg, dividerSvg, dotSvg, FILL, liveDotSvg, MID_TRACK, miniPhaseSvg, pillSvg, pipsSvg, prIconSvg, STRIPES_WIDTH, stripesSvg, taskGlyphSvg, taskGraphSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
 export type Tab = 'current' | 'all' | 'ticket'
@@ -65,23 +65,29 @@ const PR_WORD: Record<PrState, string> = { OPEN: 'open', MERGED: 'merged', CLOSE
 
 // A bar on Desktop and VS Code: a row of Boxes, so the layout gives it the pane's whole width (a drawing
 // has to name its size in pixels, and the pane reports only columns). A part grows by its weight and is
-// filled with its colour; stripes run through it when given; the row's tint is the track. The empty
-// drawing first in the row gives it its height.
+// filled with its colour (the track when it has none); stripes run through it when given. Two half-pill
+// drawings round the ends and give the row its height: a Box border would add a row above and below.
 type BarPart = { grow: number; color?: string; stripes?: string; isMoving?: boolean; alt?: string }
-function flexBar(el: any, key: string, alt: string, height: number, parts: BarPart[], track: string | null = MID_TRACK) {
+function flexBar(el: any, key: string, alt: string, height: number, parts: BarPart[], track: string = MID_TRACK) {
   const { Box, Svg } = el
+  const shown = parts.filter((p) => p.grow > 0)
   // Weights scaled to 1000: CSS hands out only part of the free space when the grows add up to less than 1.
-  const total = parts.reduce((a, p) => a + Math.max(0, p.grow), 0) || 1
+  const total = shown.reduce((a, p) => a + p.grow, 0) || 1
+  const cap = (side: 'left' | 'right', p: BarPart | undefined) => {
+    const c = capSvg(side, height, p?.color ?? track)
+    return Svg({ alt: side === 'left' ? alt : 'bar end', width: c.width, height, source: c.source })
+  }
   return Box({
-    key, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', minWidth: 0, ...(track ? roundBg(track) : {}),
+    key, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', minWidth: 0,
     children: [
-      Svg({ alt, width: 1, height, source: spacerSvg(height) }),
-      ...parts.filter((p) => p.grow > 0).map((p, i) =>
+      cap('left', shown[0]),
+      ...shown.map((p, i) =>
         Box({
-          key: key + '-' + i, flexGrow: (p.grow / total) * 1000, flexShrink: 1, width: 0, minWidth: 0, overflow: 'hidden', ...(p.color ? { backgroundColor: p.color } : {}),
+          key: key + '-' + i, flexGrow: (p.grow / total) * 1000, flexShrink: 1, width: 0, minWidth: 0, overflow: 'hidden', backgroundColor: p.color ?? track,
           children: p.stripes ? [Svg({ alt: p.alt ?? 'stripes', width: STRIPES_WIDTH, height, source: p.stripes, ...(p.isMoving ? { isInteractive: true } : {}) })] : [],
         }),
       ),
+      cap('right', shown[shown.length - 1]),
     ],
   })
 }
@@ -311,7 +317,7 @@ function phaseBar(el: any, ctx: Ctx, f: Feature) {
   const { Text } = el
   const d = derive(f, runningCommand(ctx))
   if (rich(ctx.surface)) {
-    const { Box, Svg } = el
+    const { Box } = el
     const n = d.steps.length
     return Box({
       key: 'phase-bar', flexDirection: 'row', columnGap: 'xs',
@@ -322,10 +328,7 @@ function phaseBar(el: any, ctx: Ctx, f: Feature) {
         return Box({
           key: 'phase-' + s.key, flexDirection: 'column', rowGap: 'xs', flexGrow: isCurrent ? 2.2 : 1, flexShrink: 1, width: 0, minWidth: 0,
           children: [
-            Box({
-              overflow: 'hidden', ...roundBg(color),
-              children: [isMoving ? Svg({ alt: s.label + ' running', width: STRIPES_WIDTH, height: 8, source: stripesSvg(8, null), isInteractive: true }) : Svg({ alt: s.label + ' ' + s.state, width: 1, height: 8, source: spacerSvg(8) })],
-            }),
+            flexBar(el, 'phase-' + s.key + '-bar', s.label + ' ' + (isMoving ? 'running' : s.state), 8, [isMoving ? { grow: 1, color, stripes: stripesSvg(8, null), isMoving: true, alt: s.label + ' running' } : { grow: 1, color }]),
             Box({
               flexDirection: 'row', justifyContent: i === 0 ? 'flex-start' : i === n - 1 ? 'flex-end' : 'center',
               children: [Text({ size: 'caption', weight: isCurrent ? 'semibold' : undefined, dimColor: s.state === 'todo', wrap: 'truncate-end', children: [s.label] })],
