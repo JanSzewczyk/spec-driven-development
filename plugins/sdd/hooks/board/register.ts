@@ -5,12 +5,12 @@ import { FEATURE_DOCS, featurePath, readFeatures } from '../../core/features.ts'
 import type { FeatureDoc } from '../../core/features.ts'
 import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../../core/formats.ts'
 import type { Io } from '../../core/io.ts'
-import { mergeState, prList, taskBranchBase, taskPrs, worktreeOf } from '../../core/merges.ts'
+import { hasTaskTrailer, mergeState, prList, taskBranchBase, taskPrs, worktreeOf } from '../../core/merges.ts'
 import type { MergeState, PrInfo, PrState } from '../../core/merges.ts'
 import { ioOf } from '../io.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, prune, toolDetail } from './live.ts'
 import type { Commit, Live } from './live.ts'
-import { currentSlug, freshness, sessionOf, sortFeatures, featureFrom } from './model.ts'
+import { currentSlug, freshness, implFlow, sessionOf, sortFeatures, featureFrom } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
 import type { Tab } from './view.ts'
@@ -145,7 +145,7 @@ async function prListOf(io: Io, base: string, isForced: boolean, at: number): Pr
 }
 
 // Isolated tasks that reached the SDD branch before Reconcile recorded them: `pr:` tasks from GitHub,
-// `branch:` tasks (merge: auto) from git, run in the checkout specs/ is read from.
+// `branch:` tasks from git (the branch landed on the SDD branch), run in the checkout specs/ is read from.
 async function mergesOf(io: Io, f: Feature, prs: Map<number, PrInfo> | null): Promise<Record<string, MergeState> | undefined> {
   const base = f.spec.branch
   const open = (f.tasks ?? []).filter((t) => t.status !== 'review' && t.status !== 'done' && (t.pr || t.branch))
@@ -153,12 +153,16 @@ async function mergesOf(io: Io, f: Feature, prs: Map<number, PrInfo> | null): Pr
   const states: Map<number, PrState> | null = prs === null ? null : new Map([...prs].map(([n, p]) => [n, p.state]))
   const out: Record<string, MergeState> = {}
   for (const t of open) {
-    let isAncestor: boolean | null = null
+    let landed: boolean | null = null
     if (!t.pr) {
       const r = await io.run(['git', 'merge-base', '--is-ancestor', t.branch, base])
-      isAncestor = r === null ? null : r.exitCode === 0 ? true : r.exitCode === 1 ? false : null
+      landed = r === null ? null : r.exitCode === 0 ? true : r.exitCode === 1 ? false : null
+      if (landed === true) {
+        const tip = await io.run(['git', 'log', '-1', '--format=%B', t.branch])
+        landed = tip === null || tip.exitCode !== 0 ? null : hasTaskTrailer(String(tip.stdout), f.epic ? f.epic + '-' + t.id : t.id)
+      }
     }
-    const m = mergeState(t, states, isAncestor)
+    const m = mergeState(t, states, landed)
     if (m !== null) out[t.id] = m
   }
   return Object.keys(out).length ? out : undefined
@@ -246,6 +250,12 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
     const merges = await mergesOf(io, f, prs)
     if (merges) f.merges = merges
     if (withPr) f.prs = taskPrs(f.tasks ?? [], prs)
+    if (f.tasks !== null) {
+      const r = await io.run(['git', 'log', '-1', '--format=%H', '--', 'specs/' + f.slug + '/tasks.md'])
+      if (r && r.exitCode === 0) f.tasksCommitted = String(r.stdout).trim() !== ''
+      const flow = implFlow(cfg)
+      if (flow) f.flow = flow
+    }
   }
   const last = await commitsOf(io, found.find((f) => f.slug === currentSlug(found, next, pinned)) ?? null)
   const sig = JSON.stringify([any, next, root, found, cfg, last])

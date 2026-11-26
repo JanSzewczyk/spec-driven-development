@@ -74,15 +74,23 @@ export function taskPrs(tasks: Task[], list: Map<number, PrInfo> | null): Record
   return out
 }
 
-// The Reconcile rules: a task with `pr:` follows its PR; one with only `branch:` is merged once the
-// branch is an ancestor of the SDD branch. null: not isolated, already recorded, or not known yet.
-export function mergeState(task: Task, states: Map<number, PrState> | null, isAncestor: boolean | null): MergeState | null {
+// Whether a commit message carries the trailer `Task: <id>` that every task commit has; `T1` never matches `T10`.
+export function hasTaskTrailer(message: string, id: string): boolean {
+  const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp('^Task:[ \\t]*' + esc + '[ \\t]*$', 'mi').test(message)
+}
+
+// The Reconcile rules: a task with `pr:` follows its PR; one with only `branch:` is merged once it has
+// landed: the branch is an ancestor of the SDD branch and its tip is a task commit (`Task:` trailer). A
+// fresh branch, or one cut from main, is an ancestor too, but has no task commit yet.
+// null: not isolated, already recorded, or not known yet.
+export function mergeState(task: Task, states: Map<number, PrState> | null, landed: boolean | null): MergeState | null {
   if (task.status === 'review' || task.status === 'done') return null
   if (task.pr) {
     const n = prNumber(task.pr)
     const state = n === null || states === null ? undefined : states.get(n)
     return state === 'MERGED' ? 'merged' : state === 'CLOSED' ? 'closed' : state === 'OPEN' ? 'open' : null
   }
-  if (task.branch) return isAncestor === true ? 'merged' : null
+  if (task.branch) return landed === true ? 'merged' : null
   return null
 }

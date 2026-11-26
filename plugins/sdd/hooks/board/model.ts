@@ -1,4 +1,5 @@
 // Pure model: turns parsed artifacts into a pipeline phase and a suggested next command.
+import type { Config } from '../../core/config.ts'
 import type { FeatureFiles } from '../../core/features.ts'
 import { taskBranchBase, taskOfBranch } from '../../core/merges.ts'
 import type { MergeState, TaskPr } from '../../core/merges.ts'
@@ -16,6 +17,18 @@ export type Feature = {
   modified: number
   merges?: Record<string, MergeState> // isolated tasks whose merge state is known (git, gh), by task id
   prs?: Record<string, TaskPr> // tasks with `pr:`, with the PR's state and link once GitHub answered, by task id
+  tasksCommitted?: boolean // git has a commit of specs/<slug>/tasks.md (/sdd:tasks commits it); absent while unknown
+  flow?: string // how tasks are implemented, from capabilities.yml (implFlow); absent while unknown
+}
+
+// One line on how /sdd:implement runs tasks: the implementer, then the isolation and its options.
+export function implFlow(cfg: Config | null): string | undefined {
+  const entries = cfg?.sections.find((s) => s.title === 'Implementation')?.entries
+  if (!entries) return undefined
+  const get = (k: string) => entries.find((e) => e.key === k && (k === 'merge' || k === 'parallel' ? e.parent === 'isolation' : !e.parent))?.value
+  const who = get('default') ?? 'in-session'
+  if (get('isolation') !== 'worktree') return who + ' · in this session'
+  return who + ' · worktree · merge ' + (get('merge') ?? 'pr') + ' · parallel ' + (get('parallel') ?? '1')
 }
 
 // A feature's files, parsed for the board. Call only with a spec (the board lists a feature once it has one).
@@ -208,6 +221,11 @@ export function gate(f: Feature): Gate | null {
     checks.push({ key: 'plan-questions', label: 'Plan questions resolved', ok: !!f.plan && f.plan.openItems === 0, hint: f.plan && f.plan.openItems ? plural(f.plan.openItems, 'item', 'items') + ' left' : undefined })
   } else if (verb === '/sdd:implement') {
     const tasks = f.tasks ?? []
+    const approved = ['tasks-ready', 'in-progress', 'done'].includes(f.planStatus ?? '')
+    checks.push({ key: 'plan-approved', label: 'Plan approved', ok: approved, hint: approved ? undefined : 'plan is ' + (f.planStatus ?? 'missing') })
+    if (f.tasksCommitted !== undefined) checks.push({ key: 'tasks-committed', label: 'tasks.md committed', ok: f.tasksCommitted, hint: f.tasksCommitted ? undefined : 'run /sdd:tasks to commit it' })
+    checks.push({ key: 'epic', label: 'Epic set', ok: !!f.epic, hint: f.epic || 'no **Epic:** in tasks.md' })
+    if (f.flow) checks.push({ key: 'flow', label: 'Implementation', ok: true, hint: f.flow })
     const arg = command.split(' ')[1]
     if (arg === undefined || arg === 'all') {
       const prs = tasks.filter((t) => !implemented(t, f.merges) && t.pr)

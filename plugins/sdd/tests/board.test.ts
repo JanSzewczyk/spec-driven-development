@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
-import { blockedBy, clock, currentSlug, derive, freshness, gate, sessionOf, taskLook, taskWaves, warnings } from '../hooks/board/model.ts'
-import { mergeState, prList, prNumber, prStates, taskBranchBase, taskOfBranch, taskPrs, worktreeOf } from '../core/merges.ts'
+import { blockedBy, clock, currentSlug, derive, freshness, gate, implFlow, sessionOf, taskLook, taskWaves, warnings } from '../hooks/board/model.ts'
+import { hasTaskTrailer, mergeState, prList, prNumber, prStates, taskBranchBase, taskOfBranch, taskPrs, worktreeOf } from '../core/merges.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, toolDetail } from '../hooks/board/live.ts'
 import { stripesSvg } from '../hooks/board/svg.ts'
 import type { Feature } from '../hooks/board/model.ts'
@@ -237,6 +237,21 @@ test('the implement gate checks acceptance criteria and dependencies', () => {
   expect(g.checks.find((c) => c.key === 'ac')?.ok).toBe(true)
   tasks[0].dependsOn = ['T2']
   expect(gate(feature({ planStatus: 'tasks-ready', tasks }))!.checks.find((c) => c.key === 'deps')?.ok).toBe(false)
+})
+
+test('the implement gate checks the plan, the committed tasks.md, the epic and names the flow', () => {
+  const tasks = parseTasks(DEPS)
+  tasks[0].status = 'draft'
+  const keys = (f: Feature) => gate(f)!.checks.map((c) => c.key + ':' + c.ok)
+  expect(keys(feature({ planStatus: 'tasks-ready', tasks, epic: 'NDUF', tasksCommitted: true, flow: 'in-session · worktree · merge pr · parallel 3' }))).toEqual(
+    expect.arrayContaining(['plan-approved:true', 'tasks-committed:true', 'epic:true', 'flow:true']),
+  )
+  expect(keys(feature({ planStatus: 'draft', tasks, epic: '', tasksCommitted: false }))).toEqual(expect.arrayContaining(['plan-approved:false', 'tasks-committed:false', 'epic:false']))
+  expect(keys(feature({ planStatus: 'tasks-ready', tasks, epic: 'NDUF' })).some((k) => k.startsWith('tasks-committed') || k.startsWith('flow'))).toBe(false)
+  const cfg = (iso: string) => ({ sections: [{ title: 'Implementation', entries: [{ key: 'default', value: 'skill:x' }, { key: 'isolation', value: iso }, { key: 'merge', value: 'auto', parent: 'isolation' }, { key: 'parallel', value: '2', parent: 'isolation' }] }] }) as any
+  expect(implFlow(cfg('worktree'))).toBe('skill:x · worktree · merge auto · parallel 2')
+  expect(implFlow(cfg('none'))).toBe('skill:x · in this session')
+  expect(implFlow(null)).toBeUndefined()
 })
 
 test('currentSlug prefers pin, then branch, then newest', () => {
@@ -930,10 +945,18 @@ test('gh failing leaves the PR state unknown and backs off', async ($, on) => {
   expect(asked()).toBe(2)
 })
 
+const BRANCHED = TASKS.replace('# Tasks: User Login\n', '# Tasks: User Login\n**Epic:** ULOG\n').replace('status: in-progress\n', 'status: in-progress\nbranch: feat/user-login--ULOG-T2\n')
+const landedRun = (tip: string) => (argv: string[]) =>
+  argv.join(' ') === 'git merge-base --is-ancestor feat/user-login--ULOG-T2 feat/user-login'
+    ? { exitCode: 0, stdout: '' }
+    : argv.join(' ') === 'git log -1 --format=%B feat/user-login--ULOG-T2'
+      ? { exitCode: 0, stdout: tip }
+      : undefined
+
 test('a task branch fast-forwarded into the spec branch (merge: auto) shows as merged', async ($, on) => {
   const stub = stubProject($, on, true, {
-    files: { 'specs/user-login/tasks.md': TASKS.replace('status: in-progress\n', 'status: in-progress\nbranch: feat/user-login--ULOG-T2\n') },
-    run: (argv) => (argv.join(' ') === 'git merge-base --is-ancestor feat/user-login--ULOG-T2 feat/user-login' ? { exitCode: 0, stdout: '' } : undefined),
+    files: { 'specs/user-login/tasks.md': BRANCHED },
+    run: landedRun('feat(api): add the login form\n\nTask: ULOG-T2\n'),
   })
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
@@ -941,6 +964,21 @@ test('a task branch fast-forwarded into the spec branch (merge: auto) shows as m
   await ui.press({ key: 'fill-next' })
   await ui.unmount()
   expect(stub).toEqual(['/sdd:implement T3'])
+})
+
+test('a fresh task branch, or one cut from main, is an ancestor too but not merged until it has a task commit', async ($, on) => {
+  stubProject($, on, true, { files: { 'specs/user-login/tasks.md': BRANCHED }, run: landedRun('docs(user-login): add tasks\n\nEpic: ULOG\n') })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'merged' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Merged, not recorded/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('hasTaskTrailer matches the whole task id only', () => {
+  expect(hasTaskTrailer('feat: x\n\nTask: NDUF-T1\n', 'NDUF-T1')).toBe(true)
+  expect(hasTaskTrailer('feat: x\n\nTask: NDUF-T10\n', 'NDUF-T1')).toBe(false)
+  expect(hasTaskTrailer('docs: tasks\n\nEpic: NDUF\n', 'NDUF-T1')).toBe(false)
 })
 
 test('a sub-agent writing under specs/ refreshes the board', async ($, on) => {
