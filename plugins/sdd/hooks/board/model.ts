@@ -320,3 +320,29 @@ export function clock(ms: number): string {
   if (m < 60) return m + 'm'
   return Math.floor(m / 60) + 'h ' + (m % 60) + 'm'
 }
+
+// The order tasks can run in: wave n holds the tasks whose dependencies all sit in earlier waves, so the
+// tasks of one wave can run side by side. A dependency on a missing task is ignored; a cycle is cut where
+// it closes (doctor reports it), so the board never loops on one.
+export function taskWaves(tasks: Task[]): Task[][] {
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  const level = new Map<string, number>()
+  const visiting = new Set<string>()
+  const levelOf = (t: Task): number => {
+    const known = level.get(t.id)
+    if (known !== undefined) return known
+    if (visiting.has(t.id)) return -1
+    visiting.add(t.id)
+    let l = 0
+    for (const id of t.dependsOn) {
+      const d = byId.get(id)
+      if (d) l = Math.max(l, levelOf(d) + 1)
+    }
+    visiting.delete(t.id)
+    level.set(t.id, l)
+    return l
+  }
+  const waves: Task[][] = []
+  for (const t of tasks) (waves[levelOf(t)] ??= []).push(t)
+  return waves.filter(Boolean)
+}

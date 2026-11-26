@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
-import { blockedBy, clock, currentSlug, derive, freshness, gate, sessionOf, taskLook, warnings } from '../hooks/board/model.ts'
+import { blockedBy, clock, currentSlug, derive, freshness, gate, sessionOf, taskLook, taskWaves, warnings } from '../hooks/board/model.ts'
 import { mergeState, prList, prNumber, prStates, taskBranchBase, taskOfBranch, taskPrs, worktreeOf } from '../core/merges.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, toolDetail } from '../hooks/board/live.ts'
 import type { Feature } from '../hooks/board/model.ts'
@@ -308,6 +308,36 @@ test('the current tab shows the spec, its next step, and fills the prompt', asyn
     await ui.unmount()
   }
   expect(filled).toEqual(['/sdd:implement T2', '/sdd:implement T2'])
+})
+
+test('the next step runs its command in the session', async ($, on) => {
+  const stub = stubProject($, on, true)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'run-next' })
+  await stub.clock.settle()
+  expect(stub.ran).toEqual(['sdd:implement T2'])
+  expect(stub).toEqual([])
+  await ui.unmount()
+})
+
+test('taskWaves groups tasks that can run side by side and survives a cycle', () => {
+  const t = (id: string, deps: string[]) => ({ id, title: id, status: 'draft', project: 'x', dependsOn: deps, acceptance: [], branch: '', pr: '' })
+  const ids = (w: { id: string }[][]) => w.map((x) => x.map((y) => y.id))
+  expect(ids(taskWaves([t('T1', []), t('T2', ['T1']), t('T3', []), t('T4', ['T2', 'T3']), t('T5', ['T4']), t('T6', ['T5'])]))).toEqual([['T1', 'T3'], ['T2'], ['T4'], ['T5'], ['T6']])
+  expect(ids(taskWaves([t('T1', ['T2']), t('T2', ['T1']), t('T3', ['T9'])]))).toEqual([['T2', 'T3'], ['T1']])
+})
+
+test('the tasks section draws the task flow once a task waits on another', async ($, on) => {
+  stubProject($, on, true)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: '1  T1' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '3  T3' })).toBeDefined()
+  await ui.unmount()
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ key: 'task-flow' })).toBeDefined()
+  await ui.unmount()
 })
 
 test('the all tab lists every spec and can pin one', async ($, on) => {

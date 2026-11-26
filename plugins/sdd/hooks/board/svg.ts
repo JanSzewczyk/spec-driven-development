@@ -23,11 +23,11 @@ const CDS = {
 }
 
 // --fill-<role>: the solid hue controls are drawn with, the same in both themes.
-const FILL: Record<Role, string> = { success: '#009300', pro: '#7161e0', accent: '#2a78d6', warning: '#fab219', danger: '#d03b3b', neutral: '#898781' }
+export const FILL: Record<Role, string> = { success: '#009300', pro: '#7161e0', accent: '#2a78d6', warning: '#fab219', danger: '#d03b3b', neutral: '#898781' }
 const ON_FILL = '#0b0b0b' // --on-success / --on-warning
 // Fallbacks for an unstyled drawing: mid tones that read on both themes.
 const MID = '#8b8d98'
-const MID_TRACK = '#8b8d9840'
+export const MID_TRACK = '#8b8d9840'
 // Motion lives only inside drawings; a reader who asked for less motion gets none.
 const NO_MOTION = '@media (prefers-reduced-motion: reduce){*{animation:none!important}}'
 
@@ -44,28 +44,6 @@ function svgDoc(width: number, height: number, body: string): string {
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// Segmented progress bar: done, review, in-progress over a neutral track.
-export function progressSvg(c: Record<string, number>, width: number): string {
-  const total = Math.max(c.total, 1)
-  const parts: [Role, number][] = [
-    ['success', c.done],
-    ['accent', c.review],
-    ['warning', c['in-progress']],
-  ]
-  let x = 0
-  let body = themed([['.track', 'fill', CDS.borderStrong]])
-  body += '<rect class="track" x="0" y="0" width="' + width + '" height="8" rx="4" fill="' + MID_TRACK + '"/>'
-  body += '<clipPath id="r"><rect x="0" y="0" width="' + width + '" height="8" rx="4"/></clipPath><g clip-path="url(#r)">'
-  for (const [role, v] of parts) {
-    if (!v) continue
-    const w = (v / total) * width
-    body += '<rect x="' + x + '" y="0" width="' + w + '" height="8" fill="' + FILL[role] + '"/>'
-    x += w
-  }
-  body += '</g>'
-  return svgDoc(width, 8, body)
 }
 
 // Flat tinted pill (bg-<role> fill, text-<role> label), as Claude Code tints a role. Used for statuses,
@@ -128,43 +106,6 @@ export function dotSvg(isSet: boolean): string {
   return svgDoc(8, 8, body)
 }
 
-// Phase bar: one segment per pipeline step, the current one wider with stripes moving through it (red
-// and still when the last review was not ready); the step names under the segments.
-export function phaseBarSvg(steps: Step[], width: number, isAlert = false): string {
-  const gap = 4
-  const h = 10
-  const n = steps.length
-  const weights = steps.map((s) => (s.state === 'current' ? 2.2 : 1))
-  const unit = (width - gap * (n - 1)) / weights.reduce((a, b) => a + b, 0)
-  let body = themed([
-    ['.todo', 'fill', CDS.borderStrong],
-    ['.l', 'fill', CDS.muted],
-    ['.l-done', 'fill', CDS.secondary],
-    ['.l-current', 'fill', CDS.primary],
-  ])
-  body += '<defs><pattern id="st" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="10" fill="#fff" fill-opacity="0.28"/></pattern></defs>'
-  body += '<style>@keyframes mv{to{transform:translateX(14.14px)}}.mv{animation:mv 1.1s linear infinite}' + NO_MOTION + '</style>'
-  let x = 0
-  steps.forEach((s, i) => {
-    const w = unit * weights[i]
-    const fill = s.state === 'done' ? FILL.success : s.state === 'current' ? (isAlert ? FILL.danger : FILL.warning) : null
-    body += fill
-      ? '<rect x="' + x + '" y="0" width="' + w + '" height="' + h + '" rx="3" fill="' + fill + '"/>'
-      : '<rect class="todo" x="' + x + '" y="0" width="' + w + '" height="' + h + '" rx="3" fill="' + MID_TRACK + '"/>'
-    if (s.state === 'current' && !isAlert) {
-      body += '<clipPath id="c' + i + '"><rect x="' + x + '" y="0" width="' + w + '" height="' + h + '" rx="3"/></clipPath>'
-      body += '<g clip-path="url(#c' + i + ')"><rect class="mv" x="' + (x - 20) + '" y="0" width="' + (w + 40) + '" height="' + h + '" fill="url(#st)"/></g>'
-    }
-    // The end labels sit 4px in, so a drawing a few pixels wider than its slot keeps them whole.
-    const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'
-    const tx = i === 0 ? x + 1 : i === n - 1 ? x + w - 4 : x + w / 2
-    const weight = s.state === 'current' ? '600' : '400'
-    body += '<text class="l l-' + s.state + '" x="' + tx + '" y="27" text-anchor="' + anchor + '" font-size="11" font-weight="' + weight + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + esc(s.label) + '</text>'
-    x += w + gap
-  })
-  return svgDoc(width, 32, body)
-}
-
 // Five small bars, one per pipeline step, for the specs list.
 export function miniPhaseSvg(steps: Step[]): { source: string; width: number; height: number } {
   const width = steps.length * 13 - 2
@@ -189,37 +130,6 @@ export function liveDotSvg(role: Role, isLive: boolean, size = 12): string {
     '<style>@keyframes p{0%{r:' + (c - 3) + 'px;opacity:.7}100%{r:' + c + 'px;opacity:0}}.p{animation:p 1.6s ease-out infinite}' + NO_MOTION + '</style>' +
       '<circle class="p" cx="' + c + '" cy="' + c + '" r="' + (c - 3) + '" fill="' + f + '"/><circle cx="' + c + '" cy="' + c + '" r="' + (c - 2.5) + '" fill="' + f + '"/>',
   )
-}
-
-// One lane on the live strip's time axis: from its start (clamped to the window) to its end or now.
-// A waiting lane is hatched, a finished one faded, a failed one red.
-export function laneBarSvg(lane: { since: number; endedAt?: number; state: 'working' | 'waiting' | 'done' | 'failed' }, role: Role, now: number, windowMs: number, width: number): string {
-  const at = (t: number) => Math.max(0, Math.min(width, width * (1 - (now - t) / windowMs)))
-  const x0 = at(lane.since)
-  const x1 = Math.max(x0 + 3, at(lane.endedAt ?? now))
-  let body = themed([['.track', 'stroke', CDS.border]]) + '<line class="track" x1="0" y1="3" x2="' + width + '" y2="3" stroke="' + MID_TRACK + '" stroke-width="1" stroke-dasharray="2 3"/>'
-  if (lane.state === 'waiting') {
-    body += '<defs><pattern id="h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="' + FILL[role] + '"/></pattern></defs>'
-    body += '<rect x="' + x0 + '" y="0" width="' + (x1 - x0) + '" height="6" rx="3" fill="url(#h)" fill-opacity="0.7"/>'
-  } else {
-    const fill = lane.state === 'failed' ? FILL.danger : FILL[role]
-    body += '<rect x="' + x0 + '" y="0" width="' + (x1 - x0) + '" height="6" rx="3" fill="' + fill + '" fill-opacity="' + (lane.state === 'working' ? 1 : 0.45) + '"/>'
-  }
-  return svgDoc(width, 6, body)
-}
-
-// The live strip's time axis: four ticks from the window's start to now.
-export function axisSvg(windowMs: number, width: number): string {
-  const min = windowMs / 60_000
-  let body = themed([['text', 'fill', CDS.muted], ['line', 'stroke', CDS.borderStrong]])
-  const ticks: [number, string][] = [[1, '−' + min + 'm'], [2 / 3, '−' + Math.round((min * 2) / 3) + 'm'], [1 / 3, '−' + Math.round(min / 3) + 'm'], [0, 'now']]
-  ticks.forEach(([f, label], i) => {
-    const x = width * (1 - f)
-    const anchor = i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'
-    body += '<line x1="' + x + '" y1="0" x2="' + x + '" y2="3" stroke="' + MID + '"/>'
-    body += '<text x="' + x + '" y="13" font-size="10" text-anchor="' + anchor + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + label + '</text>'
-  })
-  return svgDoc(width, 15, body)
 }
 
 // Task status glyph: done (tick), review (dot), in progress (an arc, turning while its lane runs),
@@ -260,4 +170,102 @@ export function prIconSvg(state: 'OPEN' | 'MERGED' | 'CLOSED' | null): string {
         ? dot(4, 3.5) + dot(4, 12.5) + dot(12, 12.5) + '<path d="M4 5.4v5.2M12 7.5v3.1M10.2 2.2l3.6 3.6M13.8 2.2l-3.6 3.6"' + s + '/>'
         : dot(4, 3.5) + dot(4, 12.5) + dot(12, 12.5) + '<path d="M4 5.4v5.2M12 10.6V6.5c0-1.7-1-2.9-2.9-2.9H7.4M8.9 1.9L7.2 3.6l1.7 1.7"' + s + '/>'
   return svgDoc(16, 16, body)
+}
+
+// The bars (phase, progress, lanes) are rows of Boxes, so the layout gives them the pane's width; a
+// drawing only gives a Box its height, or stripes the Box clips at its edge.
+export function spacerSvg(height: number): string {
+  return svgDoc(1, height, '')
+}
+
+// Wider than any pane: the Box holding it cuts it at its own edge.
+export const STRIPES_WIDTH = 1600
+
+// Stripes over a bar segment: white ones sliding through the running phase (color null), or a still
+// hatch in `color` for a waiting lane.
+export function stripesSvg(height: number, color: string | null): string {
+  const isMoving = color === null
+  let body = '<defs><pattern id="st" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="10" fill="' + (color ?? '#fff') + '" fill-opacity="' + (isMoving ? 0.28 : 0.7) + '"/></pattern></defs>'
+  if (isMoving) body += '<style>@keyframes mv{to{transform:translateX(14.14px)}}.mv{animation:mv 1.1s linear infinite}' + NO_MOTION + '</style>'
+  body += '<rect' + (isMoving ? ' class="mv"' : '') + ' x="-20" y="0" width="' + (STRIPES_WIDTH + 40) + '" height="' + height + '" fill="url(#st)"/>'
+  return svgDoc(STRIPES_WIDTH, height, body)
+}
+
+export type GraphNode = { id: string; title: string; look: TaskLook; isLive: boolean; deps: string[] }
+
+const NODE_ROLE: Record<TaskLook, Role | 'blocked'> = { done: 'success', merged: 'success', review: 'accent', 'in-progress': 'warning', closed: 'danger', draft: 'neutral', blocked: 'blocked' }
+const IMPLEMENTED: TaskLook[] = ['done', 'merged', 'review']
+
+// The tasks as a dependency graph: one row per wave (tasks that can run side by side), top to bottom,
+// a line from each dependency down to the task waiting on it. Hovering a node names the task.
+export function taskGraphSvg(waves: GraphNode[][]): { source: string; width: number; height: number } {
+  const LABEL = 20
+  const W = 50
+  const H = 22
+  const GAP = 12
+  const ROW = 42
+  const most = Math.max(...waves.map((w) => w.length))
+  const span = most * W + (most - 1) * GAP
+  const width = LABEL + span + 2
+  const height = (waves.length - 1) * ROW + H + 2
+  const at = new Map<string, { x: number; y: number; row: number; look: TaskLook }>()
+  waves.forEach((wave, i) => {
+    const row = wave.length * W + (wave.length - 1) * GAP
+    wave.forEach((n, j) => at.set(n.id, { x: LABEL + (span - row) / 2 + j * (W + GAP) + 1, y: i * ROW + 1, row: i, look: n.look }))
+  })
+  // Where a line may cross a row it skips: the gaps beside and between that row's nodes.
+  const gaps = waves.map((wave) => {
+    const xs = wave.map((n) => at.get(n.id)!.x)
+    return [xs[0] - GAP / 2, ...xs.map((x) => x + W + GAP / 2)]
+  })
+  const roles: Role[] = ['success', 'accent', 'warning', 'danger', 'neutral']
+  let body = themed([
+    ...roles.flatMap((r): [string, string, Pair][] => [['.r-' + r + ' rect', 'fill', CDS.bg[r]], ['.r-' + r + ' text', 'fill', CDS.text[r]]]),
+    ['.r-blocked rect', 'stroke', CDS.muted],
+    ['.r-blocked text', 'fill', CDS.muted],
+    ['.e', 'stroke', CDS.muted],
+    ['.d', 'fill', CDS.muted],
+    ['.w', 'fill', CDS.muted],
+  ])
+  body += '<style>@keyframes pl{50%{stroke-opacity:0.25}}.live rect{animation:pl 1.4s ease-in-out infinite}' + NO_MOTION + '</style>'
+  const curve = (x1: number, y1: number, x2: number, y2: number) => ' C' + x1 + ' ' + (y1 + y2) / 2 + ' ' + x2 + ' ' + (y1 + y2) / 2 + ' ' + x2 + ' ' + y2
+  for (const wave of waves) {
+    for (const n of wave) {
+      const to = at.get(n.id)!
+      for (const id of n.deps) {
+        const from = at.get(id)
+        if (!from || from.row >= to.row) continue
+        const x2 = to.x + W / 2
+        const y2 = to.y - 1
+        let x = from.x + W / 2
+        let y = from.y + H
+        let d = 'M' + x + ' ' + y
+        for (let k = from.row + 1; k < to.row; k++) {
+          const want = x + ((x2 - x) * 1) / (to.row - k + 1)
+          const gx = gaps[k].reduce((best, g) => (Math.abs(g - want) < Math.abs(best - want) ? g : best))
+          const top = k * ROW + 1
+          d += curve(x, y, gx, top) + ' L' + gx + ' ' + (top + H)
+          x = gx
+          y = top + H
+        }
+        d += curve(x, y, x2, y2)
+        const isMet = IMPLEMENTED.includes(from.look)
+        body += '<path class="' + (isMet ? '' : 'e') + '" d="' + d + '" fill="none" stroke="' + (isMet ? FILL.success : MID) + '" stroke-opacity="' + (isMet ? 0.55 : 1) + '" stroke-width="1.2"/>'
+        body += '<circle class="' + (isMet ? '' : 'd') + '" cx="' + x2 + '" cy="' + y2 + '" r="1.8" fill="' + (isMet ? FILL.success : MID) + '"/>'
+      }
+    }
+  }
+  waves.forEach((wave, i) => {
+    body += '<text class="w" x="2" y="' + (i * ROW + 1 + H / 2 + 4) + '" font-size="10" fill="' + MID + '" font-family="system-ui,sans-serif">' + (i + 1) + '</text>'
+    for (const n of wave) {
+      const p = at.get(n.id)!
+      const role = NODE_ROLE[n.look]
+      const stroke = role === 'blocked' ? MID : FILL[role]
+      const dash = role === 'blocked' ? ' stroke-dasharray="3 2"' : ''
+      body += '<g class="r-' + role + (n.isLive ? ' live' : '') + '"><title>' + esc(n.id + ' · ' + n.title + ' · ' + n.look) + '</title>'
+      body += '<rect x="' + p.x + '" y="' + p.y + '" width="' + W + '" height="' + H + '" rx="6" fill="' + (role === 'blocked' ? 'none' : MID_TRACK) + '" stroke="' + stroke + '" stroke-opacity="' + (role === 'neutral' ? 0.5 : 0.8) + '"' + dash + '/>'
+      body += '<text x="' + (p.x + W / 2) + '" y="' + (p.y + H / 2 + 4) + '" text-anchor="middle" font-size="11" font-weight="600" fill="' + MID + '" font-family="ui-monospace,monospace">' + esc(n.id) + '</text></g>'
+    }
+  })
+  return { source: svgDoc(width, height, body), width, height }
 }

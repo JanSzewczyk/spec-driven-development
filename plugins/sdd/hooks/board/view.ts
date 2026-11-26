@@ -1,5 +1,5 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
-import { ROLE_KEY, STATUS_ROLE, STEP_LABELS, ago, blockedBy, clock, derive, gate, implemented, taskCounts, taskLook, warnings } from './model.ts'
+import { ROLE_KEY, STATUS_ROLE, STEP_LABELS, ago, blockedBy, clock, derive, gate, implemented, taskCounts, taskLook, taskWaves, warnings } from './model.ts'
 import type { Feature, Session, TaskLook } from './model.ts'
 import type { Config } from '../../core/config.ts'
 import type { Task } from '../../core/parse.ts'
@@ -7,7 +7,7 @@ import { prNumber } from '../../core/merges.ts'
 import type { PrState, TaskPr } from '../../core/merges.ts'
 import { WINDOW_MS } from './live.ts'
 import type { Lane, Live } from './live.ts'
-import { axisSvg, branchSvg, checkSvg, dividerSvg, dotSvg, laneBarSvg, liveDotSvg, miniPhaseSvg, phaseBarSvg, pillSvg, pipsSvg, prIconSvg, progressSvg, taskGlyphSvg } from './svg.ts'
+import { branchSvg, checkSvg, dividerSvg, dotSvg, FILL, liveDotSvg, MID_TRACK, miniPhaseSvg, pillSvg, pipsSvg, prIconSvg, spacerSvg, STRIPES_WIDTH, stripesSvg, taskGlyphSvg, taskGraphSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
 export type Tab = 'current' | 'all' | 'ticket'
@@ -63,15 +63,27 @@ const roundBg = (bg: string) => ({ borderStyle: 'round', borderColor: CLEAR, bac
 const PR_KEY: Record<PrState, string> = { OPEN: 'success', MERGED: 'merged', CLOSED: 'error' }
 const PR_WORD: Record<PrState, string> = { OPEN: 'open', MERGED: 'merged', CLOSED: 'closed without merging' }
 
-// Svg sizes are CSS pixels, the pane reports columns. Estimate the content width from the columns and
-// draw at that size inside a clipping box. A drawing without a width gets a much taller box than its
-// markup on Desktop, so every drawing names its width and height. Tune PX_PER_COLUMN if drawings come
-// out visibly short of (or cut off at) the cards' edges.
-const PX_PER_COLUMN = 8.8
-const fullWidth = (ctx: { cols: number }, inset = 0) => Math.max(200, Math.min(900, Math.round((ctx.cols - 2) * PX_PER_COLUMN) - inset))
-// isInteractive: Desktop draws the markup in a sandboxed frame, where its CSS animation runs.
-function fit(el: any, alt: string, source: string, width: number, height: number, key?: string, isInteractive?: boolean) {
-  return wide(el, el.Svg({ key, alt, source, width, height, ...(isInteractive ? { isInteractive: true } : {}) }))
+// A bar on Desktop and VS Code: a row of Boxes, so the layout gives it the pane's whole width (a drawing
+// has to name its size in pixels, and the pane reports only columns). A part grows by its weight and is
+// filled with its colour; stripes run through it when given; the row's tint is the track. The empty
+// drawing first in the row gives it its height.
+type BarPart = { grow: number; color?: string; stripes?: string; isMoving?: boolean; alt?: string }
+function flexBar(el: any, key: string, alt: string, height: number, parts: BarPart[], track: string | null = MID_TRACK) {
+  const { Box, Svg } = el
+  // Weights scaled to 1000: CSS hands out only part of the free space when the grows add up to less than 1.
+  const total = parts.reduce((a, p) => a + Math.max(0, p.grow), 0) || 1
+  return Box({
+    key, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', minWidth: 0, ...(track ? roundBg(track) : {}),
+    children: [
+      Svg({ alt, width: 1, height, source: spacerSvg(height) }),
+      ...parts.filter((p) => p.grow > 0).map((p, i) =>
+        Box({
+          key: key + '-' + i, flexGrow: (p.grow / total) * 1000, flexShrink: 1, width: 0, minWidth: 0, overflow: 'hidden', ...(p.color ? { backgroundColor: p.color } : {}),
+          children: p.stripes ? [Svg({ alt: p.alt ?? 'stripes', width: STRIPES_WIDTH, height, source: p.stripes, ...(p.isMoving ? { isInteractive: true } : {}) })] : [],
+        }),
+      ),
+    ],
+  })
 }
 function wide(el: any, child: any) {
   return el.Box({ overflow: 'hidden', flexDirection: 'column', children: [child] })
@@ -191,13 +203,33 @@ function liveStrip(el: any, ctx: Ctx) {
   const laneBox = lanes.length
     ? Box({
         flexDirection: 'column', rowGap: 1,
-        children: [isRich && timed ? fit(el, 'time axis, last ' + WINDOW_MS / 60_000 + ' minutes', axisSvg(WINDOW_MS, fullWidth(ctx, 28)), fullWidth(ctx, 28), 15, 'axis') : null, ...lanes.map((l) => laneRow(el, ctx, l))].filter(Boolean),
+        children: [isRich && timed ? axisRow(el) : null, ...lanes.map((l) => laneRow(el, ctx, l))].filter(Boolean),
       })
     : null
   return Box({
     key: 'live', borderStyle: 'round', borderColor: turn ? 'warning' : undefined, padding: 'md', flexDirection: 'column', rowGap: isRich ? 2 : 1,
     children: [Box({ flexDirection: 'column', rowGap: 1, children: [head, tool].filter(Boolean) }), laneBox].filter(Boolean),
   })
+}
+
+// The live strip's time axis over the lane bars: the window's start, two ticks, now.
+function axisRow(el: any) {
+  const { Box, Text } = el
+  const min = WINDOW_MS / 60_000
+  const labels = ['−' + min + 'm', '−' + Math.round((min * 2) / 3) + 'm', '−' + Math.round(min / 3) + 'm', 'now']
+  return Box({ key: 'axis', flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 3, children: labels.map((t) => Text({ size: 'caption', dimColor: true, tabular: true, children: [t] })) })
+}
+
+// One lane on the time axis: from its start (clamped to the window) to its end or now. A waiting lane is
+// hatched, a finished one faded, a failed one red.
+function laneBar(el: any, l: Lane, role: Role, now: number) {
+  const at = (t: number) => Math.max(0, Math.min(1, 1 - (now - t) / WINDOW_MS))
+  const x0 = at(l.since ?? now)
+  const x1 = Math.min(1, Math.max(x0 + 0.006, at(l.endedAt ?? now)))
+  const lane: BarPart = l.state === 'waiting'
+    ? { grow: x1 - x0, stripes: stripesSvg(6, FILL[role]), alt: 'waiting' }
+    : { grow: x1 - x0, color: l.state === 'failed' ? FILL.danger : FILL[role] + (l.state === 'working' ? '' : '73') }
+  return flexBar(el, l.key + '-bar', l.label + ' on the time axis', 6, [{ grow: x0 }, lane, { grow: 1 - x1 }], '#8b8d9822')
 }
 
 function laneRow(el: any, ctx: Ctx, l: Lane) {
@@ -226,7 +258,7 @@ function laneRow(el: any, ctx: Ctx, l: Lane) {
     ],
   })
   const bar = isRich && l.since !== undefined
-    ? Box({ paddingLeft: 3, children: [fit(el, l.label + ' on the time axis', laneBarSvg({ since: l.since, endedAt: l.endedAt, state: l.state }, role, ctx.now, WINDOW_MS, fullWidth(ctx, 52)), fullWidth(ctx, 52), 6)] })
+    ? Box({ paddingLeft: 3, children: [laneBar(el, l, role, ctx.now)] })
     : null
   const details = isOpen
     ? Box({
@@ -278,7 +310,31 @@ function specHeader(el: any, ctx: Ctx, f: Feature) {
 function phaseBar(el: any, ctx: Ctx, f: Feature) {
   const { Text } = el
   const d = derive(f, runningCommand(ctx))
-  if (rich(ctx.surface)) return fit(el, 'Phase: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), phaseBarSvg(d.steps, fullWidth(ctx), !d.isRunning), fullWidth(ctx), 32, 'phase-bar', true)
+  if (rich(ctx.surface)) {
+    const { Box, Svg } = el
+    const n = d.steps.length
+    return Box({
+      key: 'phase-bar', flexDirection: 'row', columnGap: 'xs',
+      children: d.steps.map((s, i) => {
+        const isCurrent = s.state === 'current'
+        const isMoving = isCurrent && d.isRunning
+        const color = s.state === 'done' ? FILL.success : isCurrent ? (d.isRunning ? FILL.warning : FILL.danger) : MID_TRACK
+        return Box({
+          key: 'phase-' + s.key, flexDirection: 'column', rowGap: 'xs', flexGrow: isCurrent ? 2.2 : 1, flexShrink: 1, width: 0, minWidth: 0,
+          children: [
+            Box({
+              overflow: 'hidden', ...roundBg(color),
+              children: [isMoving ? Svg({ alt: s.label + ' running', width: STRIPES_WIDTH, height: 8, source: stripesSvg(8, null), isInteractive: true }) : Svg({ alt: s.label + ' ' + s.state, width: 1, height: 8, source: spacerSvg(8) })],
+            }),
+            Box({
+              flexDirection: 'row', justifyContent: i === 0 ? 'flex-start' : i === n - 1 ? 'flex-end' : 'center',
+              children: [Text({ size: 'caption', weight: isCurrent ? 'semibold' : undefined, dimColor: s.state === 'todo', wrap: 'truncate-end', children: [s.label] })],
+            }),
+          ],
+        })
+      }),
+    })
+  }
   const i = d.steps.findIndex((s) => s.state === 'current')
   const bar = d.steps.map((s) => (s.state === 'done' ? '██' : s.state === 'current' ? '▓▓▓▓' : '░░')).join(' ')
   const next = STEP_LABELS.find(([key]) => key === d.phase)?.[1]
@@ -317,7 +373,7 @@ function phaseCard(el: any, ctx: Ctx, f: Feature) {
     const todo = c.total - c.done - c.review - c['in-progress']
     kids.push(
       isRich
-        ? fit(el, c.done + ' done, ' + c.review + ' in review, ' + c['in-progress'] + ' in progress of ' + c.total, progressSvg(c, fullWidth(ctx, 30)), fullWidth(ctx, 30), 8, 'progress')
+        ? flexBar(el, 'progress', c.done + ' done, ' + c.review + ' in review, ' + c['in-progress'] + ' in progress of ' + c.total, 8, [{ grow: c.done, color: FILL.success }, { grow: c.review, color: FILL.accent }, { grow: c['in-progress'], color: FILL.warning }, { grow: c.total - c.done - c.review - c['in-progress'] }])
         : Text({ key: 'progress', color: 'success', children: ['█'.repeat(Math.round(((c.done + c.review) / c.total) * 24)) + '░'.repeat(24 - Math.round(((c.done + c.review) / c.total) * 24))] }),
     )
     kids.push(Text({ size: 'caption', dimColor: true, children: [c.done + ' done · ' + c.review + ' in review · ' + c['in-progress'] + ' in progress · ' + todo + ' to do'] }))
@@ -365,7 +421,16 @@ function nextBlock(el: any, ctx: Ctx, f: Feature) {
         children: [Text({ mono: true, weight: 'semibold', color: isRunning ? 'warning' : 'success', wrap: 'truncate-end', children: [cmd] }), Text({ size: 'caption', dimColor: true, children: [status] })],
       }),
       Text({ size: 'footnote', dimColor: true, wrap: 'wrap', children: [isBlocked && !isRunning ? 'Finish the open checks first. ' + d.next.why : d.next.why] }),
-      isRunning ? null : Button({ key: 'fill-next', label: 'Put in prompt', hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.fill(cmd) }),
+      // Run sends the command as if typed (queued until the session is idle); Put in prompt leaves it to edit.
+      isRunning
+        ? null
+        : Box({
+            flexDirection: 'row', columnGap: 1, alignItems: 'center',
+            children: [
+              Button({ key: 'run-next', label: 'Run ' + verb, hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.run(verb.replace(/^\//, ''), cmd.slice(verb.length).trim()) }),
+              Button({ key: 'fill-next', label: 'Put in prompt', plain: true, onPress: () => ctx.actions.fill(cmd) }),
+            ],
+          }),
     ].filter(Boolean),
   })
 }
@@ -441,8 +506,27 @@ function taskRows(el: any, ctx: Ctx, f: Feature) {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: 1,
         children: [Text({ weight: 'semibold', children: ['Tasks' + (f.epic ? ' · ' + f.epic : '')] }), Box({ flexDirection: 'row', columnGap: 2, children: [fb('all', 'All ' + tasks.length), fb('open', 'Open ' + open.length), fb('blocked', 'Blocked ' + blocked.length)] })],
       }),
+      taskFlow(el, ctx, f, running),
       Box({ flexDirection: 'column', rowGap: isRich ? 'xs' : 0, children: rows.length ? rows : [Text({ dimColor: true, children: ['Nothing matches this filter.'] })] }),
-    ],
+    ].filter(Boolean),
+  })
+}
+
+// The order the tasks run in, from their depends_on: one row per wave of tasks that can run side by side.
+// Shown once some task waits on another; a graph on Desktop and VS Code, a line per wave in the terminal.
+function taskFlow(el: any, ctx: Ctx, f: Feature, running: Set<string | undefined>) {
+  const { Box, Text, Svg } = el
+  const tasks = f.tasks ?? []
+  if (tasks.length < 2 || !tasks.some((t) => t.dependsOn.length)) return null
+  const waves = taskWaves(tasks)
+  if (rich(ctx.surface)) {
+    const g = taskGraphSvg(waves.map((w) => w.map((t) => ({ id: t.id, title: t.title, look: taskLook(t, tasks, f.merges), isLive: running.has(t.id), deps: t.dependsOn }))))
+    const alt = 'Task flow: ' + waves.map((w, i) => 'wave ' + (i + 1) + ' ' + w.map((t) => t.id).join(' and ')).join(', then ')
+    return Box({ key: 'task-flow', flexDirection: 'column', overflow: 'hidden', paddingY: 'xs', children: [Svg({ alt, width: g.width, height: g.height, source: g.source, isInteractive: true })] })
+  }
+  return Box({
+    key: 'task-flow', flexDirection: 'column',
+    children: waves.map((w, i) => Text({ key: 'wave-' + i, size: 'footnote', dimColor: true, wrap: 'truncate-end', children: [(i + 1) + '  ' + w.map((t) => t.id).join(' ∥ ')] })),
   })
 }
 
