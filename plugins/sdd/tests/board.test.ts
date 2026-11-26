@@ -321,6 +321,17 @@ test('the next step runs its command in the session', async ($, on) => {
   await ui.unmount()
 })
 
+test('the implement step runs every open task in turn from one button', async ($, on) => {
+  const stub = stubProject($, on, true)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ key: 'run-all' })).toBeDefined()
+  await ui.press({ key: 'run-all' })
+  await stub.clock.settle()
+  expect(stub.ran).toEqual(['sdd:implement '])
+  await ui.unmount()
+})
+
 test('taskWaves groups tasks that can run side by side and survives a cycle', () => {
   const t = (id: string, deps: string[]) => ({ id, title: id, status: 'draft', project: 'x', dependsOn: deps, acceptance: [], branch: '', pr: '' })
   const ids = (w: { id: string }[][]) => w.map((x) => x.map((y) => y.id))

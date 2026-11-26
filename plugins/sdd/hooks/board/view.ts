@@ -431,6 +431,9 @@ function nextBlock(el: any, ctx: Ctx, f: Feature) {
   const isRunning = runningCommand(ctx) === verb
   const isBlocked = open > 0
   const status = isRunning ? 'running now' : 'model: ' + d.next.model
+  // /sdd:implement with no argument takes every open task in turn (skills/implement, step 6).
+  const left = (f.tasks ?? []).filter((t) => !implemented(t, f.merges)).length
+  const canRunAll = verb === '/sdd:implement' && cmd !== verb && left > 1
   return Box({
     key: 'next', marginTop: 1, padding: 'sm', flexDirection: 'column', rowGap: 1,
     ...(rich(ctx.surface) ? roundBg(SURFACE) : { borderStyle: 'round', borderColor: isBlocked ? 'warning' : 'success' }),
@@ -447,8 +450,9 @@ function nextBlock(el: any, ctx: Ctx, f: Feature) {
             flexDirection: 'row', columnGap: 1, alignItems: 'center',
             children: [
               Button({ key: 'run-next', label: 'Run ' + verb, hotkey: 'n', variant: 'primary', onPress: () => ctx.actions.run(verb.replace(/^\//, ''), cmd.slice(verb.length).trim()) }),
+              canRunAll ? Button({ key: 'run-all', label: 'Implement all ' + left, hotkey: 'a', onPress: () => ctx.actions.run('sdd:implement', '') }) : null,
               Button({ key: 'fill-next', label: 'Put in prompt', plain: true, onPress: () => ctx.actions.fill(cmd) }),
-            ],
+            ].filter(Boolean),
           }),
     ].filter(Boolean),
   })
