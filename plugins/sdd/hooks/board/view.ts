@@ -49,15 +49,15 @@ const LANE_ROLE: Record<Lane['kind'], Role> = { agent: 'pro', task: 'warning', p
 const rich = (surface: string) => surface === 'desktop' || surface === 'vscode'
 const SURFACE = 'userMessageBackground' // the surface Claude Code draws its own message bubbles on
 
-// Svg sizes are CSS pixels, the pane reports columns. A full-width drawing is made slightly wider than
-// the content and drawn without a width, so the surface scales it down to the slot: its ends (the
-// "now" of the time axis, the last step's name) always stay in view. Tune PX_PER_COLUMN if a drawing
-// comes out visibly short of the cards' edges.
+// Svg sizes are CSS pixels, the pane reports columns. Estimate the content width from the columns and
+// draw at that size inside a clipping box. A drawing without a width gets a much taller box than its
+// markup on Desktop, so every drawing names its width and height. Tune PX_PER_COLUMN if drawings come
+// out visibly short of (or cut off at) the cards' edges.
 const PX_PER_COLUMN = 8
 const fullWidth = (ctx: { cols: number }, inset = 0) => Math.max(200, Math.min(900, Math.round((ctx.cols - 2) * PX_PER_COLUMN) - inset))
 // isInteractive: Desktop draws the markup in a sandboxed frame, where its CSS animation runs.
-function fit(el: any, alt: string, source: string, key?: string, isInteractive?: boolean) {
-  return el.Svg({ key, alt, source, ...(isInteractive ? { isInteractive: true } : {}) })
+function fit(el: any, alt: string, source: string, width: number, height: number, key?: string, isInteractive?: boolean) {
+  return wide(el, el.Svg({ key, alt, source, width, height, ...(isInteractive ? { isInteractive: true } : {}) }))
 }
 function wide(el: any, child: any) {
   return el.Box({ overflow: 'hidden', flexDirection: 'column', children: [child] })
@@ -170,7 +170,7 @@ function liveStrip(el: any, ctx: Ctx) {
   const laneBox = lanes.length
     ? Box({
         flexDirection: 'column', rowGap: 1,
-        children: [isRich && timed ? fit(el, 'time axis, last ' + WINDOW_MS / 60_000 + ' minutes', axisSvg(WINDOW_MS, fullWidth(ctx, 28)), 'axis') : null, ...lanes.map((l) => laneRow(el, ctx, l))].filter(Boolean),
+        children: [isRich && timed ? fit(el, 'time axis, last ' + WINDOW_MS / 60_000 + ' minutes', axisSvg(WINDOW_MS, fullWidth(ctx, 28)), fullWidth(ctx, 28), 15, 'axis') : null, ...lanes.map((l) => laneRow(el, ctx, l))].filter(Boolean),
       })
     : null
   return Box({
@@ -205,7 +205,7 @@ function laneRow(el: any, ctx: Ctx, l: Lane) {
     ],
   })
   const bar = isRich && l.since !== undefined
-    ? Box({ paddingLeft: 3, children: [fit(el, l.label + ' on the time axis', laneBarSvg({ since: l.since, endedAt: l.endedAt, state: l.state }, role, ctx.now, WINDOW_MS, fullWidth(ctx, 52)))] })
+    ? Box({ paddingLeft: 3, children: [fit(el, l.label + ' on the time axis', laneBarSvg({ since: l.since, endedAt: l.endedAt, state: l.state }, role, ctx.now, WINDOW_MS, fullWidth(ctx, 52)), fullWidth(ctx, 52), 6)] })
     : null
   const details = isOpen
     ? Box({
@@ -257,7 +257,7 @@ function specHeader(el: any, ctx: Ctx, f: Feature) {
 function phaseBar(el: any, ctx: Ctx, f: Feature) {
   const { Text } = el
   const d = derive(f)
-  if (rich(ctx.surface)) return fit(el, 'Phase: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), phaseBarSvg(d.steps, fullWidth(ctx), f.review === 'NOT READY' && d.phase === 'review'), 'phase-bar', true)
+  if (rich(ctx.surface)) return fit(el, 'Phase: ' + d.steps.map((s) => s.label + ' ' + s.state).join(', '), phaseBarSvg(d.steps, fullWidth(ctx), f.review === 'NOT READY' && d.phase === 'review'), fullWidth(ctx), 32, 'phase-bar', true)
   const i = d.steps.findIndex((s) => s.state === 'current')
   const bar = d.steps.map((s) => (s.state === 'done' ? '██' : s.state === 'current' ? '▓▓▓▓' : '░░')).join(' ')
   return Text({ key: 'phase-bar', wrap: 'wrap', children: [bar + '  ' + (i >= 0 ? i + 1 + '/' + d.steps.length + ' ' + d.steps[i].label : 'Done')] })
@@ -290,7 +290,7 @@ function phaseCard(el: any, ctx: Ctx, f: Feature) {
     const todo = c.total - c.done - c.review - c['in-progress']
     kids.push(
       isRich
-        ? fit(el, c.done + ' done, ' + c.review + ' in review, ' + c['in-progress'] + ' in progress of ' + c.total, progressSvg(c, fullWidth(ctx, 30)), 'progress')
+        ? fit(el, c.done + ' done, ' + c.review + ' in review, ' + c['in-progress'] + ' in progress of ' + c.total, progressSvg(c, fullWidth(ctx, 30)), fullWidth(ctx, 30), 8, 'progress')
         : Text({ key: 'progress', color: 'success', children: ['█'.repeat(Math.round(((c.done + c.review) / c.total) * 24)) + '░'.repeat(24 - Math.round(((c.done + c.review) / c.total) * 24))] }),
     )
     kids.push(Text({ size: 'caption', dimColor: true, children: [c.done + ' done · ' + c.review + ' in review · ' + c['in-progress'] + ' in progress · ' + todo + ' to do'] }))
@@ -482,7 +482,7 @@ export function renderCurrent(el: any, ctx: Ctx) {
   if (d.phase !== 'done' && f.review) kids.push(Text({ key: 'verdict', color: f.review === 'READY' ? 'success' : 'error', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
   for (const w of warnings(f, ctx.branch)) kids.push(Text({ key: 'warn-' + w, color: 'error', wrap: 'wrap', children: ['⚠ ' + w] }))
   kids.push(docLinks(el, ctx, f))
-  return Box({ flexDirection: 'column', rowGap: isRich ? 3 : 1, children: kids })
+  return Box({ flexDirection: 'column', rowGap: isRich ? 2 : 1, children: kids })
 }
 
 // First view of a task session (T8): the task this branch implements.
@@ -495,7 +495,7 @@ export function renderTicket(el: any, ctx: Ctx) {
   const isRich = rich(ctx.surface)
   const criteria = new Map((f.spec.criteria ?? []).map((c) => [c.id, c.text]))
   return Box({
-    flexDirection: 'column', rowGap: isRich ? 3 : 1,
+    flexDirection: 'column', rowGap: isRich ? 2 : 1,
     children: [
       liveStrip(el, ctx),
       Box({
@@ -590,7 +590,7 @@ export function renderPane(el: any, ctx: Ctx) {
   const tab = ctx.tab === 'ticket' && ctx.session?.kind !== 'task' ? 'current' : ctx.tab
   const view = tab === 'ticket' ? renderTicket(el, ctx) : tab === 'all' ? renderAll(el, ctx) : renderCurrent(el, ctx)
   return Box({
-    flexDirection: 'column', rowGap: rich(ctx.surface) ? 2 : 1, padding: 'sm',
+    flexDirection: 'column', rowGap: 1, padding: 'sm',
     children: [sessionStrip(el, ctx), tabBar(el, ctx), view, footer(el, ctx)].filter(Boolean),
   })
 }
