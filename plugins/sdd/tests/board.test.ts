@@ -3,6 +3,7 @@ import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../c
 import { blockedBy, clock, currentSlug, derive, freshness, gate, sessionOf, taskLook, taskWaves, warnings } from '../hooks/board/model.ts'
 import { mergeState, prList, prNumber, prStates, taskBranchBase, taskOfBranch, taskPrs, worktreeOf } from '../core/merges.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, toolDetail } from '../hooks/board/live.ts'
+import { stripesSvg } from '../hooks/board/svg.ts'
 import type { Feature } from '../hooks/board/model.ts'
 
 const SPEC = `# Feature: User Login
@@ -57,6 +58,11 @@ const files: Record<string, string> = {
 function feature(over: Partial<Feature>): Feature {
   return { slug: 'x', spec: parseSpec(SPEC), planStatus: null, plan: null, tasks: null, review: null, modified: 0, ...over }
 }
+
+test('bar stripes keep their height when the surface fits the drawing into a narrow slot', () => {
+  expect(stripesSvg(8, null)).toContain('preserveAspectRatio="xMinYMid slice"')
+  expect(stripesSvg(8, null)).toContain('animation:mv')
+})
 
 test('parseSpec reads header, criteria and open questions', () => {
   const s = parseSpec(SPEC)

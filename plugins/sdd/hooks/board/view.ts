@@ -392,7 +392,7 @@ function phaseCard(el: any, ctx: Ctx, f: Feature) {
     const todo = c.total - c.done - c.review - c['in-progress']
     kids.push(
       isRich
-        ? flexBar(el, 'progress', c.done + ' done, ' + c.review + ' in review, ' + c['in-progress'] + ' in progress of ' + c.total, 8, [{ grow: c.done, color: FILL.success }, { grow: c.review, color: FILL.accent }, { grow: c['in-progress'], color: FILL.warning }, { grow: c.total - c.done - c.review - c['in-progress'] }])
+        ? flexBar(el, 'progress', c.done + ' done, ' + c.review + ' in review, ' + c['in-progress'] + ' in progress of ' + c.total, 8, [{ grow: c.done, color: FILL.success }, { grow: c.review, color: FILL.accent }, { grow: c['in-progress'], color: FILL.warning, stripes: stripesSvg(8, null), isMoving: true, alt: c['in-progress'] + ' in progress' }, { grow: c.total - c.done - c.review - c['in-progress'] }])
         : Text({ key: 'progress', color: 'success', children: ['█'.repeat(Math.round(((c.done + c.review) / c.total) * 24)) + '░'.repeat(24 - Math.round(((c.done + c.review) / c.total) * 24))] }),
     )
     kids.push(Text({ size: 'caption', dimColor: true, children: [c.done + ' done · ' + c.review + ' in review · ' + c['in-progress'] + ' in progress · ' + todo + ' to do'] }))

@@ -38,8 +38,8 @@ function themed(rules: [string, string, Pair][]): string {
   return '<style>' + light + '@media (prefers-color-scheme: dark){' + dark + '}</style>'
 }
 
-function svgDoc(width: number, height: number, body: string): string {
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' + body + '</svg>'
+function svgDoc(width: number, height: number, body: string, attrs = ''): string {
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '"' + attrs + '>' + body + '</svg>'
 }
 
 function esc(s: string): string {
@@ -183,14 +183,15 @@ export function capSvg(side: 'left' | 'right', height: number, color: string): {
 // Wider than any pane: the Box holding it cuts it at its own edge.
 export const STRIPES_WIDTH = 1600
 
-// Stripes over a bar segment: white ones sliding through the running phase (color null), or a still
-// hatch in `color` for a waiting lane.
+// Stripes over a bar segment: white ones sliding through running work (color null), or a still hatch
+// in `color` for a waiting lane. The surface fits a drawing into its slot: `slice` keeps the stripes at
+// full height and cuts their right end, where `meet` would shrink 1600x8 to a hairline.
 export function stripesSvg(height: number, color: string | null): string {
   const isMoving = color === null
   let body = '<defs><pattern id="st" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="10" fill="' + (color ?? '#fff') + '" fill-opacity="' + (isMoving ? 0.28 : 0.7) + '"/></pattern></defs>'
   if (isMoving) body += '<style>@keyframes mv{to{transform:translateX(14.14px)}}.mv{animation:mv 1.1s linear infinite}' + NO_MOTION + '</style>'
   body += '<rect' + (isMoving ? ' class="mv"' : '') + ' x="-20" y="0" width="' + (STRIPES_WIDTH + 40) + '" height="' + height + '" fill="url(#st)"/>'
-  return svgDoc(STRIPES_WIDTH, height, body)
+  return svgDoc(STRIPES_WIDTH, height, body, ' preserveAspectRatio="xMinYMid slice"')
 }
 
 export type GraphNode = { id: string; title: string; look: TaskLook; isLive: boolean; deps: string[] }
