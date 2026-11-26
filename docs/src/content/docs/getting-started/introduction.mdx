@@ -32,8 +32,7 @@ Vibe coding (loose prompt, AI guesses, iterate by trial and error) works for dem
 |---|---|---|
 | **11 skills** | Slash commands, started only by you | `doctor`, `constitution`, `spec`, `clarify`, `plan`, `tasks`, `implement`, `review`, `retro`, `analyze`, `capabilities` |
 | **3 agents** | Sub-agents, invoked by commands | [`spec-verifier`](/spec-driven-development/agents/overview/#spec-verifier), [`reviewer`](/spec-driven-development/agents/overview/#reviewer), [`codebase-surveyor`](/spec-driven-development/agents/overview/#codebase-surveyor) |
-| **1 mod** | Registers the `doctor_check` tool | Powers `/sdd:doctor check` |
-| **sdd-board** | Optional Desktop panel | [Shows where each spec stands](/spec-driven-development/board/overview/) |
+| **1 mod** | Registers the `doctor_check` tool and the board panel | Powers `/sdd:doctor check`; the [board](/spec-driven-development/board/overview/) shows where each spec stands |
 
 <Aside type="note" title="Built on">
 [GitHub Spec Kit](https://github.com/github/spec-kit) (canonical phases), BMAD Method (sharding, role-based sub-agents), Amazon Kiro (Mermaid generation), OpenSpec (lightweight CLI for legacy code), and Claude Code's slash commands, Plan Mode and agents.

@@ -65,7 +65,7 @@ The unique contribution of this framework: it **manages the thinking and the ver
 
 ### 🖥️ Desktop panel
 
-- **📊 [sdd-board](plugins/sdd-board/README.md)** — optional Claude Code Desktop side panel: the current spec's phase, next command and tasks, plus an overview of every spec
+- **📊 [Board](plugins/sdd/README.md#board)** — a side panel in the `sdd` plugin: the current spec's phase, next command and tasks, plus an overview of every spec
 
 ---
 
@@ -104,18 +104,17 @@ The unique contribution of this framework: it **manages the thinking and the ver
 
 ## 🧩 Plugins
 
-The marketplace `spec-driven-development` ([`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)) ships two plugins:
+The marketplace `spec-driven-development` ([`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)) ships one plugin:
 
 | Plugin | Description | Skills | Agents | Mod |
 | --- | --- | --- | --- | --- |
-| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec; the `sdd` CLI for task and config edits | 11 | 3 | `doctor_check` tool |
-| [**sdd-board**](./plugins/sdd-board/.claude-plugin/plugin.json) | Claude Code Desktop side panel (a mod): current spec with phase, next command and tasks, plus an overview of all specs. Requires `sdd` (installed with it) | | | panel |
+| [**sdd**](./plugins/sdd/.claude-plugin/plugin.json) | Spec-Driven Development flow — spec → clarify → plan → tasks → implement → review, with self-contained tasks handed to your own implementation flow, verified against the spec; the `sdd` CLI for task and config edits; the board side panel | 11 | 3 | `doctor_check` tool, board panel |
 
 See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Reference](#-sub-agents-reference) for each one.
 
-### 📊 sdd-board — SDD panel for Claude Code Desktop
+### 📊 Board — the SDD side panel
 
-An optional companion mod (needs Claude Code 2.1.287+; installing it installs `sdd` too). It docks a panel beside the transcript that reads your project's `specs/` folder and never writes to it, so you can see where each feature stands without opening the markdown files:
+Part of the `sdd` mod (needs Claude Code 2.1.287+). It docks a panel beside the transcript that reads your project's `specs/` folder and never writes to it, so you can see where each feature stands without opening the markdown files:
 
 - **Current** tab — the active spec (from the git branch, the one you pinned, or the newest one still in progress): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), a readiness checklist for the next command, the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, the task list, and buttons that open `spec` / `plan` / `tasks` / `review`.
 - **All** tab — every spec with its phase and task progress, filterable; **Show** pins one as current.
@@ -124,7 +123,7 @@ An optional companion mod (needs Claude Code 2.1.287+; installing it installs `s
 - **No SDD in the project** — only a setup card; **Init SDD in this project** runs `/sdd:doctor init` in the session (the one button that runs a command).
 - Refreshes by itself: after Claude writes a file under `specs/`, after a branch switch, after each turn, and on a 4 s poll for edits made elsewhere. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
 
-Full description: [plugins/sdd-board/README.md](plugins/sdd-board/README.md).
+It opens at session start when the project has `specs/`; turn off the `show_board` option of `sdd` to open it only with `/sdd-dashboard`. Up to 0.9.7 it was the separate `sdd-board` plugin; the marketplace moves those installs to `sdd`. Full description: [plugins/sdd/README.md](plugins/sdd/README.md#board).
 
 ---
 
@@ -170,16 +169,13 @@ claude plugin list | grep sdd
 
 You should see `sdd@1.3.0`. Once installed, the plugin's 11 skills (`/sdd:spec`, `/sdd:doctor` …), 3 sub-agents and the `doctor_check` tool are available in **every** project — no per-project copy required.
 
-### 📊 Install sdd-board (optional)
+### 📊 The board panel
 
 ```text
-/plugin install sdd-board@spec-driven-development
 /sdd-dashboard    # open or focus the panel (it also opens by itself when the project has specs/)
 ```
 
-`sdd-board` declares `sdd` as a dependency, so installing it installs `sdd` too.
-
-The panel opens by itself only in a window at least 144 columns wide, unless you opened it once. Try it from a checkout without installing: `claude --plugin-dir plugins/sdd-board`.
+The panel comes with `sdd`. It opens by itself only in a window at least 144 columns wide, unless you opened it once; the `show_board` option turns that off. Try it from a checkout without installing: `claude --plugin-dir plugins/sdd`.
 
 ### 🍴 Forking the plugin for your own organization
 
@@ -188,7 +184,7 @@ If you want a customized copy (e.g. with org-specific defaults in `capabilities.
 1. Fork this repo to your GitHub org and update the `homepage` field in `plugins/sdd/.claude-plugin/plugin.json`.
 2. (Optional) Edit `plugins/sdd/skills/doctor/templates/capabilities.yml.template` to pre-set the implementation flow for your org.
 3. (Optional) Edit `plugins/sdd/skills/doctor/templates/constitution.md.template` to seed your standard "WHAT NOT TO DO" rules and rationale.
-4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`v<version>`) and creates a GitHub Release (`sdd-board` gets neither).
+4. Bump the `version` in `plugins/sdd/.claude-plugin/plugin.json`; on merge to `main`, `.github/workflows/release.yml` tags it (`v<version>`) and creates a GitHub Release.
 5. Users add your fork with `/plugin marketplace add <your-org>/<your-repo>` and install with `/plugin install sdd@spec-driven-development`.
 
 ---
@@ -559,7 +555,7 @@ Diagnostic — run anytime to find where spec ↔ plan ↔ tasks ↔ code disagr
 | `sdd config get [<key>]` | A `capabilities.yml` value, set or default |
 | `sdd config set <key> <value>` | Changes one value, keeping comments; refused when `/sdd:doctor check` would flag it |
 
-A new command is one file in `plugins/sdd/cli/commands/` with its logic in `shared/sdd-core/` ([cli/README.md](plugins/sdd/cli/README.md)).
+A new command is one file in `plugins/sdd/cli/commands/` with its logic in `plugins/sdd/hooks/core/` ([cli/README.md](plugins/sdd/cli/README.md)).
 
 ---
 
@@ -791,29 +787,25 @@ your-project/
 ```text
 spec-driven-development/                    # or your own forked plugin path
 ├── .claude-plugin/
-│   └── marketplace.json                   # marketplace: sdd + sdd-board
+│   └── marketplace.json                   # marketplace: sdd (renames sdd-board → sdd)
 ├── .github/workflows/
 │   ├── plugin-checks.yml                  # CI: manifest/docs drift, version bumps, load/install, skill audit, plugin tests, sdd-check action
 │   └── release.yml                        # on merge to main: tags a new sdd version and creates GitHub Releases (scripts/release.sh)
 ├── actions/sdd-check/                     # GitHub Action: runs the doctor rules in another repository (action.yml, run.ts)
 ├── tests/fixtures/                        # sdd-ok / sdd-broken projects the action's CI job runs on
 ├── README.md / CLAUDE.md / CHANGELOG.md / LICENSE
-├── shared/sdd-core/                       # TypeScript used by both plugins and the action: parse.ts, formats.ts, check.ts, gather.ts
-├── scripts/sync-core.sh                   # copies shared/sdd-core into each plugin (a mod imports only its own files)
+├── scripts/gen-schema.sh                  # writes hooks/core/capabilities.schema.ts from schemas/capabilities.schema.json
+├── scripts/check-capabilities.ts          # checks the schema, template and key table agree
 ├── scripts/release.sh                     # tags an untagged sdd version, creates missing sdd Releases (--dry-run, --notes)
 └── plugins/
-    ├── sdd-board/                         # Desktop side panel (mod), requires sdd
-    │   ├── .claude-plugin/plugin.json
-    │   ├── README.md                      # panel guide
-    │   ├── hooks/                         # hooks.json + register.ts (hooks), model/view/svg, core/ (copy of shared)
-    │   └── tests/                         # run with `claude plugin test`
     └── sdd/                               # the SDD plugin
         ├── .claude-plugin/plugin.json     # plugin manifest (explicit `agents` array)
-        ├── README.md                      # short plugin summary, points here
+        ├── README.md                      # short plugin summary and the board guide
         ├── bin/sdd                        # SDD CLI wrapper (on the Bash PATH; Node 22.18+)
         ├── cli/                           # SDD CLI: main.ts, command.ts, context.ts, commands/<group>-<action>.ts
-        ├── hooks/                         # hooks.json + register.ts (the doctor_check tool), core/ (copy of shared)
-        ├── tests/                         # doctor check rules and the SDD CLI, run with `claude plugin test`
+        ├── hooks/                         # hooks.json + register.ts (doctor_check tool + board), board/ (panel), core/ (rules and parsers, also used by the CLI and the action)
+        ├── schemas/                       # capabilities.schema.json, the source of the capabilities.yml keys
+        ├── tests/                         # doctor check rules, the SDD CLI and the board, run with `claude plugin test`
         ├── references/                    # shared by the skills: feature-diff, capabilities, status-lifecycle, sibling-repos, formats
         ├── skills/                        # 11 skills, each `/sdd:<name>`
         │   ├── constitution/ spec/ clarify/ plan/ tasks/
@@ -926,13 +918,13 @@ Why this framework looks the way it does:
 
 ## 📏 Conventions
 
-- **Behavior lives in Markdown prompts.** The body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes; to change what a skill or agent does, edit its prose. The only code is TypeScript: the mod that registers `doctor_check` and the rules and parsers in `shared/sdd-core/`, which both plugins use.
-- **Shared code is edited once.** Change `shared/sdd-core/`, then run `scripts/sync-core.sh`: each mod imports only files inside its own plugin, so `hooks/core/` in both plugins is a generated copy (CI fails when one drifts).
+- **Behavior lives in Markdown prompts.** The body of each `skills/<name>/SKILL.md` and `agents/*.md` is the instruction set Claude executes; to change what a skill or agent does, edit its prose. The only code is TypeScript: the mod (the `doctor_check` tool and the board), the SDD CLI, and the rules and parsers in `plugins/sdd/hooks/core/`, which all of them and the `sdd-check` action use.
+- **The schema is edited once.** Change `plugins/sdd/schemas/capabilities.schema.json`, then run `scripts/gen-schema.sh`: a mod loads only code files, so `hooks/core/capabilities.schema.ts` is generated from it (CI fails when it drifts).
 - **Skills** carry `name`, `description` (the skill runs only when the user asks for it, so Claude starts a phase on request, e.g. "run plan", never on its own), `argument-hint` and `allowed-tools`; `"*"` only where the skill hands work to flows the user picks (`/sdd:implement`, `/sdd:review`). Text two or more skills repeat lives in `plugins/sdd/references/`.
 - **Agents** are Markdown with `name`, `description`, `tools`, `model` and `color` frontmatter. `plugins/sdd/.claude-plugin/plugin.json` lists them in an explicit `agents` array: a new agent file must be added there or it never loads.
 - **Conventional Commits** for commit messages and branch names (`feat`, `fix`, `chore`, `refactor`, `docs`).
 - **Docs** reference commands as `/sdd:<command>`; all framework files are English-only.
-- **Versions** — a bump touches the plugin's `plugin.json` (the marketplace entries carry no version), `CHANGELOG.md` and, for `sdd`, the README badge.
+- **Versions** — a bump touches `plugins/sdd/.claude-plugin/plugin.json` (the marketplace entry carries no version), `CHANGELOG.md` and the README badge.
 
 ---
 
@@ -943,11 +935,11 @@ Contributions are welcome! The development setup, test commands and the map of w
 In short:
 
 1. Fork the repository and create a branch named with Conventional Commits (`git checkout -b feat/new-check`)
-2. Make changes inside the plugin (`plugins/sdd/skills/`, `plugins/sdd/agents/`, `plugins/sdd/references/`, `plugins/sdd/skills/doctor/templates/`) or the panel (`plugins/sdd-board/hooks/`); shared TypeScript lives in `shared/sdd-core/` (run `scripts/sync-core.sh` afterwards)
-3. Run `claude plugin test` in both plugins, then exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
-4. Update the README's File Structure / reference sections and bump the version of the changed plugin (`plugin.json`, for `sdd` the README badge) with a matching `CHANGELOG.md` section
-5. Open a Pull Request — the [Plugin Checks](.github/workflows/plugin-checks.yml) workflow fails it on manifest or docs drift, a changed plugin without a version bump, a plugin that does not load or install, a failed skill audit, a drifted `hooks/core/` copy or a failing plugin test
-6. After merge, the [Release](.github/workflows/release.yml) workflow tags a new `sdd` version (`v<version>`) and creates a GitHub Release from its `CHANGELOG.md` section; `sdd-board` is not tagged or released — do not tag by hand
+2. Make changes inside the plugin (`plugins/sdd/skills/`, `plugins/sdd/agents/`, `plugins/sdd/references/`, `plugins/sdd/skills/doctor/templates/`) or the panel (`plugins/sdd/hooks/board/`); rules and parsers live in `plugins/sdd/hooks/core/`
+3. Run `claude plugin test` in `plugins/sdd`, then exercise the doctor skill against a fresh project (`/sdd:doctor check` → `init` → `check`) and verify the artifacts by hand
+4. Update the README's File Structure / reference sections and bump the version (`plugin.json`, the README badge) with a matching `CHANGELOG.md` section
+5. Open a Pull Request — the [Plugin Checks](.github/workflows/plugin-checks.yml) workflow fails it on manifest or docs drift, a changed plugin without a version bump, a plugin that does not load or install, a failed skill audit, a drifted `capabilities.schema.ts` or a failing plugin test
+6. After merge, the [Release](.github/workflows/release.yml) workflow tags a new `sdd` version (`v<version>`) and creates a GitHub Release from its `CHANGELOG.md` section; do not tag by hand
 
 ---
 

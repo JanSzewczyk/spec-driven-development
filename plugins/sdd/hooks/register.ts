@@ -1,6 +1,9 @@
-// Registers the `doctor_check` tool (seen by Claude as mcp__sdd__doctor_check): it gathers the
-// facts about the project in the session's working directory and hands them to the pure rules in
-// core/check.ts. /sdd:doctor check renders the result.
+// The sdd mod. A plugin has one hooks module, so this file registers both halves:
+// - the `doctor_check` tool (seen by Claude as mcp__sdd__doctor_check): it gathers the facts about the
+//   project in the session's working directory and hands them to the pure rules in core/check.ts;
+//   /sdd:doctor check renders the result;
+// - the board (board/register.ts): the side panel and /sdd-dashboard.
+import { registerBoard, startBoard } from './board/register.ts'
 import { runChecks } from './core/check.ts'
 import { gather } from './core/gather.ts'
 import type { Io } from './core/gather.ts'
@@ -45,7 +48,7 @@ function ioOf($: any): Io {
   }
 }
 
-export function register(on) {
+export function register(on, options: Record<string, unknown> = {}) {
   on('session.start', async ($, e, next) => {
     try {
       await $.tool.register({
@@ -57,6 +60,7 @@ export function register(on) {
     } catch (error) {
       $.ui.log('sdd: could not register doctor_check: ' + String(error), { to: 'debug' })
     }
+    await startBoard($, options.show_board !== false)
     return next(e)
   })
 
@@ -68,4 +72,6 @@ export function register(on) {
       return { result: JSON.stringify({ error: String(error) }) }
     }
   })
+
+  registerBoard(on)
 }

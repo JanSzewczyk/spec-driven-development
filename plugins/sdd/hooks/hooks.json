@@ -1,4 +1,4 @@
 {
-  "description": "SDD doctor check tool",
+  "description": "sdd mod: the doctor_check tool and the SDD board panel",
   "modules": ["./register.ts"]
 }

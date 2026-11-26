@@ -4,12 +4,7 @@ Guidance for Claude Code (claude.ai/code) in this repository.
 
 ## What this repo is
 
-A **plugin marketplace**, not an application. Two plugins under `plugins/`:
-
-| Plugin | What it is |
-| --- | --- |
-| **sdd** | The Spec-Driven Development framework: 11 skills (`/sdd:<name>`), 3 sub-agents (spec-verifier, reviewer, codebase-surveyor), a mod that registers the `doctor_check` tool and the SDD CLI (`bin/sdd`). Behavior is Markdown prompts; the only code is TypeScript. |
-| **sdd-board** | Claude Code Desktop side panel (a mod, no agents or skills; requires `sdd`): current spec with phase, next command and tasks, all specs, a read-only configuration pane. Hooks module `hooks/register.ts`; pure parsers, model and views in sibling files. |
+A **plugin marketplace**, not an application. One plugin, `plugins/sdd`: the Spec-Driven Development framework with 11 skills (`/sdd:<name>`), 3 sub-agents (spec-verifier, reviewer, codebase-surveyor), a mod that registers the `doctor_check` tool and the board side panel (`/sdd-dashboard`), and the SDD CLI (`bin/sdd`). Behavior is Markdown prompts; the only code is TypeScript. The board was the separate `sdd-board` plugin up to 0.9.7; `renames` in `marketplace.json` moves its installs to `sdd`.
 
 `sdd` is installed into a *target* project (`/plugin install sdd@spec-driven-development`) and works on that project's `specs/` and git repo. Here you edit the plugin; to see behavior, exercise it against a separate target project. Paths below are relative to `plugins/sdd/` unless stated.
 
@@ -17,11 +12,10 @@ A **plugin marketplace**, not an application. Two plugins under `plugins/`:
 
 No `npm`/`make` and no build step. Tests:
 
-- `cd plugins/sdd && claude plugin test` (doctor check rules, SDD CLI)
-- `cd plugins/sdd-board && claude plugin test`
-- Shared code lives in `shared/sdd-core/`; run `scripts/sync-core.sh` after editing it (CI runs it with `--check`). `node scripts/check-capabilities.ts` checks the `capabilities.yml` contract.
+- `cd plugins/sdd && claude plugin test` (doctor check rules, SDD CLI, board)
+- `scripts/gen-schema.sh` after editing `schemas/capabilities.schema.json` (CI runs it with `--check`). `node scripts/check-capabilities.ts` checks the `capabilities.yml` contract.
 
-Skills are exercised by running them against a target project. Smoke test: `/sdd:doctor check` on a fresh project → `/sdd:doctor init` → `check` again; verify by hand that artifacts landed under the **repo root** (not the plugin) and that a re-`init` is idempotent. Try the panel with `claude --plugin-dir plugins/sdd-board` in a project that has `specs/`, then `/sdd-dashboard`.
+Skills are exercised by running them against a target project. Smoke test: `/sdd:doctor check` on a fresh project → `/sdd:doctor init` → `check` again; verify by hand that artifacts landed under the **repo root** (not the plugin) and that a re-`init` is idempotent. Try the panel with `claude --plugin-dir plugins/sdd` in a project that has `specs/`, then `/sdd-dashboard`.
 
 ## Architecture
 
@@ -35,12 +29,12 @@ Plugin assets, wired by `.claude-plugin/plugin.json`:
 
 - **`skills/<name>/SKILL.md`**: the 11 commands. YAML frontmatter (`name`, `description`, `argument-hint`, `allowed-tools`), no `disable-model-invocation`: each description says the skill runs only on an explicit user request, so Claude starts a phase when asked ("run plan") and never on its own. The *body is the instruction set Claude executes*; editing behavior means editing prose. `spec` creates the branch + skeleton; `tasks` writes self-contained tasks; `implement` hands a task to the flow in `capabilities.yml`; `review` orchestrates the verification agents; `retro` turns review lessons into WHAT NOT TO DO entries; `capabilities` scans installed skills/agents and, after confirmation, fills `implementation`, `actions` and `review`. No skill runs `context: fork`: `plan` needs `ExitPlanMode` and several need `AskUserQuestion`, which sub-agents lack.
 - **`references/*.md`**: text shared by skills, linked as `${CLAUDE_PLUGIN_ROOT}/references/<file>.md`: `feature-diff`, `capabilities` (every key, value and default), `status-lifecycle`, `sibling-repos`, `formats` (artifact sections, the 7 doctor checks). A block goes here when ≥2 skills repeat it and it exceeds ~5 lines.
-- **`bin/sdd` + `cli/`**: the SDD CLI, on the Bash `PATH` while the plugin is enabled (Node.js 22.18+; exit 127 without it and the skill does the step by hand). `cli/main.ts` loads every `cli/commands/<group>-<action>.ts` (contract in `cli/command.ts`, which has no `node:` imports so tests can load it; `cli/context.ts` is the real file access); the logic is pure in `shared/sdd-core/` (`next.ts`, `tasks-edit.ts`, `yaml-edit.ts`, `config-edit.ts`). `/sdd:implement` uses `sdd task next` / `sdd task status`; `sdd config get|set` edits `capabilities.yml`, refusing what the doctor rules would flag. How to add a command: `cli/README.md`.
-- **`hooks/`**: the `sdd` mod. `register.ts` registers `doctor_check` (`mcp__sdd__doctor_check`); `core/` is a generated copy of `shared/sdd-core/`. Mods need Claude Code 2.1.287+, not WSL, not `--safe-mode`; `doctor` falls back to a manual check there.
+- **`bin/sdd` + `cli/`**: the SDD CLI, on the Bash `PATH` while the plugin is enabled (Node.js 22.18+; exit 127 without it and the skill does the step by hand). `cli/main.ts` loads every `cli/commands/<group>-<action>.ts` (contract in `cli/command.ts`, which has no `node:` imports so tests can load it; `cli/context.ts` is the real file access); the logic is pure in `hooks/core/` (`next.ts`, `tasks-edit.ts`, `yaml-edit.ts`, `config-edit.ts`). `/sdd:implement` uses `sdd task next` / `sdd task status`; `sdd config get|set` edits `capabilities.yml`, refusing what the doctor rules would flag. How to add a command: `cli/README.md`.
+- **`hooks/`**: the `sdd` mod. A plugin has one hooks module, so `register.ts` registers both `doctor_check` (`mcp__sdd__doctor_check`) and the board (`board/register.ts`: `startBoard` runs inside the one `session.start` hook, `registerBoard` adds the rest). The board is the side panel: current spec with phase, next command and tasks, all specs, a read-only configuration pane; `board/{model,view,svg}.ts` are pure, `board/register.ts` holds hooks and `$` calls. It opens at session start when `specs/` exists unless the `show_board` userConfig option is off, and polls `specs/` only once drawn. Mods need Claude Code 2.1.287+, not WSL, not `--safe-mode`; `doctor` falls back to a manual check there.
 - **`agents/*.md`**: invoked via the Agent tool, never by the user. `spec-verifier` reads the diff once against the docs and returns JSON (per-AC status, non-goal violations, out-of-scope, drift, per-task completeness). `reviewer` gives the final READY/NOT READY verdict from the test and agent results `/sdd:review` hands over, checks the constitution, runs domain audits and writes `review.md`. `codebase-surveyor` maps the affected projects (at most 30 lines) for `/sdd:plan`.
 - **`skills/doctor/`**: `SKILL.md` holds `check` (calls `doctor_check`, 7 read-only checks listed in `references/formats.md`, manual fallback). `references/init.md` (loaded only for `init`) is LLM-driven: detects projects and quality commands and writes the per-project artifacts. Its only `.claude/settings.json` edit adds sibling-repo paths to `permissions.additionalDirectories` (malformed JSON is never touched); no settings hooks are generated. `templates/` seeds `constitution.md.template`, `capabilities.yml.template`, `specs/template.md`, `sdd-check.yml.template`.
-- **`shared/sdd-core/`** (repo root): pure TypeScript, no mods API, used by both plugins: `yaml.ts` (strict YAML subset), `capabilities.ts` (reads `capabilities.yml`, or the format-2 `capabilities.md`), `parse.ts` (spec/plan/tasks/review parsers), `formats.ts`, `gather.ts` (reads a project through an `Io` interface), `check.ts` (doctor rules and `effectiveConfig`, shared with the board's Config pane). A mod may import only files inside its own plugin and `claude plugin validate` refuses symlinks, so `scripts/sync-core.sh` copies it into `plugins/*/hooks/core/`. Never edit the copies; forgetting the sync fails CI.
-- **`shared/sdd-core/capabilities.schema.json`**: the **single source** of `capabilities.yml` keys, allowed values, defaults and patterns. `formats.ts` reads a generated TS copy (`capabilities.schema.ts`; a mod loads only code files), and the script copies the JSON to `plugins/sdd/schemas/` (the URL the file's `# yaml-language-server` line points at, pinned to the release tag).
+- **`hooks/core/`**: pure TypeScript, no mods API, used by the mod, the CLI, the tests, `actions/sdd-check/` and `scripts/check-capabilities.ts`: `yaml.ts` (strict YAML subset), `capabilities.ts` (reads `capabilities.yml`, or the format-2 `capabilities.md`), `parse.ts` (spec/plan/tasks/review parsers), `formats.ts`, `gather.ts` (reads a project through an `Io` interface), `check.ts` (doctor rules and `effectiveConfig`, shared with the board's Config pane).
+- **`schemas/capabilities.schema.json`**: the **single source** of `capabilities.yml` keys, allowed values, defaults and patterns, published at the URL the file's `# yaml-language-server` line points at (pinned to the release tag). `formats.ts` reads a generated TS copy (`hooks/core/capabilities.schema.ts`, written by `scripts/gen-schema.sh`; a mod loads only code files).
 - **`actions/sdd-check/`**: GitHub Action running `runChecks` in `ci` mode in other repos. `/sdd:doctor init` installs its workflow (`# sdd-workflow: <n>` is `WORKFLOW_VERSION`, `uses:` pinned to `v<version>`) and repairs every finding tagged `fix: 'init'`.
 
 **Critical invariant:** artifacts are written under the *repo root* (Claude's cwd); templates are read from the *plugin root* (`${CLAUDE_PLUGIN_ROOT}`).
@@ -63,7 +57,7 @@ Plugin assets, wired by `.claude-plugin/plugin.json`:
 - Command/agent references in docs use `/sdd:<command>`.
 - **Deterministic steps go to the SDD CLI**: a skill that reads or edits SDD files in a fixed way (statuses, task order, config values) calls an `sdd` command and keeps a one-sentence manual fallback for exit 127, instead of describing the edit in prose.
 - **Versioning** (only when the user asks; see Plugin development): a bump touches `plugins/<name>/.claude-plugin/plugin.json` (the only place a version is set; marketplace entries carry none), `CHANGELOG.md` and, for `sdd`, the README badge.
-- **Tags and Releases exist only for `sdd` and come from CI, never by hand**: `.github/workflows/release.yml` runs `scripts/release.sh` on a push to `main` touching `plugins/sdd/.claude-plugin/plugin.json`: `git tag -a v<version>` + push when that version has no tag (`claude plugin tag` only makes `<name>--v<version>`), then a Release for every `sdd` tag without one, notes from the version's `CHANGELOG.md` section (`## [<ver>]`). `sdd-board` is versioned in its manifest and `CHANGELOG.md` (`## [<ver> sdd-board]`) only. Use `/plugin-release` for the bump and skip its tag step: a tag made on the feature branch points at a commit that is not on `main` after a squash merge, and CI then sees the tag and does not fix it. `scripts/release.sh --dry-run` shows what CI would do; re-run the workflow by hand (`workflow_dispatch`) to retry.
+- **Tags and Releases exist only for `sdd` and come from CI, never by hand**: `.github/workflows/release.yml` runs `scripts/release.sh` on a push to `main` touching `plugins/sdd/.claude-plugin/plugin.json`: `git tag -a v<version>` + push when that version has no tag (`claude plugin tag` only makes `<name>--v<version>`), then a Release for every `sdd` tag without one, notes from the version's `CHANGELOG.md` section (`## [<ver>]`). The `## [<ver> sdd-board]` sections in `CHANGELOG.md` are history from the separate panel plugin. Use `/plugin-release` for the bump and skip its tag step: a tag made on the feature branch points at a commit that is not on `main` after a squash merge, and CI then sees the tag and does not fix it. `scripts/release.sh --dry-run` shows what CI would do; re-run the workflow by hand (`workflow_dispatch`) to retry.
 
 ## Where to make a change
 
@@ -72,16 +66,16 @@ Plugin assets, wired by `.claude-plugin/plugin.json`:
 | What a slash command does | `skills/<name>/SKILL.md` |
 | Text shared by several skills | `references/<file>.md` |
 | A verification agent's behavior | `agents/<name>.md` |
-| A doctor readiness check | `shared/sdd-core/check.ts` (+ `formats.ts`, a test in `plugins/sdd/tests/`, the row in `references/formats.md`), then `scripts/sync-core.sh`; tag a finding `fix: 'init'` only when `init.md` repairs it |
+| A doctor readiness check | `hooks/core/check.ts` (+ `formats.ts`, a test in `plugins/sdd/tests/`, the row in `references/formats.md`); tag a finding `fix: 'init'` only when `init.md` repairs it |
 | The GitHub Action other repos use | `actions/sdd-check/` (`action.yml`, `run.ts`), fixtures in `tests/fixtures/`, `skills/doctor/templates/sdd-check.yml.template` |
 | Per-task commits, isolation, merge modes | `skills/implement/SKILL.md`, `skills/implement/references/worktree.md` (+ `worktree-all.md`), `skills/review/SKILL.md` |
-| An SDD CLI command (a deterministic read or edit of SDD files) | the logic in `shared/sdd-core/` + `scripts/sync-core.sh`, `plugins/sdd/cli/commands/<group>-<action>.ts`, a test in `plugins/sdd/tests/cli.test.ts`, the table in `plugins/sdd/cli/README.md` and `docs/src/content/docs/{,pl/}reference/cli.mdx` |
+| An SDD CLI command (a deterministic read or edit of SDD files) | the logic in `hooks/core/`, `plugins/sdd/cli/commands/<group>-<action>.ts`, a test in `plugins/sdd/tests/cli.test.ts`, the table in `plugins/sdd/cli/README.md` and `docs/src/content/docs/{,pl/}reference/cli.mdx` |
 | The `init` procedure | `skills/doctor/references/init.md` |
 | Files seeded into target projects | `skills/doctor/templates/` |
-| A `capabilities.yml` key or value | `shared/sdd-core/capabilities.schema.json` (+ `capabilities.ts` / `check.ts` for rules a schema cannot express), then `scripts/sync-core.sh`; `skills/doctor/templates/capabilities.yml.template`, the key table in `references/capabilities.md`; a migration in `init.md` when an old value changes |
-| What the Desktop panel shows or how it derives the next step | `plugins/sdd-board/hooks/{model,view,svg}.ts`; `register.ts` holds only hooks and `$` calls |
-| How `specs/` files are parsed | `shared/sdd-core/parse.ts`, a test in `plugins/sdd-board/tests/`, then `scripts/sync-core.sh` |
-| The documentation site | `docs/` (Astro Starlight, pages in `docs/src/content/docs/`, sidebar in `docs/astro.config.mjs`); `cd docs && npm run build`; deployed by `.github/workflows/docs.yml`. English is the root locale, Polish mirrors it in `docs/src/content/docs/pl/` (same file names; update both). `src/content/docs/` is the latest version; archived releases are snapshot folders (`2.0/`, `pl/2.0/`) made by `starlight-versions` when the slug is added to `versions` in `astro.config.mjs`; never edit a snapshot. `/changelog/` (sdd) and `/board/changelog/` (sdd-board) are generated from the root `CHANGELOG.md` by `starlight-changelogs` (`docs/src/content.config.ts`, English only; `docs/.npmrc` sets `legacy-peer-deps` because the plugin's peer range excludes Astro 7) |
+| A `capabilities.yml` key or value | `schemas/capabilities.schema.json` (+ `hooks/core/capabilities.ts` / `check.ts` for rules a schema cannot express), then `scripts/gen-schema.sh`; `skills/doctor/templates/capabilities.yml.template`, the key table in `references/capabilities.md`; a migration in `init.md` when an old value changes |
+| What the board panel shows or how it derives the next step | `hooks/board/{model,view,svg}.ts`, a test in `tests/board.test.ts`; `board/register.ts` holds only hooks and `$` calls |
+| How `specs/` files are parsed | `hooks/core/parse.ts`, a test in `tests/board.test.ts` |
+| The documentation site | `docs/` (Astro Starlight, pages in `docs/src/content/docs/`, sidebar in `docs/astro.config.mjs`); `cd docs && npm run build`; deployed by `.github/workflows/docs.yml`. English is the root locale, Polish mirrors it in `docs/src/content/docs/pl/` (same file names; update both). `src/content/docs/` is the latest version; archived releases are snapshot folders (`2.0/`, `pl/2.0/`) made by `starlight-versions` when the slug is added to `versions` in `astro.config.mjs`; never edit a snapshot. `/changelog/` (sdd) and `/board/changelog/` (the former sdd-board, history only) are generated from the root `CHANGELOG.md` by `starlight-changelogs` (`docs/src/content.config.ts`, English only; `docs/.npmrc` sets `legacy-peer-deps` because the plugin's peer range excludes Astro 7) |
 
 <!-- BEGIN:plugin-dev -->
 ## Plugin development
@@ -90,7 +84,7 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 
 ### Where things live
 
-- Two plugins under `plugins/`, listed in one marketplace `.claude-plugin/marketplace.json` (`sdd` → `./plugins/sdd`, `sdd-board` → `./plugins/sdd-board`). `sdd` keeps `skills/`, `agents/`, `references/`, `hooks/` and `tests/` at its root; `sdd-board` keeps `hooks/` and `tests/`. Both mods carry a generated copy of `shared/sdd-core/` in `hooks/core/`.
+- One plugin, `plugins/sdd`, listed in the marketplace `.claude-plugin/marketplace.json` (`sdd` → `./plugins/sdd`). Its `renames` maps the former `sdd-board` to `sdd`; `renames` is append-only. `sdd` keeps `skills/`, `agents/`, `references/`, `hooks/`, `schemas/`, `bin/`, `cli/` and `tests/` at its root.
 - Each manifest is `<plugin>/.claude-plugin/plugin.json`. Components sit at the plugin root, never inside `.claude-plugin/`.
 - A new **plugin** is registered in `.claude-plugin/marketplace.json`; a new skill or agent inside an existing plugin is not.
 - `plugins/sdd/.claude-plugin/plugin.json` sets an explicit `agents` array, which replaces the default `agents/` scan: a new agent file must be added to it or it never loads.
@@ -98,7 +92,7 @@ Managed by `/plugin-setup`; re-run it to refresh this section instead of editing
 
 ### After a change to a plugin
 
-1. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure), `plugins/sdd/README.md`, `plugins/sdd-board/README.md`, and the "What this repo is" and "Architecture" sections of this file.
+1. **Update the docs that list capabilities by hand:** `README.md` (plugins table, command/agent reference, File Structure), `plugins/sdd/README.md`, and the "What this repo is" and "Architecture" sections of this file.
 2. **Run `/marketplace-creator audit`** and fix what it reports before committing.
 
 ### Versions
@@ -109,7 +103,7 @@ Plugins pin `version` in `plugin.json` (the marketplace entries carry none), so 
 
 ### Releasing
 
-Merging an `sdd` bump PR is the release (see Conventions). An `sdd-board` bump is not tagged or released. Never tag by hand.
+Merging an `sdd` bump PR is the release (see Conventions). Never tag by hand.
 
 Every version bump adds a `CHANGELOG.md` section, `## [<version> <plugin>] — <date>` (`## [<version>]` for the main plugin); `/plugin-release` drafts it from git history.
 

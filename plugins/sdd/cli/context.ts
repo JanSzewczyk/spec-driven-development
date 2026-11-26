@@ -1,5 +1,5 @@
 // The Ctx of a real run (see command.ts): the repository the CLI runs in, node:fs relative to its
-// root, git for the branch. The rules live in ../hooks/core (a copy of shared/sdd-core).
+// root, git for the branch. The rules live in ../hooks/core (shared with the mod).
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'

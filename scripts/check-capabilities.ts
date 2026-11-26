@@ -1,10 +1,10 @@
-// Keeps the capabilities.yml contract in one voice. The JSON Schema (shared/sdd-core/capabilities.schema.json)
+// Keeps the capabilities.yml contract in one voice. The JSON Schema (plugins/sdd/schemas/capabilities.schema.json)
 // is the source of keys, values and defaults; formats.ts reads it. The seeded template and the key table
 // in references/capabilities.md are prose and must agree with it.
 // Usage: node scripts/check-capabilities.ts   (exit 1 and one line per mismatch)
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseCapabilities } from '../shared/sdd-core/capabilities.ts'
+import { parseCapabilities } from '../plugins/sdd/hooks/core/capabilities.ts'
 import {
   ACTION_KEYS,
   CI_VALUES,
@@ -16,7 +16,7 @@ import {
   SDD_FORMAT,
   TESTS_VALUES,
   WORKTREE_DEFAULTS,
-} from '../shared/sdd-core/formats.ts'
+} from '../plugins/sdd/hooks/core/formats.ts'
 
 const root = join(import.meta.dirname, '..')
 const sdd = join(root, 'plugins/sdd')
@@ -46,8 +46,8 @@ const KEYS: Record<string, { values: string[] | null; default: string | null }> 
   generated: { values: null, default: null },
 }
 
-// 1. The schema is the source of the values; scripts/sync-core.sh --check keeps its copies equal.
-const schema = JSON.parse(readFileSync(join(root, 'shared/sdd-core/capabilities.schema.json'), 'utf8'))
+// 1. The schema is the source of the values; scripts/gen-schema.sh --check keeps the TS module equal.
+const schema = JSON.parse(readFileSync(join(root, 'plugins/sdd/schemas/capabilities.schema.json'), 'utf8'))
 const p = schema.properties
 
 // 2. The seeded template.

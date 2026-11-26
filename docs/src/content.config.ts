@@ -19,7 +19,7 @@ export const collections = {
       // Headings are `## [2.0.2] — 2026-11-15` (sdd) or `## [0.9.2 sdd-board] — 2026-11-15`.
       // One file feeds two changelogs: each keeps its own entries and drops the other's.
       { provider: "keep-a-changelog", base: "changelog", title: "sdd changelog", changelog: "../CHANGELOG.md", process: entryTitle(false) },
-      { provider: "keep-a-changelog", base: "board/changelog", title: "sdd-board changelog", changelog: "../CHANGELOG.md", process: entryTitle(true) },
+      { provider: "keep-a-changelog", base: "board/changelog", title: "sdd-board changelog (up to 0.9.7)", changelog: "../CHANGELOG.md", process: entryTitle(true) },
     ]),
   }),
   versions: defineCollection({ loader: docsVersionsLoader() }),

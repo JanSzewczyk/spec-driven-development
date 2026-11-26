@@ -1,7 +1,7 @@
-import { effectiveConfig, loadCapabilities } from './core/check.ts'
-import type { Config } from './core/check.ts'
-import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from './core/formats.ts'
-import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from './core/parse.ts'
+import { effectiveConfig, loadCapabilities } from '../core/check.ts'
+import type { Config } from '../core/check.ts'
+import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../core/formats.ts'
+import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
 import { currentSlug, sortFeatures } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
@@ -24,6 +24,16 @@ let config: Config | null = null
 let cmdOpen: string[] | null = null
 let docView: { slug: string; kind: string } | null = null
 let isClosedByUser = false
+let isPolling = false
+
+// Polls specs/ every 4 s, started once the panel is drawn: a session that never shows it does not poll.
+function startPolling($: any): void {
+  if (isPolling) return
+  isPolling = true
+  $.clock.every(4000, async () => {
+    if (await scan($)) $.ui.invalidate('ui.render')
+  })
+}
 
 // null only when the file does not exist; a read that fails throws, so scan() keeps its last good state.
 async function readText($: any, path: string): Promise<string | null> {
@@ -113,37 +123,38 @@ async function scan($: any): Promise<boolean> {
   return isChanged
 }
 
-export function register(on) {
-  on('session.start', async ($, e, next) => {
+// The board's part of session start, called from the one session.start hook in ../register.ts (a
+// hooks module may register an event once without a matcher). `isAutoOpen` is the show_board option:
+// it opens the panel when the project has specs/; /sdd-dashboard opens it either way.
+export async function startBoard($: any, isAutoOpen: boolean): Promise<void> {
+  isPolling = false
+  try {
+    const saved = await $.store.get('prefs')
+    if (saved && typeof saved === 'object') {
+      if (saved.tab === 'all' || saved.tab === 'current') tab = saved.tab
+      if (typeof saved.filter === 'string') filter = saved.filter
+    }
+    await scan($)
+  } catch (error) {
+    $.ui.log('sdd board: first scan failed: ' + String(error), { to: 'debug' })
+  }
+  try {
+    await $.command.register({ name: 'sdd-dashboard', description: 'Open the SDD side panel', immediate: true })
+  } catch (error) {
+    $.ui.log('sdd board: could not register /sdd-dashboard: ' + String(error))
+  }
+  if (isAutoOpen && hasSpecs && !isClosedByUser) {
     try {
-      const saved = await $.store.get('prefs')
-      if (saved && typeof saved === 'object') {
-        if (saved.tab === 'all' || saved.tab === 'current') tab = saved.tab
-        if (typeof saved.filter === 'string') filter = saved.filter
-      }
-      await scan($)
-    } catch (error) {
-      $.ui.log('sdd-board: first scan failed: ' + String(error), { to: 'debug' })
+      const placed = await $.ui.open({ id: PANE, title: TITLE, columns: 48 })
+      if (!placed.isPlaced) $.ui.toast('SDD panel ready: type /sdd-dashboard')
+    } catch {
+      // the panel can be opened with /sdd-dashboard
     }
-    try {
-      await $.command.register({ name: 'sdd-dashboard', description: 'Open the SDD side panel', immediate: true })
-    } catch (error) {
-      $.ui.log('sdd-board: could not register /sdd-dashboard: ' + String(error))
-    }
-    $.clock.every(4000, async () => {
-      if (await scan($)) $.ui.invalidate('ui.render')
-    })
-    if (hasSpecs && !isClosedByUser) {
-      try {
-        const placed = await $.ui.open({ id: PANE, title: TITLE, columns: 48 })
-        if (!placed.isPlaced) $.ui.toast('SDD panel ready: type /sdd-dashboard')
-      } catch {
-        // the panel can be opened with /sdd-dashboard
-      }
-    }
-    return next(e)
-  })
+  }
+}
 
+// The board's other hooks, registered from ../register.ts.
+export function registerBoard(on) {
   on('command.run', { command: 'sdd-dashboard' }, async ($) => {
     isClosedByUser = false
     await scan($)
@@ -229,6 +240,7 @@ export function register(on) {
       })
     }
     if (e.requestId !== PANE) return next(e)
+    startPolling($)
     const el = $.ui.resolve(e)
     const redraw = () => $.ui.invalidate('ui.render')
     const sorted = sortFeatures(features, currentSlug(features, branch, pinned))

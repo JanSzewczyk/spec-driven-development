@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../hooks/core/parse.ts'
-import { blockedBy, currentSlug, derive, gate } from '../hooks/model.ts'
-import type { Feature } from '../hooks/model.ts'
+import { blockedBy, currentSlug, derive, gate } from '../hooks/board/model.ts'
+import type { Feature } from '../hooks/board/model.ts'
 
 const SPEC = `# Feature: User Login
 
@@ -227,7 +227,7 @@ test('currentSlug prefers pin, then branch, then newest', () => {
 })
 
 const PANE = {
-  plugin: 'sdd-board', component: 'Pane', requestId: 'sdd-board',
+  plugin: 'sdd', component: 'Pane', requestId: 'sdd-board',
   viewport: { columns: 140, rows: 40 },
   props: { title: 'SDD', isFocused: true, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
 } as const
@@ -242,7 +242,8 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
   on('session.start', () => ({ cwd: '/work' }))
   on('store.get', () => ({ value: undefined }))
   on('store.set', () => ({ value: undefined }))
-  on('command.register', () => ({ value: undefined }))
+  const commands: string[] = []
+  on('command.register', (_: any, e: any) => { commands.push(e.name); return { value: undefined } })
   on('ui.toast', () => ({ value: undefined }))
   const opened: string[] = []
   on('ui.open', (_: any, e: any) => { opened.push(e.id); return { value: { isPlaced: true } } })
@@ -263,7 +264,7 @@ function stubProject($: any, on: any, withSpecs: boolean | (() => boolean), opts
     return {}
   })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
-  return Object.assign(filled, { clock, ran, opened, refuseSubmit: () => { refuse = true } })
+  return Object.assign(filled, { clock, ran, opened, commands, refuseSubmit: () => { refuse = true } })
 }
 
 test('the current tab shows the spec, its next step, and fills the prompt', async ($, on) => {
@@ -596,4 +597,25 @@ test('when only task pull requests are left, the next step after the merge is th
   expect(d.phase).toBe('implement')
   const g = gate(feature({ planStatus: 'tasks-ready', tasks: waiting }))!
   expect(g.checks.find((c) => c.key === 'merge')?.hint).toBe('T2 #13')
+})
+
+test('the panel opens at session start when the project has specs, not without', async ($, on) => {
+  const stub = stubProject($, on, true)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  expect(stub.opened).toEqual(['sdd-board'])
+})
+
+test('without specs nothing opens at session start', async ($, on) => {
+  const stub = stubProject($, on, false)
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' })
+  expect(stub.opened).toEqual([])
+})
+
+test('one session start registers both the doctor tool and /sdd-dashboard', async ($, on) => {
+  const stub = stubProject($, on, true)
+  const tools: string[] = []
+  on('tool.register', (_: any, e: any) => { tools.push(e.name); return { value: undefined } })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  expect(tools).toEqual(['doctor_check'])
+  expect(stub.commands).toEqual(['sdd-dashboard'])
 })

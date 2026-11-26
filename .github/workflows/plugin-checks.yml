@@ -64,15 +64,15 @@ jobs:
         uses: JanSzewczyk/claude-plugins/.github/actions/skill-audit@main
         # Inputs: path, skills-glob (default plugins/*/skills/*/).
 
-  # Not managed by /plugin-setup: the shared TypeScript copies and the plugin tests.
+  # Not managed by /plugin-setup: the generated schema module and the plugin tests.
   tests:
     name: Plugin Tests 🧪
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code 📚
         uses: actions/checkout@v7
-      - name: Check the shared core copies are in sync 🔗
-        run: scripts/sync-core.sh --check
+      - name: Check the generated schema module is in sync 🔗
+        run: scripts/gen-schema.sh --check
       - name: Set up Node.js 🟢
         uses: actions/setup-node@v7
         with:
@@ -84,9 +84,6 @@ jobs:
       - name: Test sdd 🧪
         run: claude plugin test
         working-directory: plugins/sdd
-      - name: Test sdd-board 🧪
-        run: claude plugin test
-        working-directory: plugins/sdd-board
 
   # Not managed by /plugin-setup: the sdd-check action, run on fixtures from this checkout.
   sdd-action:

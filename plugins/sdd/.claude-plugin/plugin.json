@@ -16,12 +16,23 @@
     "sdd",
     "specification",
     "workflow",
-    "agents"
+    "agents",
+    "mod",
+    "panel",
+    "dashboard"
   ],
   "skills": "./skills/",
   "agents": [
     "./agents/spec-verifier.md",
     "./agents/reviewer.md",
     "./agents/codebase-surveyor.md"
-  ]
+  ],
+  "userConfig": {
+    "show_board": {
+      "type": "boolean",
+      "title": "Open the SDD board at session start",
+      "description": "Open the SDD side panel when a session starts in a project with specs/. Off, it opens only with /sdd-dashboard.",
+      "default": true
+    }
+  }
 }

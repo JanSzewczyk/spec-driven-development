@@ -1,10 +1,8 @@
 name: Release 🚀
 
-# Tags `v<version>` when the sdd version merged to main has no tag
-# and creates a GitHub
-# Release for every such tag that has none, with notes from CHANGELOG.md. sdd-board is versioned
-# in its manifest only: no tag, no Release. The version itself is bumped by hand in the pull
-# request (checked by Plugin Checks); this workflow only publishes it.
+# Tags `v<version>` when the sdd version merged to main has no tag and creates a GitHub Release
+# for every such tag that has none, with notes from CHANGELOG.md. The version itself is bumped by
+# hand in the pull request (checked by Plugin Checks); this workflow only publishes it.
 # Run it by hand (workflow_dispatch) to retry or to create Releases for tags that lack one.
 
 on:

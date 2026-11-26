@@ -1,4 +1,0 @@
-{
-  "description": "SDD Board hooks module",
-  "modules": ["./register.ts"]
-}

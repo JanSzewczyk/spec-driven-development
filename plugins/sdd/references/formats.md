@@ -2,7 +2,7 @@
 
 Read this when running the `/sdd:doctor check` fallback (the `mcp__sdd__doctor_check` tool is not
 available) or when a step needs to know what an artifact must contain. The same rules are code in
-`shared/sdd-core/` (`capabilities.schema.json`, `formats.ts`, `check.ts`); the tests and `scripts/check-capabilities.ts` keep them aligned.
+the plugin (`schemas/capabilities.schema.json`, `hooks/core/formats.ts`, `hooks/core/check.ts`); the tests and `scripts/check-capabilities.ts` keep them aligned.
 
 Headings are matched on their text, ignoring numbers and emoji (`## 2. Run/build commands` is
 "Run/build"). Status per check: `pass` ✅ / `warn` ⚠️ / `fail` ❌.

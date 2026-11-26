@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
   "name": "spec-driven-development",
-  "description": "Marketplace for the Spec-Driven Development (SDD) plugin and its Claude Code Desktop companion panel.",
+  "description": "Marketplace for the Spec-Driven Development (SDD) plugin: the SDD flow, its CLI and its side panel.",
   "owner": {
     "name": "Szum Tech Team",
     "email": "szum.tech@gmail.com",
@@ -22,18 +22,9 @@
       },
       "homepage": "https://github.com/JanSzewczyk/spec-driven-development",
       "license": "MIT"
-    },
-    {
-      "name": "sdd-board",
-      "source": "./plugins/sdd-board",
-      "description": "Side panel for Claude Code Desktop that shows where each SDD feature stands: current spec with its pipeline phase, next command and tasks, plus an overview of all specs.",
-      "author": {
-        "name": "Szum Tech Team",
-        "email": "szum.tech@gmail.com",
-        "url": "https://github.com/JanSzewczyk"
-      },
-      "homepage": "https://github.com/JanSzewczyk/spec-driven-development",
-      "license": "MIT"
     }
-  ]
+  ],
+  "renames": {
+    "sdd-board": "sdd"
+  }
 }

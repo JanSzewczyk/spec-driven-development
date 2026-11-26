@@ -93,7 +93,8 @@ export default defineConfig({
         { label: "Configuration",
           translations: { pl: "Konfiguracja" }, items: ["configuration/capabilities"] },
         {
-          label: "sdd-board",
+          label: "Board",
+          translations: { pl: "Board" },
           items: ["board/overview", ...makeChangelogsSidebarLinks([{ type: "all", base: "board/changelog", label: "Changelog" }])],
         },
         {

@@ -1,4 +1,4 @@
-// Generated from capabilities.schema.json by scripts/sync-core.sh. Edit the JSON, then run the script.
+// Generated from plugins/sdd/schemas/capabilities.schema.json by scripts/gen-schema.sh. Edit the JSON, then run the script.
 export default {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/JanSzewczyk/spec-driven-development/main/plugins/sdd/schemas/capabilities.schema.json",

@@ -1,20 +1,21 @@
 ---
-title: sdd-board
-description: Panel boczny Claude Code Desktop ze statusem SDD.
+title: Board
+description: "Panel boczny SDD: na jakim etapie jest każdy spec."
 sidebar:
   label: Przegląd
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Opcjonalny mod towarzyszący dla **Claude Code Desktop**, który pokazuje, na jakim etapie jest każda funkcja SDD. Tylko **czyta** `specs/`, nigdy tam nie zapisuje. Wymaga Claude Code 2.1.287+; instalacja instaluje też `sdd`.
+Panel boczny, część moda pluginu `sdd`, który pokazuje, na jakim etapie jest każda funkcja SDD. Tylko **czyta** `specs/`, nigdy tam nie zapisuje. Wymaga Claude Code 2.1.287+.
 
 ```text
-/plugin install sdd-board@spec-driven-development
 /sdd-dashboard
 ```
 
-Panel otwiera się sam, gdy projekt ma `specs/`, w oknie o szerokości co najmniej 144 kolumn, chyba że otworzyłeś go raz ręcznie. Wypróbuj bez instalacji: `claude --plugin-dir plugins/sdd-board`.
+Panel otwiera się sam, gdy projekt ma `specs/`, w oknie o szerokości co najmniej 144 kolumn, chyba że otworzyłeś go raz ręcznie. Żeby otwierał się tylko przez `/sdd-dashboard`, wyłącz opcję `show_board` pluginu `sdd` (`/plugin` → sdd → configure). Wypróbuj bez instalacji: `claude --plugin-dir plugins/sdd`.
+
+Do wersji 0.9.7 panel był osobnym pluginem `sdd-board`; marketplace przenosi te instalacje na `sdd`.
 
 ## Co pokazuje
 

@@ -1,7 +1,7 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
 import { ROLE_KEY, STATUS_ROLE, TEXT_COLOR, STEP_LABELS, ago, blockedBy, derive, gate, taskCounts, warnings } from './model.ts'
 import type { Feature } from './model.ts'
-import type { Config } from './core/check.ts'
+import type { Config } from '../core/check.ts'
 import { branchSvg, checkSvg, dividerSvg, dotSvg, dotsSvg, pillSvg, pipsSvg, progressSvg, stepperSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
