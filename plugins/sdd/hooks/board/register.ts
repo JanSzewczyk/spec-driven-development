@@ -10,7 +10,7 @@ import type { MergeState, PrInfo, PrState } from '../../core/merges.ts'
 import { ioOf } from '../io.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, prune, toolDetail } from './live.ts'
 import type { Commit, Live } from './live.ts'
-import { currentSlug, freshness, implFlow, sessionOf, sortFeatures, featureFrom } from './model.ts'
+import { currentSlug, freshness, implFlow, reviewFlow, sessionOf, sortFeatures, featureFrom } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
 import type { Tab } from './view.ts'
@@ -257,7 +257,19 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
       if (flow) f.flow = flow
     }
   }
-  const last = await commitsOf(io, found.find((f) => f.slug === currentSlug(found, next, pinned)) ?? null)
+  const shown = found.find((f) => f.slug === currentSlug(found, next, pinned)) ?? null
+  const rflow = reviewFlow(cfg)
+  if (shown && rflow) shown.reviewFlow = rflow
+  // How old the review's verdict is: when review.md was written, and the commits made after it.
+  if (shown && shown.review !== null) {
+    const written = await modifiedOf($, featurePath(shown.slug, 'review'))
+    if (written) {
+      shown.reviewAt = written
+      const r = await io.run(['git', 'rev-list', '--count', '--since=' + new Date(written).toISOString(), 'HEAD'])
+      if (r && r.exitCode === 0) shown.reviewCommits = Number(String(r.stdout).trim()) || 0
+    }
+  }
+  const last = await commitsOf(io, shown)
   const sig = JSON.stringify([any, next, root, found, cfg, last])
   const isChanged = sig !== signature
   signature = sig

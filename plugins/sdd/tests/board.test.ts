@@ -1,10 +1,10 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { parseEpicId, parsePlan, parseReview, parseSpec, parseTasks } from '../core/parse.ts'
-import { blockedBy, clock, currentSlug, derive, freshness, gate, implFlow, sessionOf, taskLook, taskWaves, warnings } from '../hooks/board/model.ts'
+import { parseEpicId, parsePlan, parseReview, parseReviewDetail, parseSpec, parseTasks } from '../core/parse.ts'
+import { blockedBy, clock, currentSlug, derive, freshness, gate, implFlow, isReviewAgent, reviewView, sessionOf, taskLook, taskWaves, warnings } from '../hooks/board/model.ts'
 import { hasTaskTrailer, mergeState, prList, prNumber, prStates, taskBranchBase, taskOfBranch, taskPrs, worktreeOf } from '../core/merges.ts'
 import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, toolDetail } from '../hooks/board/live.ts'
 import { stripesSvg } from '../hooks/board/svg.ts'
-import type { Feature } from '../hooks/board/model.ts'
+import type { Feature, ReviewFlow } from '../hooks/board/model.ts'
 
 const SPEC = `# Feature: User Login
 
@@ -138,6 +138,105 @@ test('parseReview tells READY from NOT READY', () => {
   expect(parseReview('nothing')).toBeNull()
   expect(parseReview('# Review\n\n**Verdict:** GO\n\n## Drift (drift-detector)\n- the last round was NO-GO, now fixed\n')).toBe('READY')
   expect(parseReview('**Verdict:** NO_GO')).toBe('NOT READY')
+})
+
+const REVIEW_MD = `# Review: User Login
+
+**Branch:** feat/user-login
+**Verdict:** NOT READY
+
+## Spec compliance (spec-verifier)
+1/2 AC met
+| AC | Status | Evidence |
+
+## Tests
+- api: passed 12/12 · coverage 91% — pass
+- web: passed 30/31 · coverage 80% — fail
+
+## Constitution rules
+- DO NOT use && in JSX — violated (\`form.tsx:12\`)
+- DO NOT edit generated code — respected
+
+## Audits
+- python-reviewer (api): PASS — 0 critical, 0 major, 2 minor
+- nextjs:code-reviewer (web): FAIL — 1 critical, 1 major, 0 minor
+  - Critical: \`route.ts:14\` open redirect on ?next=
+  - Major: stories mock fetch (\`form.stories.tsx:35\`)
+- qa-engineer (extra check): PASS. Both AC checked in the browser.
+- Skill audits (\`auto\`): none run beyond the agents above.
+
+## Blockers
+- must fix: AC2 has no test — spec-verifier · T2
+- acceptable: && in JSX — reviewer · T3
+
+## Accepted
+- untracked coverage/ (build output)
+`
+
+const FLOW: ReviewFlow = { tests: 'run', publish: 'ask', default: 'auto', projects: { api: 'agent:python:python-reviewer', web: 'agent:nextjs:code-reviewer' }, checks: ['agent:testing:qa-engineer'], commands: { api: 'uv run pytest --cov', web: 'pnpm test:coverage' } }
+
+test('parseReviewDetail reads every check review.md records', () => {
+  const d = parseReviewDetail(REVIEW_MD)
+  expect(d.verdict).toBe('NOT READY')
+  expect(d.ac).toEqual({ met: 1, total: 2 })
+  expect(d.tests).toEqual([{ project: 'api', text: 'passed 12/12 · coverage 91%', passed: true }, { project: 'web', text: 'passed 30/31 · coverage 80%', passed: false }])
+  expect(d.rules.respected).toBe(1)
+  expect(d.rules.violated).toEqual([{ severity: 'major', text: 'DO NOT use && in JSX', at: 'form.tsx:12' }])
+  expect(d.audits.map((a) => [a.name, a.label, a.result])).toEqual([['python-reviewer', 'api', 'PASS'], ['nextjs:code-reviewer', 'web', 'FAIL'], ['qa-engineer', 'extra check', 'PASS'], ['Skill audits', 'auto', null]])
+  expect(d.audits[1].counts).toBe('1 critical 1 major 0 minor')
+  expect(d.audits[1].findings).toEqual([{ severity: 'critical', text: 'open redirect on ?next=', at: 'route.ts:14' }, { severity: 'major', text: 'stories mock fetch', at: 'form.stories.tsx:35' }])
+  expect(d.audits[3].note).toBe('none run beyond the agents above')
+  expect(d.blockers).toEqual([{ mustFix: true, text: 'AC2 has no test', check: 'spec-verifier', task: 'T2' }, { mustFix: false, text: '&& in JSX', check: 'reviewer', task: 'T3' }])
+  expect(d.accepted).toEqual(['untracked coverage/ (build output)'])
+})
+
+test('the review card lists the configured checks with their review.md results', () => {
+  const tasks = parseTasks(TASKS).map((t) => ({ ...t, status: 'review' }))
+  const f = feature({ tasks, review: 'NOT READY', reviewDetail: parseReviewDetail(REVIEW_MD), reviewFlow: FLOW })
+  const v = reviewView(f, null, null)!
+  expect(v.checks.map((c) => [c.key, c.stage, c.state])).toEqual([
+    ['tests:api', 1, 'pass'], ['tests:web', 1, 'fail'], ['spec-verifier', 1, 'fail'], ['check:0', 1, 'pass'],
+    ['audit:api', 1, 'pass'], ['audit:web', 1, 'fail'], ['rules', 2, 'warn'], ['skills', 2, 'skipped'], ['publish', 3, 'skipped'],
+  ])
+  expect(v.checks.find((c) => c.key === 'audit:web')!.summary).toBe('1 critical · 1 major · 0 minor')
+  expect(v.blockers.length).toBe(2)
+  // The must-fix blocker names its task: that is the next command.
+  expect(derive(f).next?.command).toBe('/sdd:implement T2')
+})
+
+test('while /sdd:review runs, the card follows its agents and the strip leaves them out', () => {
+  const tasks = parseTasks(TASKS).map((t) => ({ ...t, status: 'review' }))
+  const f = feature({ tasks, review: 'NOT READY', reviewDetail: parseReviewDetail(REVIEW_MD), reviewFlow: FLOW })
+  let live = onTurnStart(onCommand(emptyLive(), '/sdd:review'), 't', 1000)
+  live = onTool(live, 'Bash', 'pnpm test:coverage', undefined, 1100)
+  expect(reviewView(f, live, '/sdd:review')!.checks.find((c) => c.key === 'tests:web')!.state).toBe('running')
+  live = onTool(live, 'Agent', 'verify', undefined, 1190)
+  live = onSpawn(live, 'a', 'sdd:spec-verifier', 'verify', 1200)
+  live = onSpawn(live, 'b', 'nextjs:code-reviewer', 'audit web', 1200)
+  live = onReport(live, 'a', 'completed', 1500)
+  const v = reviewView(f, live, '/sdd:review')!
+  expect(v.isRunning).toBe(true)
+  expect(v.verdict).toBeNull()
+  expect(Object.fromEntries(v.checks.map((c) => [c.key, c.state]))).toEqual({ 'tests:api': 'ran', 'tests:web': 'ran', 'spec-verifier': 'ran', 'check:0': 'queued', 'audit:api': 'queued', 'audit:web': 'running', rules: 'queued', skills: 'queued', publish: 'queued' })
+  expect(isReviewAgent('nextjs:code-reviewer', FLOW)).toBe(true)
+  expect(isReviewAgent('sdd:reviewer', FLOW)).toBe(true)
+  expect(isReviewAgent('Explore', FLOW)).toBe(false)
+})
+
+test('review agents still working after the turn keep the review card live', () => {
+  const tasks = parseTasks(TASKS).map((t) => ({ ...t, status: 'review' }))
+  const f = feature({ tasks, review: 'NOT READY', reviewDetail: parseReviewDetail(REVIEW_MD), reviewFlow: FLOW })
+  let live = onTurnStart(onCommand(emptyLive(), '/sdd:review'), 't', 1000)
+  live = onSpawn(live, 'a', 'sdd:spec-verifier', 'verify', 1200, true)
+  live = onSpawn(live, 'b', 'testing:qa-engineer', 'qa', 1200, true)
+  live = onReport(onTurnComplete(live, 1300), 'a', 'completed', 1400)
+  const v = reviewView(f, live, null)!
+  expect(v.isRunning).toBe(true)
+  expect(v.verdict).toBeNull()
+  expect(v.checks.find((c) => c.key === 'spec-verifier')!.state).toBe('ran')
+  expect(v.checks.find((c) => c.key === 'check:0')!.state).toBe('running')
+  // Without review agents at work, the card shows review.md again.
+  expect(reviewView(f, onReport(live, 'b', 'completed', 1500), null)!.isRunning).toBe(false)
 })
 
 test('derive walks the pipeline', () => {

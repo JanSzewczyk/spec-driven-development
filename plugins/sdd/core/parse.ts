@@ -176,3 +176,63 @@ export function parseReview(text: string): Verdict | null {
   if (line && !line[1].includes('|')) return verdictOf(line[1])
   return verdictOf(text)
 }
+
+// The checks a review.md records, in the line shapes agents/reviewer.md asks for. Older files fill
+// what they can: an audit line without PASS / FAIL / SKIPPED has a null result.
+export type Severity = 'critical' | 'major' | 'minor'
+export type Finding = { severity: Severity; text: string; at: string }
+export type ReviewTest = { project: string; text: string; passed: boolean | null }
+export type ReviewAudit = { name: string; label: string; result: 'PASS' | 'FAIL' | 'SKIPPED' | null; counts: string; note: string; findings: Finding[] }
+export type Blocker = { mustFix: boolean; text: string; check: string; task: string }
+export type ReviewDetail = {
+  verdict: Verdict | null
+  ac: { met: number; total: number } | null
+  tests: ReviewTest[]
+  rules: { respected: number; violated: Finding[] }
+  audits: ReviewAudit[]
+  blockers: Blocker[]
+  accepted: string[]
+}
+
+const AT = /`([^`\s]+:\d[\d,\-–]*)`/ // `file:line` inside a finding
+
+export function parseReviewDetail(text: string): ReviewDetail {
+  const top = (title: string) => section(text, title).filter((l) => /^[-*]\s/.test(l)).map((l) => l.replace(/^[-*]\s+/, '').trim())
+  const ac = section(text, 'Spec compliance').join('\n').match(/(\d+)\s*\/\s*(\d+)\s+AC\b/)
+  const tests = top('Tests').flatMap((t) => {
+    const m = t.match(/^`?([^`:]+?)`?:\s*(.+)$/)
+    if (!m || /<[^>]+>/.test(t)) return []
+    const r = m[2].match(/\s+[—–-]\s+(pass|fail)(?:ed)?\b\.?\s*(?:\([^)]*\))?\s*$/i)
+    return [{ project: m[1].trim(), text: (r ? m[2].slice(0, r.index) : m[2]).replace(/`/g, '').trim(), passed: r ? r[1].toLowerCase() === 'pass' : null }]
+  })
+  const rules = { respected: 0, violated: [] as Finding[] }
+  for (const r of top('Constitution rules')) {
+    if (/[—–-]\s*violated/i.test(r)) rules.violated.push({ severity: 'major', text: r.replace(/\s*[—–-]\s*violated.*$/i, '').replace(/`/g, ''), at: r.match(AT)?.[1] ?? '' })
+    else if (/[—–-]\s*respected/i.test(r)) rules.respected += 1
+  }
+  const audits: ReviewAudit[] = []
+  for (const line of section(text, 'Audits')) {
+    // `- <name> (<label>): <result>`, or `- <name>: <result>`; a name may hold colons (nextjs:code-reviewer).
+    const withLabel = line.match(/^[-*]\s+(\S.*?)\s+\(([^)]*)\):\s*(.*)$/)
+    const bare = withLabel ? null : line.match(/^[-*]\s+([^\s:]+(?::[^\s:]+)*):\s*(.*)$/)
+    const head = withLabel ? withLabel.slice(1) : bare ? [bare[1], '', bare[2]] : null
+    const sub = line.match(/^\s+[-*]\s+(Critical|Major|Minor)\b[^:]*:\s*(.+)$/i)
+    if (sub && audits.length) {
+      // A finding that opens with its location: the location goes to `at`, the text keeps the rest.
+      const body = sub[2].replace(/^`[^`\s]+:\d[^`]*`(?:\s*\([^)]*\)\s*|[.:]?\s+)/, '').replace(/\s*\(`[^`]+`\)\s*$/, '').trim()
+      audits[audits.length - 1].findings.push({ severity: sub[1].toLowerCase() as Severity, text: (body || sub[2].trim()).replace(/`/g, ''), at: sub[2].match(AT)?.[1] ?? '' })
+    } else if (head && !/<[^>]+>/.test(line)) {
+      const [name, label, rest] = head
+      const r = rest.match(/^(PASS|FAIL|SKIPPED)\b[.\s—–-]*(.*)$/)
+      const counts = (r ? r[2] : rest).match(/\d+\s+critical,?\s+\d+\s+major,?\s+\d+\s+minor/i)?.[0].replace(/,/g, '') ?? ''
+      const note = (r ? r[2] : rest).replace(/`/g, '').split(/(?<=\.)\s/)[0].replace(/\.$/, '').trim()
+      audits.push({ name: name.replace(/`/g, '').trim(), label: label.replace(/`/g, '').trim(), result: r ? (r[1] as ReviewAudit['result']) : null, counts, note, findings: [] })
+    }
+  }
+  const blockers = top('Blockers').flatMap((b) => {
+    const m = b.match(/^(must fix|acceptable):\s*(.+?)(?:\s+[—–]\s+(.+?))?(?:\s+·\s+(T\d+|none))?\s*$/i)
+    return m ? [{ mustFix: m[1].toLowerCase() === 'must fix', text: m[2].trim(), check: (m[3] ?? '').trim(), task: m[4] && m[4] !== 'none' ? m[4] : '' }] : []
+  })
+  const accepted = top('Accepted').filter((a) => !/<[^>]+>/.test(a))
+  return { verdict: parseReview(text), ac: ac ? { met: Number(ac[1]), total: Number(ac[2]) } : null, tests, rules, audits, blockers, accepted }
+}

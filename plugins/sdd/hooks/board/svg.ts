@@ -25,6 +25,7 @@ const CDS = {
 // --fill-<role>: the solid hue controls are drawn with, the same in both themes.
 export const FILL: Record<Role, string> = { success: '#009300', pro: '#7161e0', accent: '#2a78d6', warning: '#fab219', danger: '#d03b3b', neutral: '#898781' }
 const ON_FILL = '#0b0b0b' // --on-success / --on-warning
+const TICK = '#ffffff' // the tick on a filled success disc, white in both themes
 // Fallbacks for an unstyled drawing: mid tones that read on both themes.
 const MID = '#8b8d98'
 export const MID_TRACK = '#8b8d9840'
@@ -62,7 +63,7 @@ export function pillSvg(label: string, role: Role): { source: string; width: num
 // Check icon for the readiness list: a success disc with a tick, or a warning ring when still open.
 export function checkSvg(ok: boolean): string {
   const body = ok
-    ? '<circle cx="8" cy="8" r="7" fill="' + FILL.success + '"/><path d="M4.6 8.2 l2.2 2.3 l4.2 -4.6" fill="none" stroke="' + ON_FILL + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+    ? '<circle cx="8" cy="8" r="7" fill="' + FILL.success + '"/><path d="M4.6 8.2 l2.2 2.3 l4.2 -4.6" fill="none" stroke="' + TICK + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
     : themed([['circle', 'fill', CDS.bg.warning], ['circle', 'fill-opacity', ['1', '1']]]) +
       '<circle cx="8" cy="8" r="6.2" fill="' + FILL.warning + '" fill-opacity="0.14" stroke="' + FILL.warning + '" stroke-width="1.6"/>'
   return svgDoc(16, 16, body)
@@ -139,7 +140,7 @@ export function taskGlyphSvg(look: TaskLook, isLive = false): string {
   const tick = (stroke: string) => '<path d="M4.4 7.2l2 2.1 3.6-4" fill="none" stroke="' + stroke + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
   switch (look) {
     case 'done':
-      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(ON_FILL))
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(TICK))
     case 'review':
       return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.accent + '"/><circle cx="7" cy="7" r="2" fill="' + ON_FILL + '"/>')
     case 'merged':
@@ -154,6 +155,33 @@ export function taskGlyphSvg(look: TaskLook, isLive = false): string {
       return svgDoc(14, 14, ring(' stroke-dasharray="2 2"'))
     default:
       return svgDoc(14, 14, ring(''))
+  }
+}
+
+// A review check's state: passed (tick), failed (red cross), passed with findings (warning ring with a
+// bar), running (pulsing), ran in this run with its result still unwritten (muted tick), waiting (ring),
+// skipped (ring with a dash), not recorded (dashed ring).
+export function checkStateSvg(state: string): string {
+  const muted = themed([['.m', 'stroke', CDS.muted]])
+  const ring = (attrs: string) => '<circle class="m" cx="7" cy="7" r="5.2" fill="none" stroke="' + MID + '" stroke-width="1.4"' + attrs + '/>'
+  const tick = (stroke: string, cls = '') => '<path' + cls + ' d="M4.4 7.2l2 2.1 3.6-4" fill="none" stroke="' + stroke + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  switch (state) {
+    case 'pass':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(TICK))
+    case 'fail':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.danger + '"/><path d="M4.9 4.9l4.2 4.2M9.1 4.9l-4.2 4.2" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>')
+    case 'warn':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="' + FILL.warning + '" fill-opacity="0.16" stroke="' + FILL.warning + '" stroke-width="1.6"/><path d="M7 4.2v3.4" stroke="' + FILL.warning + '" stroke-width="1.6" stroke-linecap="round"/><circle cx="7" cy="9.8" r="0.9" fill="' + FILL.warning + '"/>')
+    case 'running':
+      return liveDotSvg('warning', true, 14)
+    case 'ran':
+      return svgDoc(14, 14, muted + ring('') + tick(MID, ' class="m"'))
+    case 'skipped':
+      return svgDoc(14, 14, muted + ring('') + '<path class="m" d="M4.6 7h4.8" stroke="' + MID + '" stroke-width="1.5" stroke-linecap="round"/>')
+    case 'unknown':
+      return svgDoc(14, 14, muted + ring(' stroke-dasharray="2 2"'))
+    default:
+      return svgDoc(14, 14, muted + ring(''))
   }
 }
 

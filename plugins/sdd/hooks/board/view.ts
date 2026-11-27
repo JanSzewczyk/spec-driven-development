@@ -1,13 +1,13 @@
 // Drawing code. Gets the resolved elements, never the mods API: actions arrive as callbacks.
-import { ROLE_KEY, STATUS_ROLE, STEP_LABELS, ago, blockedBy, clock, derive, gate, implemented, taskCounts, taskLook, taskWaves, warnings } from './model.ts'
-import type { Feature, Session, TaskLook } from './model.ts'
+import { ROLE_KEY, STATUS_ROLE, STEP_LABELS, ago, blockedBy, clock, derive, gate, implemented, isReviewAgent, reviewView, taskCounts, taskLook, taskWaves, warnings } from './model.ts'
+import type { CheckState, Feature, ReviewCheck, ReviewView, Session, TaskLook } from './model.ts'
 import type { Config } from '../../core/config.ts'
 import type { Task } from '../../core/parse.ts'
 import { prNumber } from '../../core/merges.ts'
 import type { PrState, TaskPr } from '../../core/merges.ts'
 import { WINDOW_MS } from './live.ts'
 import type { Lane, Live } from './live.ts'
-import { branchSvg, capSvg, checkSvg, dividerSvg, dotSvg, FILL, liveDotSvg, MID_TRACK, miniPhaseSvg, pillSvg, pipsSvg, prIconSvg, STRIPES_WIDTH, stripesSvg, taskGlyphSvg, taskGraphSvg } from './svg.ts'
+import { branchSvg, capSvg, checkStateSvg, checkSvg, dividerSvg, dotSvg, FILL, liveDotSvg, MID_TRACK, miniPhaseSvg, pillSvg, pipsSvg, prIconSvg, STRIPES_WIDTH, stripesSvg, taskGlyphSvg, taskGraphSvg } from './svg.ts'
 import type { Role } from './model.ts'
 
 export type Tab = 'current' | 'all' | 'ticket'
@@ -174,7 +174,10 @@ function tabBar(el: any, ctx: Ctx) {
 function liveStrip(el: any, ctx: Ctx) {
   const { Box, Text } = el
   const live = ctx.live
-  const lanes = ctx.lanes ?? []
+  const rv = reviewOf(ctx)
+  // A running review's agents are rows of the Review card, not lanes here.
+  const lanes = (ctx.lanes ?? []).filter((l) => !(rv?.isRunning && l.kind === 'agent' && isReviewAgent(l.who.replace(/^agent:/, ''), ctx.current?.reviewFlow)))
+  const inCard = rv?.isRunning ? rv.checks.filter((c) => c.state === 'running').length : 0
   const isRich = rich(ctx.surface)
   const turn = live?.turn ?? null
   const active = lanes.filter((l) => l.state === 'working' || l.state === 'waiting')
@@ -183,6 +186,12 @@ function liveStrip(el: any, ctx: Ctx) {
     return Box({
       key: 'live', flexDirection: 'row', columnGap: 1, alignItems: 'center',
       children: [liveDot(el, ctx, 'warning', false), Text({ size: 'footnote', wrap: 'truncate-end', children: [waiting + ' · waits for your reply'] })],
+    })
+  }
+  if (!turn && active.length === 0 && inCard) {
+    return Box({
+      key: 'live', flexDirection: 'row', columnGap: 1, alignItems: 'center',
+      children: [liveDot(el, ctx, 'warning', true), Text({ size: 'footnote', wrap: 'truncate-end', children: ['This session is idle · ' + inCard + ' review check' + (inCard === 1 ? '' : 's') + ' running · rows in the Review card'] })],
     })
   }
   if (!turn && active.length === 0) {
@@ -221,8 +230,23 @@ function liveStrip(el: any, ctx: Ctx) {
     : null
   return Box({
     key: 'live', borderStyle: 'round', borderColor: turn ? 'warning' : undefined, padding: 'md', flexDirection: 'column', rowGap: isRich ? 2 : 1,
-    children: [Box({ flexDirection: 'column', rowGap: 1, children: [head, tool].filter(Boolean) }), laneBox].filter(Boolean),
+    children: [
+      Box({
+        flexDirection: 'column', rowGap: 1,
+        children: [head, tool, inCard ? Box({ paddingLeft: isRich ? 3 : 2, children: [Text({ size: 'caption', color: 'warning', wrap: 'truncate-end', children: [inCard + ' review check' + (inCard === 1 ? '' : 's') + ' running · rows in the Review card'] })] }) : null].filter(Boolean),
+      }),
+      laneBox,
+    ].filter(Boolean),
   })
+}
+
+// The Review card's data for the feature shown, while its open phase is the review (or it is done).
+function reviewOf(ctx: Ctx): ReviewView | null {
+  const f = ctx.current
+  if (!f || ctx.tab === 'ticket') return null
+  const phase = derive(f).phase
+  if (phase !== 'review' && phase !== 'done') return null
+  return reviewView(f, ctx.live ?? null, runningCommand(ctx))
 }
 
 // The live strip's time axis over the lane bars: the window's start, two ticks, now.
@@ -367,13 +391,174 @@ function waitingCommand(ctx: Ctx): string | null {
 
 function doneCard(el: any, ctx: Ctx) {
   const { Box, Text, Button } = el
+  const rv = reviewOf(ctx)
   return Box({
     key: 'done-card', borderStyle: 'round', borderColor: 'success', padding: 'md', flexDirection: 'column', rowGap: 1,
     children: [
       Text({ color: 'success', weight: 'semibold', children: ['Feature done · review ready'] }),
       Text({ dimColor: true, wrap: 'wrap', size: 'footnote', children: ['Open or merge the pull request when you are ready, then start the next feature.'] }),
+      ...(rv && rv.verdict ? [checksBar(el, ctx, rv.checks), Text({ key: 'rv-tally', size: 'caption', dimColor: true, wrap: 'wrap', children: [tally(rv.checks) + (rv.at ? ' · review.md ' + ago(rv.at, ctx.now) : '') + (rv.accepted.length ? ' · ' + rv.accepted.length + ' accepted' : '')] })] : []),
       Button({ key: 'fill-empty', label: 'Start a new spec', plain: true, onPress: () => ctx.actions.fill('/sdd:spec feat ') }),
     ],
+  })
+}
+
+const CHECK_TEXT: Record<CheckState, [string, string | undefined]> = { pass: ['✓', 'success'], fail: ['✕', 'error'], warn: ['!', 'warning'], running: ['◉', 'warning'], ran: ['✓', undefined], queued: ['○', undefined], skipped: ['–', undefined], unknown: ['?', undefined] }
+const CHECK_FILL: Partial<Record<CheckState, string>> = { pass: FILL.success, fail: FILL.danger, warn: FILL.warning, running: FILL.warning, ran: FILL.neutral + '99', skipped: FILL.neutral + '59' }
+const STAGE_TITLE: Record<number, string> = { 1: 'Verify · in parallel', 2: 'Reviewer agent', 3: 'Publish' }
+const SEV_KEY: Record<string, string> = { critical: 'error', major: 'warning', minor: 'inactive' }
+
+function checkGlyph(el: any, ctx: Ctx, state: CheckState) {
+  if (rich(ctx.surface)) return el.Svg({ alt: state, width: 14, height: 14, source: checkStateSvg(state), ...(state === 'running' ? { isInteractive: true } : {}) })
+  const [g, color] = CHECK_TEXT[state]
+  return el.Text({ color, dimColor: !color, children: [g] })
+}
+
+// How many checks passed, failed, run or wait, in a few words.
+function tally(checks: ReviewCheck[]): string {
+  const n = (s: CheckState) => checks.filter((c) => c.state === s).length
+  const words: [CheckState, string][] = [['pass', 'passed'], ['fail', 'failed'], ['warn', 'with findings'], ['running', 'running'], ['ran', 'finished'], ['queued', 'waiting'], ['skipped', 'skipped'], ['unknown', 'not recorded']]
+  return words.filter(([s]) => n(s)).map(([s, w]) => n(s) + ' ' + w).join(' · ')
+}
+
+// One segment per check, grouped by step, like a CI checks bar; running ones move.
+function checksBar(el: any, ctx: Ctx, checks: ReviewCheck[]) {
+  const { Box, Text } = el
+  if (!rich(ctx.surface)) return Text({ key: 'rv-bar', children: [[1, 2, 3].map((st) => checks.filter((c) => c.stage === st).map((c) => CHECK_TEXT[c.state][0]).join('')).filter(Boolean).join(' │ ')] })
+  const stages = [1, 2, 3].map((st) => checks.filter((c) => c.stage === st)).filter((g) => g.length)
+  return Box({
+    key: 'rv-bar', flexDirection: 'row', columnGap: 1,
+    children: stages.map((g, i) =>
+      Box({
+        key: 'rv-stage-' + i, flexDirection: 'row', columnGap: 'xs', flexGrow: g.length, flexShrink: 1, width: 0, minWidth: 0,
+        children: g.map((c) =>
+          Box({
+            key: 'rv-seg-' + c.key, flexDirection: 'column', flexGrow: 1, flexShrink: 1, width: 0, minWidth: 0,
+            children: [flexBar(el, 'rv-seg-' + c.key + '-bar', c.name + ' ' + c.state, 8, [c.state === 'running' ? { grow: 1, color: FILL.warning, stripes: stripesSvg(8, null), isMoving: true, alt: c.name + ' running' } : { grow: 1, color: CHECK_FILL[c.state] }])],
+          }),
+        ),
+      }),
+    ),
+  })
+}
+
+function checkRow(el: any, ctx: Ctx, c: ReviewCheck) {
+  const { Box, Text, Button } = el
+  const isRich = rich(ctx.surface)
+  const key = 'rv-' + c.key
+  const isOpen = (ctx.open ?? []).includes(key)
+  const status = c.state === 'running' ? (c.since ? clock(ctx.now - c.since) : 'running') : c.state === 'queued' ? (c.stage === 1 ? 'next' : c.stage === 2 ? 'after step 1' : 'after READY') : c.state === 'ran' ? 'finished' : c.state === 'unknown' ? '—' : c.state.toUpperCase()
+  const color = { pass: 'success', fail: 'error', warn: 'warning', running: 'warning' }[c.state as string]
+  const toggle = () => ctx.actions.toggle?.(key)
+  const details = isOpen
+    ? Box({
+        key: key + '-details', flexDirection: 'column', paddingLeft: isRich ? 3 : 2,
+        children: [
+          ...c.findings.slice(0, 6).map((x, i) =>
+            Box({
+              key: key + '-f' + i, flexDirection: 'row', columnGap: 1,
+              children: [Text({ size: 'caption', color: SEV_KEY[x.severity], children: ['●'] }), Box({ ...SHRINK, flexDirection: 'column', children: [Text({ size: 'footnote', wrap: 'wrap', children: [x.text.length > 180 ? x.text.slice(0, 177).trimEnd() + '…' : x.text] }), x.at ? Text({ mono: true, size: 'caption', dimColor: true, wrap: 'truncate-end', children: [x.at] }) : null].filter(Boolean) })],
+            }),
+          ),
+          c.findings.length > 6 ? Text({ size: 'caption', dimColor: true, children: [c.findings.length - 6 + ' more in review.md'] }) : null,
+          Text({ size: 'caption', dimColor: true, wrap: 'wrap', children: ['from ' + c.source] }),
+        ].filter(Boolean),
+      })
+    : null
+  return Box({
+    key: key + '-box', flexDirection: 'column',
+    children: [
+      Box({
+        flexDirection: 'row', columnGap: 1, alignItems: 'center',
+        children: [
+          Button({ key: key + '-chevron', plain: true, dimColor: true, label: isOpen ? '▾' : '▸', onPress: toggle }),
+          checkGlyph(el, ctx, c.state),
+          Box({ ...SHRINK, children: [Button({ key, plain: true, onPress: toggle, children: [Text({ mono: true, size: 'footnote', weight: 'medium', dimColor: c.state === 'queued' || c.state === 'skipped', wrap: 'truncate-end', children: [c.name] })] })] }),
+          Text({ size: 'caption', tabular: true, weight: color && c.state !== 'running' ? 'semibold' : undefined, color, dimColor: !color, children: [status] }),
+        ],
+      }),
+      // The result when there is one, else where the check comes from in the configuration.
+      Box({ paddingLeft: isRich ? 5 : 4, flexDirection: 'row', minWidth: 0, children: [Text({ size: 'caption', dimColor: true, wrap: 'truncate-end', children: [c.summary || c.source] })] }),
+      details,
+    ].filter(Boolean),
+  })
+}
+
+function blockersBlock(el: any, ctx: Ctx, rv: ReviewView) {
+  const { Box, Text, Button } = el
+  if (rv.verdict !== 'NOT READY' || (rv.blockers.length === 0 && rv.accepted.length === 0)) return null
+  const group = (title: string, color: string, list: typeof rv.blockers) =>
+    list.length
+      ? Box({
+          key: 'blk-' + title, flexDirection: 'column',
+          children: [
+            Text({ size: 'footnote', weight: 'semibold', color, children: [title + ' · ' + list.length] }),
+            ...list.map((b, i) =>
+              Box({
+                key: 'blk-' + title + i, flexDirection: 'row', columnGap: 1, alignItems: 'center',
+                children: [
+                  Text({ size: 'caption', color, children: ['●'] }),
+                  Box({ ...SHRINK, columnGap: 1, children: [Text({ size: 'footnote', wrap: 'truncate-end', children: [b.text] }), b.check ? Text({ size: 'caption', dimColor: true, wrap: 'truncate-end', children: [b.check] }) : null].filter(Boolean) }),
+                  b.task ? Button({ key: 'blk-run-' + title + i, label: b.task, plain: true, onPress: () => ctx.actions.fill('/sdd:implement ' + b.task) }) : null,
+                ].filter(Boolean),
+              }),
+            ),
+          ],
+        })
+      : null
+  return Box({
+    key: 'blockers', padding: 'sm', flexDirection: 'column', rowGap: 1,
+    ...(rich(ctx.surface) ? roundBg(SURFACE) : { borderStyle: 'round', borderColor: 'error' }),
+    children: [
+      group('Must fix', 'error', rv.blockers.filter((b) => b.mustFix)),
+      group('Can be accepted', 'warning', rv.blockers.filter((b) => !b.mustFix)),
+      rv.accepted.length ? Text({ size: 'caption', dimColor: true, wrap: 'wrap', children: ['Accepted earlier: ' + rv.accepted.join('; ')] }) : null,
+    ].filter(Boolean),
+  })
+}
+
+// The review phase: every check /sdd:review runs, from the review: section of capabilities.yml, with its
+// live state while the review runs and its result from review.md after it.
+function reviewCard(el: any, ctx: Ctx, f: Feature, rv: ReviewView) {
+  const { Box, Text, Button } = el
+  const isRich = rich(ctx.surface)
+  const c = taskCounts(f.tasks, f.merges)
+  const done = rv.checks.filter((x) => x.state !== 'queued' && x.state !== 'running').length
+  const right = rv.verdict ? pill(el, isRich, rv.verdict, rv.verdict === 'READY' ? 'success' : 'danger') : Text({ dimColor: true, size: 'footnote', tabular: true, children: [rv.isRunning ? done + ' of ' + rv.checks.length + ' checks done' : 'not reviewed yet'] })
+  const age = rv.at ? 'review.md ' + ago(rv.at, ctx.now) + (rv.commitsSince ? ' · ' + rv.commitsSince + ' commit' + (rv.commitsSince === 1 ? '' : 's') + ' since, the verdict may be stale' : '') : ''
+  const source = rv.isRunning
+    ? f.review ? 'Last verdict ' + f.review + (rv.at ? ' ' + ago(rv.at, ctx.now) : '') + ' · this run replaces it' : 'First review · review.md is written at the end'
+    : rv.verdict ? age : 'Checks from review: in capabilities.yml'
+  const stage = (n: 1 | 2 | 3) => {
+    const rows = rv.checks.filter((x) => x.stage === n)
+    if (!rows.length) return null
+    return Box({
+      key: 'rv-stage-' + n, flexDirection: 'column', rowGap: isRich ? 1 : 0,
+      children: [
+        Box({ flexDirection: 'row', justifyContent: 'space-between', columnGap: 1, children: [Text({ size: 'caption', weight: 'semibold', dimColor: true, children: [n + ' · ' + STAGE_TITLE[n]] }), n === 1 && c.total ? Text({ size: 'caption', dimColor: true, tabular: true, children: [c.done + c.review + '/' + c.total + ' tasks implemented'] }) : null].filter(Boolean) }),
+        ...rows.map((x) => checkRow(el, ctx, x)),
+      ],
+    })
+  }
+  const next = nextBlock(el, ctx, f)
+  return Box({
+    key: 'phase-card', borderStyle: 'round', borderColor: rv.verdict === 'NOT READY' && !rv.isRunning ? 'error' : undefined, padding: 'md', flexDirection: 'column', rowGap: isRich ? 2 : 1,
+    children: [
+      Box({
+        flexDirection: 'column', rowGap: 1,
+        children: [
+          Box({ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: 1, children: [Text({ size: 'heading', weight: 'semibold', children: ['Review'] }), right] }),
+          checksBar(el, ctx, rv.checks),
+          Text({ size: 'caption', dimColor: true, wrap: 'wrap', tabular: true, children: [[tally(rv.checks), source].filter(Boolean).join(' · ')] }),
+        ],
+      }),
+      stage(1),
+      stage(2),
+      stage(3),
+      blockersBlock(el, ctx, rv),
+      next,
+      Button({ key: 'rv-config', label: 'Checks come from review: in capabilities.yml', plain: true, dimColor: true, onPress: () => ctx.actions.config() }),
+    ].filter(Boolean),
   })
 }
 
@@ -383,6 +568,8 @@ function phaseCard(el: any, ctx: Ctx, f: Feature) {
   const d = derive(f)
   const isRich = rich(ctx.surface)
   if (d.phase === 'done') return doneCard(el, ctx)
+  const rv = d.phase === 'review' ? reviewOf(ctx) : null
+  if (rv) return reviewCard(el, ctx, f, rv)
   const kids: any[] = []
   const c = taskCounts(f.tasks, f.merges)
   const label = STEP_LABELS.find((s) => s[0] === d.phase)?.[1] ?? d.phase
@@ -396,6 +583,23 @@ function phaseCard(el: any, ctx: Ctx, f: Feature) {
         : Text({ key: 'progress', color: 'success', children: ['█'.repeat(Math.round(((c.done + c.review) / c.total) * 24)) + '░'.repeat(24 - Math.round(((c.done + c.review) / c.total) * 24))] }),
     )
     kids.push(Text({ size: 'caption', dimColor: true, children: [c.done + ' done · ' + c.review + ' in review · ' + c['in-progress'] + ' in progress · ' + todo + ' to do'] }))
+  }
+  // A review that was not ready sent tasks back: its verdict, checks and blockers stay in sight.
+  if (d.phase === 'implement' && f.review === 'NOT READY') {
+    const last = reviewView(f, null, null)
+    if (last) {
+      kids.push(
+        Box({
+          key: 'last-review', flexDirection: 'column', rowGap: 1, marginTop: 1,
+          children: [
+            Box({ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: 1, children: [Text({ size: 'footnote', weight: 'semibold', children: ['Last review'] }), pill(el, isRich, 'NOT READY', 'danger')] }),
+            checksBar(el, ctx, last.checks),
+            Text({ size: 'caption', dimColor: true, wrap: 'wrap', children: [tally(last.checks) + (last.at ? ' · review.md ' + ago(last.at, ctx.now) : '')] }),
+            blockersBlock(el, ctx, last),
+          ].filter(Boolean),
+        }),
+      )
+    }
   }
   const g = gate(f)
   if (g && g.checks.length) {
@@ -643,7 +847,7 @@ export function renderCurrent(el: any, ctx: Ctx) {
     const rows = taskRows(el, ctx, f)
     if (rows) kids.push(rows)
   }
-  if (d.phase !== 'done' && f.review) kids.push(Text({ key: 'verdict', color: f.review === 'READY' ? 'success' : 'error', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
+  if (d.phase !== 'done' && d.phase !== 'review' && f.review) kids.push(Text({ key: 'verdict', color: f.review === 'READY' ? 'success' : 'error', weight: 'semibold', children: ['Review: ' + f.review.toLowerCase()] }))
   for (const w of warnings(f, ctx.branch)) kids.push(Text({ key: 'warn-' + w, color: 'error', wrap: 'wrap', children: ['⚠ ' + w] }))
   kids.push(docLinks(el, ctx, f))
   return Box({ flexDirection: 'column', rowGap: isRich ? 2 : 1, children: kids })
