@@ -18,7 +18,7 @@ implementation:
 
 `merge` and `parallel` exist only under `worktree`.
 
-With it, the session running `/sdd:implement all` only **orchestrates**. Every ready task runs in its own sub-session (Desktop) or isolated agent, in its own worktree, on branch `<spec-branch>--<EPIC>-T<n>` cut from the SDD branch. Sub-sessions never touch `specs/`; only the orchestrator writes `tasks.md`.
+With it, the session running `/sdd:implement all` only **orchestrates**. Every ready task runs in its own sub-session (Desktop; an isolated agent only outside Desktop), in its own worktree, on branch `<spec-branch>--<EPIC>-T<n>` cut from the SDD branch. Sub-sessions never touch `specs/`; only the orchestrator writes `tasks.md`.
 
 <IsolationFlow />
 
@@ -40,7 +40,7 @@ With it, the session running `/sdd:implement all` only **orchestrates**. Every r
 One `/sdd:implement all` runs every wave to the end; you do not re-run it after each merge.
 
 - **Sub-sessions finish**: Desktop resumes the orchestrator when its sub-sessions end their turn (with `parallel` > 1, when the whole wave has); background agents resume it when they complete.
-- **PRs merge** (`merge: pr`): one background waiter checks the open PRs into the SDD branch every 2 minutes and resumes the session when one of them is merged or closed. No tight loop.
+- **PRs merge** (`merge: pr`): one background waiter checks the open PRs into the SDD branch every 2 minutes and resumes the session when one of them is merged or closed. No tight loop. Desktop does not let a session start sessions by itself on a turn an event started, so the tasks a merge unblocks appear as "New task" cards: start each one with a click.
 - **Session ended**: the tasks keep `branch:` and `pr:`. Run `/sdd:implement all` again (or `/sdd:review` when nothing else waits); both pick up the merges first.
 
 <Aside type="note">
