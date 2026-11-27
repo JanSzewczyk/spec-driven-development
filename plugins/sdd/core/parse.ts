@@ -10,6 +10,8 @@ export type Task = {
   acceptance: string[] // AC ids the task serves
   branch: string // task branch while it runs in its own worktree; '' otherwise
   pr: string // pull request (number or URL) while it waits for a merge; '' otherwise
+  scope?: string[] // the `scope:` bullets
+  files?: string // the `files:` value
 }
 export type SpecInfo = {
   title: string
@@ -25,6 +27,7 @@ export type SpecInfo = {
   hasSummary: boolean
   storyCount: number
   edgeCases: number
+  criteria?: { id: string; text: string }[] // acceptance criteria by id (`- [ ] AC1: text`)
 }
 export type PlanInfo = { status: string; missing: string[]; openItems: number }
 
@@ -78,6 +81,10 @@ export function parseSpec(text: string): SpecInfo {
     hasSummary: summary.length > 0,
     storyCount: bullets(section(text, 'User stories')).length,
     edgeCases: bullets(section(text, 'Edge cases')).length,
+    criteria: ac.flatMap((l) => {
+      const m = l.match(/^- \[[ xX]\]\s*(AC\d+)\s*[:\-–·]?\s*(.*)$/)
+      return m ? [{ id: m[1], text: m[2].trim() }] : []
+    }),
   }
 }
 
@@ -105,14 +112,33 @@ export function parseEpicId(text: string): string {
 export function parseTasks(text: string): Task[] {
   const tasks: Task[] = []
   let task: Task | null = null
+  let inScope = false
   for (const raw of text.split('\n')) {
     const h = raw.match(/^###\s+(T\d+)\s*[:\-–·]\s*(.*)$/i)
     if (h) {
       task = { id: h[1].toUpperCase(), title: h[2].trim(), status: 'draft', project: '', dependsOn: [], acceptance: [], branch: '', pr: '' }
       tasks.push(task)
+      inScope = false
       continue
     }
     if (!task) continue
+    // `scope:` is followed by `- action` bullets; any other `key:` line ends the list.
+    const bullet = raw.match(/^\s*[-*]\s+(.+)$/)
+    if (inScope && bullet) {
+      task.scope = [...(task.scope ?? []), bullet[1].trim()]
+      continue
+    }
+    inScope = false
+    if (/^scope:\s*$/.test(raw)) {
+      inScope = true
+      task.scope = []
+      continue
+    }
+    const fl = raw.match(/^files:\s*(.*)$/)
+    if (fl) {
+      task.files = fl[1].trim()
+      continue
+    }
     const f = raw.match(/^(project|status|depends_on|acceptance|branch|pr):\s*(.*)$/)
     if (!f) continue
     const value = f[2].replace(/\s+#.*$/, '').trim()
@@ -149,4 +175,65 @@ export function parseReview(text: string): Verdict | null {
   const line = text.match(/^\W*Verdict\W*:\W*(.+)$/im)
   if (line && !line[1].includes('|')) return verdictOf(line[1])
   return verdictOf(text)
+}
+
+// The checks a review.md records, in the line shapes agents/reviewer.md asks for. Older files fill
+// what they can: an audit line without PASS / FAIL / SKIPPED has a null result.
+export type Severity = 'critical' | 'major' | 'minor'
+export type Finding = { severity: Severity; text: string; at: string }
+export type ReviewTest = { project: string; text: string; passed: boolean | null }
+export type ReviewAudit = { name: string; label: string; result: 'PASS' | 'FAIL' | 'SKIPPED' | null; counts: string; note: string; findings: Finding[] }
+export type Blocker = { mustFix: boolean; text: string; check: string; task: string }
+export type ReviewDetail = {
+  verdict: Verdict | null
+  ac: { met: number; total: number } | null
+  tests: ReviewTest[]
+  rules: { respected: number; violated: Finding[] }
+  audits: ReviewAudit[]
+  blockers: Blocker[]
+  accepted: string[]
+}
+
+const AT = /`([^`\s]+:\d[\d,\-–]*)`/ // `file:line` inside a finding
+
+export function parseReviewDetail(text: string): ReviewDetail {
+  const top = (title: string) => section(text, title).filter((l) => /^[-*]\s/.test(l)).map((l) => l.replace(/^[-*]\s+/, '').trim())
+  const ac = section(text, 'Spec compliance').join('\n').match(/(\d+)\s*\/\s*(\d+)\s+AC\b/)
+  const tests = top('Tests').flatMap((t) => {
+    const m = t.match(/^`?([^`:]+?)`?:\s*(.+)$/)
+    if (!m || /<[^>]+>/.test(t)) return []
+    const r = m[2].match(/\s+[—–-]\s+(pass|fail)(?:ed)?\b\.?\s*(?:\([^)]*\))?\s*$/i)
+    return [{ project: m[1].trim(), text: (r ? m[2].slice(0, r.index) : m[2]).replace(/`/g, '').trim(), passed: r ? r[1].toLowerCase() === 'pass' : null }]
+  })
+  const rules = { respected: 0, violated: [] as Finding[] }
+  for (const r of top('Constitution rules')) {
+    if (/[—–-]\s*violated/i.test(r)) rules.violated.push({ severity: 'major', text: r.replace(/\s*[—–-]\s*violated.*$/i, '').replace(/`/g, ''), at: r.match(AT)?.[1] ?? '' })
+    else if (/[—–-]\s*respected/i.test(r)) rules.respected += 1
+  }
+  const audits: ReviewAudit[] = []
+  for (const line of section(text, 'Audits')) {
+    // `- <name> (<label>): <result>`, or `- <name>: <result>`; a name may hold colons (nextjs:code-reviewer).
+    const withLabel = line.match(/^[-*]\s+(\S.*?)\s+\(([^)]*)\):\s*(.*)$/)
+    const bare = withLabel ? null : line.match(/^[-*]\s+([^\s:]+(?::[^\s:]+)*):\s*(.*)$/)
+    const head = withLabel ? withLabel.slice(1) : bare ? [bare[1], '', bare[2]] : null
+    const sub = line.match(/^\s+[-*]\s+(Critical|Major|Minor)\b[^:]*:\s*(.+)$/i)
+    if (sub && audits.length) {
+      // A finding that opens with its location: the location goes to `at`, the text keeps the rest.
+      const body = sub[2].replace(/^`[^`\s]+:\d[^`]*`(?:\s*\([^)]*\)\s*|[.:]?\s+)/, '').replace(/\s*\(`[^`]+`\)\s*$/, '').trim()
+      audits[audits.length - 1].findings.push({ severity: sub[1].toLowerCase() as Severity, text: (body || sub[2].trim()).replace(/`/g, ''), at: sub[2].match(AT)?.[1] ?? '' })
+    } else if (head && !/<[^>]+>/.test(line)) {
+      const [name, label, rest] = head
+      const r = rest.match(/^(PASS|FAIL|SKIPPED)\b[.\s—–-]*(.*)$/)
+      const counts = (r ? r[2] : rest).match(/\d+\s+critical,?\s+\d+\s+major,?\s+\d+\s+minor/i)?.[0].replace(/,/g, '') ?? ''
+      const note = (r ? r[2] : rest).replace(/`/g, '').split(/(?<=\.)\s/)[0].replace(/\.$/, '').trim()
+      audits.push({ name: name.replace(/`/g, '').trim(), label: label.replace(/`/g, '').trim(), result: r ? (r[1] as ReviewAudit['result']) : null, counts, note, findings: [] })
+    }
+  }
+  const blockers = top('Blockers').flatMap((b) => {
+    // The task is T<n>, also written with its Epic (`ULOG-T3`).
+    const m = b.match(/^(must fix|acceptable):\s*(.+?)(?:\s+[—–]\s+(.+?))?(?:\s+·\s+(?:[A-Z][A-Z0-9]*-)?(T\d+|none))?\s*$/i)
+    return m ? [{ mustFix: m[1].toLowerCase() === 'must fix', text: m[2].trim(), check: (m[3] ?? '').trim(), task: m[4] && m[4].toLowerCase() !== 'none' ? m[4] : '' }] : []
+  })
+  const accepted = top('Accepted').filter((a) => !/<[^>]+>/.test(a))
+  return { verdict: parseReview(text), ac: ac ? { met: Number(ac[1]), total: Number(ac[2]) } : null, tests, rules, audits, blockers, accepted }
 }

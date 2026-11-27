@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Version](https://img.shields.io/badge/version-2.5.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.6.0-blue.svg)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/JanSzewczyk/spec-driven-development?style=social)](https://github.com/JanSzewczyk/spec-driven-development/stargazers)
 
 **Spec-Driven Development for Claude Code — spec is the source of truth, code is its consequence.**
@@ -116,10 +116,12 @@ See [Slash Commands Reference](#-slash-commands-reference) and [Sub-agents Refer
 
 Part of the `sdd` mod (needs Claude Code 2.1.287+). It docks a panel beside the transcript that reads your project's `specs/` folder and never writes to it, so you can see where each feature stands without opening the markdown files:
 
-- **Current** tab — the active spec (from the git branch, the one you pinned, or the newest one still in progress): title and status, a pipeline stepper (Spec → Clarify → Plan → Tasks → Implement → Review), a readiness checklist for the next command, the suggested next `/sdd:*` command with a button that puts it in the prompt (it never runs it), task progress, the task list, and buttons that open `spec` / `plan` / `tasks` / `review`.
+- **Live strip** — what runs now in the session: the `/sdd:*` command and its time, the latest tool call, and lanes for subagents, tasks running in their worktrees and task PRs waiting for a merge. The board also names the session: the main SDD session on the spec's branch, the task session on a task branch.
+- **Current** tab — the active spec (from the git branch, the one you pinned, or the newest one still in progress): title and status, a phase bar (Spec → Clarify → Plan → Tasks → Implement → Review), a phase card with task progress (in the Review phase, a Review card with every configured check and its result from `review.md`), the readiness checklist and the suggested next `/sdd:*` command with **Run** (sent to the session), **Implement all** (every open task in turn) and **Put in prompt**, the task flow (which tasks can run side by side), the task list, and buttons that open `spec` / `plan` / `tasks` / `review`.
+- **Ticket** tab — in a task session only: the task's scope, acceptance criteria, dependencies, branch and PR.
 - **All** tab — every spec with its phase and task progress, filterable; **Show** pins one as current.
-- **+ New spec** in the tab bar puts `/sdd:spec feat ` in the prompt at any time.
-- **⚙ Config** (top right) — opens a read-only configuration panel: projects, the effective `specs/capabilities.yml` values for implementation, actions and review (set values vs defaults), the commands from constitution §2 per project, and buttons for `/sdd:capabilities` and `/sdd:doctor check`.
+- **+ New spec** in the tab bar puts `/sdd:spec feat ` in the prompt; shown on a branch with no spec.
+- **Config** (top right) — opens a read-only configuration panel: projects, the effective `specs/capabilities.yml` values for implementation, actions and review (set values vs defaults), the commands from constitution §2 per project, and buttons for `/sdd:capabilities` and `/sdd:doctor check`.
 - **No SDD in the project** — only a setup card; **Init SDD in this project** runs `/sdd:doctor init` in the session (the one button that runs a command).
 - Refreshes by itself: after Claude or a sub-agent writes a file under `specs/`, after a branch switch, merge, pull or `gh pr` command, after each turn, and on a 4 s poll for edits made elsewhere. While shown it checks task PRs on GitHub at most once a minute (`gh pr list`) and task branches fast-forwarded into the SDD branch, so a merge shows before `/sdd:implement` or `/sdd:review` records it. In a task worktree it reads the statuses from the SDD branch's checkout. A footer says when the data was last read. Drawings use SVG in Desktop and VS Code and fall back to text in the terminal.
 

@@ -23,9 +23,12 @@ branch, which happens after the sub-session ends. For every task that still has 
   `sdd task status <id> review` (sets `review`, removes `branch:` and `pr:`; by hand when `sdd` exits
   127), remove the task's worktree and local branch. `CLOSED` → report it; the task stays
   `in-progress`. `OPEN` → still waiting.
-- no `pr:` (`merge: auto`) → `git merge-base --is-ancestor <branch> <spec-branch>` succeeds → the
+- only `branch:` → merged only when both hold: `git merge-base --is-ancestor <branch> <spec-branch>`
+  succeeds **and** `git log -1 --format=%B <branch>` has the trailer `Task: <EPIC>-T<n>`. Then the
   merge happened but the status was not written: `sdd task status <id> review`, clean up as above.
-  Fails → the task is still running or was not merged; leave it.
+  Otherwise leave it: the task is still running or was not merged. A branch with no task commit yet
+  (just cut, or cut from the wrong base) is an ancestor too and is never merged; under `merge: pr` a
+  running task has only `branch:` until it reports its PR.
 
 Report the tasks this moved in one line. Reconcile checks once and never waits; waiting for the
 merges belongs to `/sdd:implement` (see its `worktree-all.md`).

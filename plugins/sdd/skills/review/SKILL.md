@@ -56,7 +56,7 @@ returns `{verdict, blockers, warnings}`; each blocker says whether the user may 
 **Accepting blockers.** NOT_READY and every blocker `acceptable` (an out-of-scope change, a
 constitution rule, a non-critical audit finding) → ask once with
 `AskUserQuestion`, listing them: "Fix them" (Recommended) / "Accept all and continue". Accepted →
-add each with the user's reason under `## Accepted` in `review.md`, set its verdict to READY and go
+move each from `## Blockers` to `## Accepted` in `review.md` with the user's reason, set its verdict to READY and go
 on as READY. Failing tests, unmet AC, non-goal violations, failed checks and critical
 security/accessibility findings are never acceptable.
 

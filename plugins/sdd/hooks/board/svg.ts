@@ -2,7 +2,7 @@
 // theme keys to, read from the Claude Desktop bundle. Desktop draws an Svg in its own frame without the
 // app's CSS variables, so each drawing carries a light and a dark value and switches with
 // prefers-color-scheme. The attribute on each shape is the fallback when a style is not applied.
-import type { Role, Step } from './model.ts'
+import type { Role, Step, TaskLook } from './model.ts'
 
 type Pair = [light: string, dark: string]
 
@@ -23,11 +23,14 @@ const CDS = {
 }
 
 // --fill-<role>: the solid hue controls are drawn with, the same in both themes.
-const FILL: Record<Role, string> = { success: '#009300', pro: '#7161e0', accent: '#2a78d6', warning: '#fab219', danger: '#d03b3b', neutral: '#898781' }
+export const FILL: Record<Role, string> = { success: '#009300', pro: '#7161e0', accent: '#2a78d6', warning: '#fab219', danger: '#d03b3b', neutral: '#898781' }
 const ON_FILL = '#0b0b0b' // --on-success / --on-warning
+const TICK = '#ffffff' // the tick on a filled success disc, white in both themes
 // Fallbacks for an unstyled drawing: mid tones that read on both themes.
 const MID = '#8b8d98'
-const MID_TRACK = '#8b8d9840'
+export const MID_TRACK = '#8b8d9840'
+// Motion lives only inside drawings; a reader who asked for less motion gets none.
+const NO_MOTION = '@media (prefers-reduced-motion: reduce){*{animation:none!important}}'
 
 // rules: [selector, property, [light, dark]]
 function themed(rules: [string, string, Pair][]): string {
@@ -36,82 +39,12 @@ function themed(rules: [string, string, Pair][]): string {
   return '<style>' + light + '@media (prefers-color-scheme: dark){' + dark + '}</style>'
 }
 
-function svgDoc(width: number, height: number, body: string): string {
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' + body + '</svg>'
+function svgDoc(width: number, height: number, body: string, attrs = ''): string {
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '"' + attrs + '>' + body + '</svg>'
 }
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// Pipeline stepper: circles on a line, check mark when done, ring on the current step.
-export function stepperSvg(steps: Step[], width: number): string {
-  const n = steps.length
-  const pad = 26
-  const gap = (width - pad * 2) / (n - 1)
-  const y = 20
-  let body = themed([
-    ['.track', 'stroke', CDS.borderStrong],
-    ['.todo', 'stroke', CDS.muted],
-    ['.l-done', 'fill', CDS.secondary],
-    ['.l-current', 'fill', CDS.primary],
-    ['.l-todo', 'fill', CDS.muted],
-  ])
-  for (let i = 0; i < n - 1; i++) {
-    const x1 = pad + gap * i + 11
-    const x2 = pad + gap * (i + 1) - 11
-    const line = steps[i].state === 'done' ? 'stroke="' + FILL.success + '"' : 'class="track" stroke="' + MID_TRACK + '"'
-    body += '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y + '" ' + line + ' stroke-width="2" stroke-linecap="round"/>'
-  }
-  steps.forEach((s, i) => {
-    const x = pad + gap * i
-    if (s.state === 'done') {
-      body += '<circle cx="' + x + '" cy="' + y + '" r="10" fill="' + FILL.success + '"/>'
-      body += '<path d="M' + (x - 4) + ' ' + y + ' l3 3.2 l5.2 -6" fill="none" stroke="' + ON_FILL + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-    } else if (s.state === 'current') {
-      body += '<circle cx="' + x + '" cy="' + y + '" r="13" fill="' + FILL.warning + '" fill-opacity="0.22"/>'
-      body += '<circle cx="' + x + '" cy="' + y + '" r="9" fill="' + FILL.warning + '"/>'
-      body += '<circle cx="' + x + '" cy="' + y + '" r="3" fill="' + ON_FILL + '"/>'
-    } else {
-      body += '<circle class="todo" cx="' + x + '" cy="' + y + '" r="9" fill="none" stroke="' + MID + '" stroke-width="2"/>'
-    }
-    const weight = s.state === 'current' ? '600' : '400'
-    body += '<text class="l-' + s.state + '" x="' + x + '" y="52" text-anchor="middle" font-size="11" font-weight="' + weight + '" fill="' + MID + '" font-family="system-ui,sans-serif">' + esc(s.label) + '</text>'
-  })
-  return svgDoc(width, 62, body)
-}
-
-// Segmented progress bar: done, review, in-progress over a neutral track.
-export function progressSvg(c: Record<string, number>, width: number): string {
-  const total = Math.max(c.total, 1)
-  const parts: [Role, number][] = [
-    ['success', c.done],
-    ['accent', c.review],
-    ['warning', c['in-progress']],
-  ]
-  let x = 0
-  let body = themed([['.track', 'fill', CDS.borderStrong]])
-  body += '<rect class="track" x="0" y="0" width="' + width + '" height="8" rx="4" fill="' + MID_TRACK + '"/>'
-  body += '<clipPath id="r"><rect x="0" y="0" width="' + width + '" height="8" rx="4"/></clipPath><g clip-path="url(#r)">'
-  for (const [role, v] of parts) {
-    if (!v) continue
-    const w = (v / total) * width
-    body += '<rect x="' + x + '" y="0" width="' + w + '" height="8" fill="' + FILL[role] + '"/>'
-    x += w
-  }
-  body += '</g>'
-  return svgDoc(width, 8, body)
-}
-
-// Six small dots, one per pipeline step, for the overview cards.
-export function dotsSvg(steps: Step[]): string {
-  let body = themed([['.todo', 'stroke', CDS.muted]])
-  steps.forEach((s, i) => {
-    const x = 6 + i * 16
-    if (s.state === 'todo') body += '<circle class="todo" cx="' + x + '" cy="6" r="4.2" fill="none" stroke="' + MID + '" stroke-width="1.5"/>'
-    else body += '<circle cx="' + x + '" cy="6" r="5" fill="' + (s.state === 'done' ? FILL.success : FILL.warning) + '"/>'
-  })
-  return svgDoc(steps.length * 16, 12, body)
 }
 
 // Flat tinted pill (bg-<role> fill, text-<role> label), as Claude Code tints a role. Used for statuses,
@@ -130,7 +63,7 @@ export function pillSvg(label: string, role: Role): { source: string; width: num
 // Check icon for the readiness list: a success disc with a tick, or a warning ring when still open.
 export function checkSvg(ok: boolean): string {
   const body = ok
-    ? '<circle cx="8" cy="8" r="7" fill="' + FILL.success + '"/><path d="M4.6 8.2 l2.2 2.3 l4.2 -4.6" fill="none" stroke="' + ON_FILL + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+    ? '<circle cx="8" cy="8" r="7" fill="' + FILL.success + '"/><path d="M4.6 8.2 l2.2 2.3 l4.2 -4.6" fill="none" stroke="' + TICK + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
     : themed([['circle', 'fill', CDS.bg.warning], ['circle', 'fill-opacity', ['1', '1']]]) +
       '<circle cx="8" cy="8" r="6.2" fill="' + FILL.warning + '" fill-opacity="0.14" stroke="' + FILL.warning + '" stroke-width="1.6"/>'
   return svgDoc(16, 16, body)
@@ -172,4 +105,198 @@ export function dotSvg(isSet: boolean): string {
     ? '<circle cx="4" cy="4" r="3" fill="' + FILL.success + '"/>'
     : themed([['circle', 'stroke', CDS.muted]]) + '<circle cx="4" cy="4" r="2.6" fill="none" stroke="' + MID + '" stroke-width="1"/>'
   return svgDoc(8, 8, body)
+}
+
+// Five small bars, one per pipeline step, for the specs list.
+export function miniPhaseSvg(steps: Step[]): { source: string; width: number; height: number } {
+  const width = steps.length * 13 - 2
+  let body = themed([['.todo', 'fill', CDS.borderStrong]])
+  steps.forEach((s, i) => {
+    const x = i * 13
+    body += s.state === 'todo'
+      ? '<rect class="todo" x="' + x + '" y="0" width="11" height="5" rx="2.5" fill="' + MID_TRACK + '"/>'
+      : '<rect x="' + x + '" y="0" width="11" height="5" rx="2.5" fill="' + (s.state === 'done' ? FILL.success : FILL.warning) + '"/>'
+  })
+  return { source: svgDoc(width, 5, body), width, height: 5 }
+}
+
+// A dot that pulses while something runs, a hollow ring when nothing does.
+export function liveDotSvg(role: Role, isLive: boolean, size = 12): string {
+  const c = size / 2
+  if (!isLive) return svgDoc(size, size, themed([['circle', 'stroke', CDS.muted]]) + '<circle cx="' + c + '" cy="' + c + '" r="' + (c - 2.5) + '" fill="none" stroke="' + MID + '" stroke-width="1.5"/>')
+  const f = FILL[role]
+  return svgDoc(
+    size,
+    size,
+    '<style>@keyframes p{0%{r:' + (c - 3) + 'px;opacity:.7}100%{r:' + c + 'px;opacity:0}}.p{animation:p 1.6s ease-out infinite}' + NO_MOTION + '</style>' +
+      '<circle class="p" cx="' + c + '" cy="' + c + '" r="' + (c - 3) + '" fill="' + f + '"/><circle cx="' + c + '" cy="' + c + '" r="' + (c - 2.5) + '" fill="' + f + '"/>',
+  )
+}
+
+// Task status glyph: done (tick), review (dot), in progress (an arc, turning while its lane runs),
+// merged but not recorded (ringed tick), closed (red ring), blocked (dashed ring), draft (ring).
+export function taskGlyphSvg(look: TaskLook, isLive = false): string {
+  const ring = (attrs: string) => themed([['.r', 'stroke', CDS.muted]]) + '<circle class="r" cx="7" cy="7" r="5.2" fill="none" stroke="' + MID + '" stroke-width="1.4"' + attrs + '/>'
+  const tick = (stroke: string) => '<path d="M4.4 7.2l2 2.1 3.6-4" fill="none" stroke="' + stroke + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  switch (look) {
+    case 'done':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(TICK))
+    case 'review':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.accent + '"/><circle cx="7" cy="7" r="2" fill="' + ON_FILL + '"/>')
+    case 'merged':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.success + '" stroke-width="1.6"/>' + tick(FILL.success))
+    case 'closed':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.danger + '" stroke-width="1.6"/><path d="M5 5l4 4M9 5l-4 4" stroke="' + FILL.danger + '" stroke-width="1.5" stroke-linecap="round"/>')
+    case 'in-progress': {
+      const spin = isLive ? '<style>@keyframes s{to{transform:rotate(360deg)}}.s{transform-origin:7px 7px;animation:s 2.4s linear infinite}' + NO_MOTION + '</style>' : ''
+      return svgDoc(14, 14, spin + '<circle cx="7" cy="7" r="5.2" fill="none" stroke="' + FILL.warning + '" stroke-opacity="0.3" stroke-width="1.6"/><path class="s" d="M7 1.8 A5.2 5.2 0 0 1 12.2 7" fill="none" stroke="' + FILL.warning + '" stroke-width="1.8" stroke-linecap="round"/>')
+    }
+    case 'blocked':
+      return svgDoc(14, 14, ring(' stroke-dasharray="2 2"'))
+    default:
+      return svgDoc(14, 14, ring(''))
+  }
+}
+
+// A review check's state: passed (tick), failed (red cross), passed with findings (warning ring with a
+// bar), running (pulsing), ran in this run with its result still unwritten (muted tick), waiting (ring),
+// skipped (ring with a dash), not recorded (dashed ring).
+export function checkStateSvg(state: string): string {
+  const muted = themed([['.m', 'stroke', CDS.muted]])
+  const ring = (attrs: string) => '<circle class="m" cx="7" cy="7" r="5.2" fill="none" stroke="' + MID + '" stroke-width="1.4"' + attrs + '/>'
+  const tick = (stroke: string, cls = '') => '<path' + cls + ' d="M4.4 7.2l2 2.1 3.6-4" fill="none" stroke="' + stroke + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  switch (state) {
+    case 'pass':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.success + '"/>' + tick(TICK))
+    case 'fail':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="6" fill="' + FILL.danger + '"/><path d="M4.9 4.9l4.2 4.2M9.1 4.9l-4.2 4.2" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>')
+    case 'warn':
+      return svgDoc(14, 14, '<circle cx="7" cy="7" r="5.2" fill="' + FILL.warning + '" fill-opacity="0.16" stroke="' + FILL.warning + '" stroke-width="1.6"/><path d="M7 4.2v3.4" stroke="' + FILL.warning + '" stroke-width="1.6" stroke-linecap="round"/><circle cx="7" cy="9.8" r="0.9" fill="' + FILL.warning + '"/>')
+    case 'running':
+      return liveDotSvg('warning', true, 14)
+    case 'ran':
+      return svgDoc(14, 14, muted + ring('') + tick(MID, ' class="m"'))
+    case 'skipped':
+      return svgDoc(14, 14, muted + ring('') + '<path class="m" d="M4.6 7h4.8" stroke="' + MID + '" stroke-width="1.5" stroke-linecap="round"/>')
+    case 'unknown':
+      return svgDoc(14, 14, muted + ring(' stroke-dasharray="2 2"'))
+    default:
+      return svgDoc(14, 14, muted + ring(''))
+  }
+}
+
+// A pull request's icon in GitHub's colors for its state: open (green branch with an arrow), merged
+// (purple merge), closed (red branch with a cross); unknown state (gh not asked) in a mid tone.
+export function prIconSvg(state: 'OPEN' | 'MERGED' | 'CLOSED' | null): string {
+  const color = state === 'OPEN' ? FILL.success : state === 'MERGED' ? FILL.pro : state === 'CLOSED' ? FILL.danger : MID
+  const s = ' fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"'
+  const dot = (x: number, y: number) => '<circle cx="' + x + '" cy="' + y + '" r="1.9"' + s + '/>'
+  const body =
+    state === 'MERGED'
+      ? dot(4, 3.5) + dot(4, 12.5) + dot(12, 9) + '<path d="M4 5.4v5.2M4 5.4c0 2.6 2.4 3.6 6.1 3.6"' + s + '/>'
+      : state === 'CLOSED'
+        ? dot(4, 3.5) + dot(4, 12.5) + dot(12, 12.5) + '<path d="M4 5.4v5.2M12 7.5v3.1M10.2 2.2l3.6 3.6M13.8 2.2l-3.6 3.6"' + s + '/>'
+        : dot(4, 3.5) + dot(4, 12.5) + dot(12, 12.5) + '<path d="M4 5.4v5.2M12 10.6V6.5c0-1.7-1-2.9-2.9-2.9H7.4M8.9 1.9L7.2 3.6l1.7 1.7"' + s + '/>'
+  return svgDoc(16, 16, body)
+}
+
+// The bars (phase, progress, lanes) are rows of Boxes, so the layout gives them the pane's width; a
+// drawing only gives a Box its height, or stripes the Box clips at its edge.
+// A bar's rounded end in `color`: half of a pill as wide as half the bar is high.
+export function capSvg(side: 'left' | 'right', height: number, color: string): { width: number; source: string } {
+  const r = height / 2
+  return { width: r, source: svgDoc(r, height, '<rect x="' + (side === 'left' ? 0 : -r) + '" y="0" width="' + height + '" height="' + height + '" rx="' + r + '" fill="' + color + '"/>') }
+}
+
+// Wider than any pane: the Box holding it cuts it at its own edge.
+export const STRIPES_WIDTH = 1600
+
+// Stripes over a bar segment: white ones sliding through running work (color null), or a still hatch
+// in `color` for a waiting lane. The surface fits a drawing into its slot: `slice` keeps the stripes at
+// full height and cuts their right end, where `meet` would shrink 1600x8 to a hairline.
+export function stripesSvg(height: number, color: string | null): string {
+  const isMoving = color === null
+  let body = '<defs><pattern id="st" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="10" fill="' + (color ?? '#fff') + '" fill-opacity="' + (isMoving ? 0.28 : 0.7) + '"/></pattern></defs>'
+  if (isMoving) body += '<style>@keyframes mv{to{transform:translateX(14.14px)}}.mv{animation:mv 1.1s linear infinite}' + NO_MOTION + '</style>'
+  body += '<rect' + (isMoving ? ' class="mv"' : '') + ' x="-20" y="0" width="' + (STRIPES_WIDTH + 40) + '" height="' + height + '" fill="url(#st)"/>'
+  return svgDoc(STRIPES_WIDTH, height, body, ' preserveAspectRatio="xMinYMid slice"')
+}
+
+export type GraphNode = { id: string; title: string; look: TaskLook; isLive: boolean; deps: string[] }
+
+const NODE_ROLE: Record<TaskLook, Role | 'blocked'> = { done: 'success', merged: 'success', review: 'accent', 'in-progress': 'warning', closed: 'danger', draft: 'neutral', blocked: 'blocked' }
+const IMPLEMENTED: TaskLook[] = ['done', 'merged', 'review']
+
+// The tasks as a dependency graph, left to right: one column per wave (tasks that can run side by side),
+// a line from each dependency to the task waiting on it. Hovering a node names the task.
+export function taskGraphSvg(waves: GraphNode[][]): { source: string; width: number; height: number } {
+  const TOP = 16 // the wave numbers above the columns
+  const W = 46
+  const H = 22
+  const GAP = 8 // between the nodes of a column
+  const COL = W + 30 // a column and the room for lines to the next one
+  const most = Math.max(...waves.map((w) => w.length))
+  const span = most * H + (most - 1) * GAP
+  const width = (waves.length - 1) * COL + W + 2
+  const height = TOP + span + 2
+  const at = new Map<string, { x: number; y: number; col: number; look: TaskLook }>()
+  waves.forEach((wave, i) => {
+    const col = wave.length * H + (wave.length - 1) * GAP
+    wave.forEach((n, j) => at.set(n.id, { x: i * COL + 1, y: TOP + (span - col) / 2 + j * (H + GAP) + 1, col: i, look: n.look }))
+  })
+  // Where a line may cross a column it skips: the gaps above, between and below that column's nodes.
+  const gaps = waves.map((wave) => {
+    const ys = wave.map((n) => at.get(n.id)!.y)
+    return [ys[0] - GAP / 2, ...ys.map((y) => y + H + GAP / 2)]
+  })
+  const roles: Role[] = ['success', 'accent', 'warning', 'danger', 'neutral']
+  let body = themed([
+    ...roles.flatMap((r): [string, string, Pair][] => [['.r-' + r + ' rect', 'fill', CDS.bg[r]], ['.r-' + r + ' text', 'fill', CDS.text[r]]]),
+    ['.r-blocked rect', 'stroke', CDS.muted],
+    ['.r-blocked text', 'fill', CDS.muted],
+    ['.e', 'stroke', CDS.muted],
+    ['.d', 'fill', CDS.muted],
+    ['.w', 'fill', CDS.muted],
+  ])
+  body += '<style>@keyframes pl{50%{stroke-opacity:0.25}}.live rect{animation:pl 1.4s ease-in-out infinite}' + NO_MOTION + '</style>'
+  const curve = (x1: number, y1: number, x2: number, y2: number) => ' C' + (x1 + x2) / 2 + ' ' + y1 + ' ' + (x1 + x2) / 2 + ' ' + y2 + ' ' + x2 + ' ' + y2
+  for (const wave of waves) {
+    for (const n of wave) {
+      const to = at.get(n.id)!
+      for (const id of n.deps) {
+        const from = at.get(id)
+        if (!from || from.col >= to.col) continue
+        const x2 = to.x - 1
+        const y2 = to.y + H / 2
+        let x = from.x + W
+        let y = from.y + H / 2
+        let d = 'M' + x + ' ' + y
+        for (let k = from.col + 1; k < to.col; k++) {
+          const want = y + (y2 - y) / (to.col - k + 1)
+          const gy = gaps[k].reduce((best, g) => (Math.abs(g - want) < Math.abs(best - want) ? g : best))
+          const left = k * COL + 1
+          d += curve(x, y, left, gy) + ' L' + (left + W) + ' ' + gy
+          x = left + W
+          y = gy
+        }
+        d += curve(x, y, x2, y2)
+        const isMet = IMPLEMENTED.includes(from.look)
+        body += '<path class="' + (isMet ? '' : 'e') + '" d="' + d + '" fill="none" stroke="' + (isMet ? FILL.success : MID) + '" stroke-opacity="' + (isMet ? 0.55 : 1) + '" stroke-width="1.2"/>'
+        body += '<circle class="' + (isMet ? '' : 'd') + '" cx="' + x2 + '" cy="' + y2 + '" r="1.8" fill="' + (isMet ? FILL.success : MID) + '"/>'
+      }
+    }
+  }
+  waves.forEach((wave, i) => {
+    body += '<text class="w" x="' + (i * COL + 1 + W / 2) + '" y="10" text-anchor="middle" font-size="10" fill="' + MID + '" font-family="system-ui,sans-serif">' + (i + 1) + '</text>'
+    for (const n of wave) {
+      const p = at.get(n.id)!
+      const role = NODE_ROLE[n.look]
+      const stroke = role === 'blocked' ? MID : FILL[role]
+      const dash = role === 'blocked' ? ' stroke-dasharray="3 2"' : ''
+      body += '<g class="r-' + role + (n.isLive ? ' live' : '') + '"><title>' + esc(n.id + ' · ' + n.title + ' · ' + n.look) + '</title>'
+      body += '<rect x="' + p.x + '" y="' + p.y + '" width="' + W + '" height="' + H + '" rx="6" fill="' + (role === 'blocked' ? 'none' : MID_TRACK) + '" stroke="' + stroke + '" stroke-opacity="' + (role === 'neutral' ? 0.5 : 0.8) + '"' + dash + '/>'
+      body += '<text x="' + (p.x + W / 2) + '" y="' + (p.y + H / 2 + 4) + '" text-anchor="middle" font-size="11" font-weight="600" fill="' + MID + '" font-family="ui-monospace,monospace">' + esc(n.id) + '</text></g>'
+    }
+  })
+  return { source: svgDoc(width, height, body), width, height }
 }

@@ -58,6 +58,7 @@ Exclude the `generated` globs from every diff you read.
 **Verdict:** READY | NOT READY
 
 ## Spec compliance (spec-verifier)
+<M>/<N> AC met
 | AC | Status | Evidence |
 |----|--------|----------|
 - Out of scope / non-goal violations: …
@@ -65,14 +66,21 @@ Exclude the `generated` globs from every diff you read.
 
 ## Tests
 <!-- one block per touched project -->
-- <project>: passed X/Y · coverage …
+- <project>: passed X/Y · coverage … — pass | fail
 
 ## Constitution rules
 - <rule> — respected | violated (`file:line`)
 
 ## Audits
-<!-- one section per audit and extra check that ran -->
-- <name>: result and findings
+<!-- one line per audit agent, extra check and skill audit, then its findings one level in -->
+- <name> (<project> | extra check | skill): PASS | FAIL | SKIPPED — N critical, N major, N minor
+  - Critical: <finding> (`file:line`)
+  - Major: <finding> (`file:line`)
+
+## Blockers
+<!-- one line per blocker; the task to re-run, or none -->
+- must fix: <blocker> — <check> · T<n>
+- acceptable: <blocker> — <check> · T<n>
 
 ## Accepted
 <!-- blockers the user accepted, with their reason; kept across reviews -->
@@ -95,5 +103,8 @@ Return JSON at the end:
   `out_of_scope` that is not accepted, an extra check failed, or a critical security/accessibility
   violation exists.
 - Every check carries a concrete metric (count, score, file:line); a NOT READY lists concrete actions.
+- Keep the line shapes of the template (`<M>/<N> AC met`, `— pass | fail` after a test line, the
+  `- <name> (...): PASS | FAIL | SKIPPED` audit lines, `- must fix:` / `- acceptable:` blockers): the
+  SDD board reads them to show each check's result.
 - Do not re-run the suite and do not invoke `spec-verifier` or other agents — the
   command already did.

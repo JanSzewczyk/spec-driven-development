@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] — 2026-11-26
+
+`sdd` goes to 2.6.0.
+
+### Added
+
+- The board names the session: the main SDD session on the spec's branch, the task session on `<spec-branch>--<EPIC>-T<n>`.
+- A live strip at the top of the board shows what runs now: the `/sdd:*` command of the turn and its time, the latest tool call, and lanes for subagents (on a 15-minute time axis, with their last tool calls), tasks running in their worktrees (last commit of the branch) and task PRs waiting for a merge. Idle, it is one line.
+- A Ticket tab, opened first in a task session: the task's scope, acceptance criteria with their text from `spec.md`, dependencies, branch, PR and files.
+- The task list filters All / Open / Blocked, rows expand to their facts, and hovering a task lights its lane.
+
+### Changed
+
+- A phase bar and a phase card replace the pipeline stepper; the next command shows "running now" while it runs.
+- The board suggests a plain `/sdd:implement` instead of `/sdd:implement all`, and no longer suggests a task that is already in progress on its own branch.
+- "+ New spec" shows only on a branch with no spec.
+
 ## [2.5.1] — 2026-11-26
 
 `sdd` goes to 2.5.1.

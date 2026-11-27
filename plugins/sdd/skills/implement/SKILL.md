@@ -24,7 +24,8 @@ By hand: the feature is the `specs/*/spec.md` whose `**Branch:**` is `git branch
 only the old `specs/capabilities.md` → STOP "Run `/sdd:doctor init` to migrate it."; no `**Epic:**`
 in `tasks.md` → STOP "Run `/sdd:tasks` (or `/sdd:doctor init`) to assign an epic id."; the flow is
 `implementation.projects.<project>`, else `implementation.default`, else `in-session`; one task whose
-`depends_on` are not all `review|done` → STOP and name them.
+`depends_on` are not all `review|done` → STOP and name them. A task named explicitly runs even when it
+is `review`: a re-run for a must-fix blocker of a NOT READY review.
 
 `isolation.mode` is `worktree` → first run [Reconcile isolated tasks](${CLAUDE_PLUGIN_ROOT}/references/status-lifecycle.md#reconcile-isolated-tasks)
 when `reconcile` is not empty (then `sdd task next` again), and follow

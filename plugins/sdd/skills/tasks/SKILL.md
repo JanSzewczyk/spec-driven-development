@@ -67,6 +67,15 @@ without it.
 **Spec:** `specs/<slug>/spec.md`  **Plan:** `specs/<slug>/plan.md`
 **Epic:** <EPIC>
 
+## Flow
+
+```mermaid
+flowchart LR
+  T1["T1 <short title>"] --> T2["T2 <short title>"]
+  T3["T3 <short title>"] --> T4["T4 <short title>"]
+  T2 --> T4
+```
+
 ## Epic: <feature_title>
 
 ### T1: <title>
@@ -92,6 +101,10 @@ touches it — then set it back to `draft` and say so. New tasks take the next u
 longer needed is removed only while `draft`, otherwise report it and leave it.
 
 Add one line at the end: `Order: T1 → T2 ∥ T3 → T4` (what can run once its dependencies are done).
+
+`## Flow` (above the tasks) is the dependency graph: one node per task, `T<n>["T<n> <title, at most
+~5 words>"]`, one edge `A --> B` per `depends_on` entry (B depends on A), a task with no dependencies
+and no dependents as a bare node. Rewrite the whole block on every run so it matches `depends_on`.
 
 ### 5. Check, advance, commit, report
 

@@ -5,12 +5,15 @@ import { FEATURE_DOCS, featurePath, readFeatures } from '../../core/features.ts'
 import type { FeatureDoc } from '../../core/features.ts'
 import { CAPABILITIES_PATH, LEGACY_CAPABILITIES_PATH } from '../../core/formats.ts'
 import type { Io } from '../../core/io.ts'
-import { mergeState, prStates, taskBranchBase, worktreeOf } from '../../core/merges.ts'
-import type { MergeState, PrState } from '../../core/merges.ts'
+import { hasTaskTrailer, mergeState, prList, taskBranchBase, taskPrs, worktreeOf } from '../../core/merges.ts'
+import type { MergeState, PrInfo, PrState } from '../../core/merges.ts'
 import { ioOf } from '../io.ts'
-import { currentSlug, freshness, sortFeatures, featureFrom } from './model.ts'
+import { emptyLive, isActive, lanesOf, onCommand, onReport, onSpawn, onTool, onTurnComplete, onTurnStart, prune, toolDetail } from './live.ts'
+import type { Commit, Live } from './live.ts'
+import { currentSlug, freshness, implFlow, reviewFlow, sessionOf, sortFeatures, featureFrom } from './model.ts'
 import type { Feature } from './model.ts'
 import { renderConfig, renderDoc, renderPane } from './view.ts'
+import type { Tab } from './view.ts'
 
 const PANE = 'sdd-board'
 const DOC_PANE = 'sdd-board-doc'
@@ -24,11 +27,15 @@ const REFRESH_COMMAND = /git\s+(checkout|switch|branch|merge|pull|rebase|reset|w
 // Module state: disposable, rebuilt from disk on every load.
 let features: Feature[] = []
 let hasSpecs = false
+let hasScanned = false // a scan finished since this module loaded: until then the panel cannot say specs/ is missing
 let branch = ''
 let source: string | null = null // spec branch whose checkout specs/ is read from, when not this one
-let specsRoot: string | null = null // that checkout's path
+let specsRoot: string | null = null // the checkout specs/ is read from: the project root, or the spec branch's
+let startRoot: string | null = null // the session's directory at start, when $.session.root() cannot answer
+let mainTurns: string[] = [] // ids of the main loop's turns that started and have not ended
 let signature = ''
-let tab: 'current' | 'all' = 'current'
+let tab: Tab = 'current'
+let ticketShownFor: string | null = null // the task branch whose session already opened on its Ticket tab
 let pinned: string | null = null
 let filter = 'all'
 let running: string | null = null
@@ -43,7 +50,17 @@ let updatedAt: number | null = null // last successful scan
 let checkedAt: number | null = null // last answer from GitHub
 let drawnFreshness = ''
 let ghRetryAt = 0
-const prCache = new Map<string, { at: number; states: Map<number, PrState> }>()
+let live: Live = emptyLive()
+let openKeys: string[] = [] // expanded lanes and task rows
+
+// One task row open at a time; lanes open independently.
+function toggled(keys: string[], key: string): string[] {
+  if (keys.includes(key)) return keys.filter((k) => k !== key)
+  return [...(key.startsWith('task-') ? keys.filter((k) => !k.startsWith('task-')) : keys), key]
+}
+let taskFilter = 'all'
+let commits: Record<string, Commit> = {} // last commit of each running task branch, by task id
+const prCache = new Map<string, { at: number; prs: Map<number, PrInfo> }>()
 
 async function now($: any): Promise<number> {
   try {
@@ -60,8 +77,22 @@ function startPolling($: any): void {
   isPolling = true
   $.clock.every(4000, async () => {
     const isChanged = await scan($)
-    if (isChanged || freshness(updatedAt, checkedAt, await now($)) !== drawnFreshness) $.ui.invalidate('ui.render')
+    // While something runs, the timers of the live strip move: redraw on every tick.
+    if (isChanged || isActive(live) || freshness(updatedAt, checkedAt, await now($)) !== drawnFreshness) $.ui.invalidate('ui.render')
   })
+}
+
+// The project root, where specs/ lives. Never the shell's directory: a `cd apps/web` in a Bash call moves
+// the session's working directory, and relative reads there find no specs/ (the panel flipped to the
+// "not set up" card until Claude went back). $.session.root() follows /cd and worktree moves only.
+async function rootOf($: any): Promise<string | null> {
+  try {
+    const r = await $.session.root()
+    if (typeof r === 'string' && r) return r
+  } catch {
+    // older engines: the directory the session started in
+  }
+  return startRoot
 }
 
 async function modifiedOf($: any, path: string): Promise<number> {
@@ -90,47 +121,63 @@ async function runCommand($: any, command: string, args: string): Promise<void> 
   }
 }
 
-// The state of the pull requests into `base`, from a cache of PR_TTL; null when GitHub cannot be asked.
-// Asked only while the panel is drawn, one `gh pr list` per spec branch.
-async function prStatesOf(io: Io, base: string, isForced: boolean, at: number): Promise<Map<number, PrState> | null> {
+// The state and link of the pull requests into `base`, from a cache of PR_TTL; null when GitHub cannot be
+// asked. Asked only while the panel is drawn, one `gh pr list` per spec branch.
+async function prListOf(io: Io, base: string, isForced: boolean, at: number): Promise<Map<number, PrInfo> | null> {
   const cached = prCache.get(base)
-  if (!isPolling) return cached?.states ?? null
-  if (cached && !isForced && at - cached.at < PR_TTL) return cached.states
-  if (at < ghRetryAt) return cached?.states ?? null
-  const r = await io.run(['gh', 'pr', 'list', '--base', base, '--state', 'all', '--limit', '100', '--json', 'number,state'])
-  let states: Map<number, PrState> | null = null
+  if (!isPolling) return cached?.prs ?? null
+  if (cached && !isForced && at - cached.at < PR_TTL) return cached.prs
+  if (at < ghRetryAt) return cached?.prs ?? null
+  const r = await io.run(['gh', 'pr', 'list', '--base', base, '--state', 'all', '--limit', '100', '--json', 'number,state,url'])
+  let prs: Map<number, PrInfo> | null = null
   try {
-    if (r && r.exitCode === 0) states = prStates(r.stdout)
+    if (r && r.exitCode === 0) prs = prList(r.stdout)
   } catch {
     // not the JSON we asked for
   }
-  if (states === null) {
+  if (prs === null) {
     ghRetryAt = at + GH_BACKOFF
-    return cached?.states ?? null
+    return cached?.prs ?? null
   }
-  prCache.set(base, { at, states })
+  prCache.set(base, { at, prs })
   checkedAt = at
-  return states
+  return prs
 }
 
 // Isolated tasks that reached the SDD branch before Reconcile recorded them: `pr:` tasks from GitHub,
-// `branch:` tasks (merge: auto) from git, run in the checkout specs/ is read from.
-async function mergesOf(io: Io, f: Feature, isForced: boolean, at: number): Promise<Record<string, MergeState> | undefined> {
+// `branch:` tasks from git (the branch landed on the SDD branch), run in the checkout specs/ is read from.
+async function mergesOf(io: Io, f: Feature, prs: Map<number, PrInfo> | null): Promise<Record<string, MergeState> | undefined> {
   const base = f.spec.branch
   const open = (f.tasks ?? []).filter((t) => t.status !== 'review' && t.status !== 'done' && (t.pr || t.branch))
   if (!base || open.length === 0) return undefined
-  const states = open.some((t) => t.pr) ? await prStatesOf(io, base, isForced, at) : null
+  const states: Map<number, PrState> | null = prs === null ? null : new Map([...prs].map(([n, p]) => [n, p.state]))
   const out: Record<string, MergeState> = {}
   for (const t of open) {
-    let isAncestor: boolean | null = null
+    let landed: boolean | null = null
     if (!t.pr) {
       const r = await io.run(['git', 'merge-base', '--is-ancestor', t.branch, base])
-      isAncestor = r === null ? null : r.exitCode === 0 ? true : r.exitCode === 1 ? false : null
+      landed = r === null ? null : r.exitCode === 0 ? true : r.exitCode === 1 ? false : null
+      if (landed === true) {
+        const tip = await io.run(['git', 'log', '-1', '--format=%B', t.branch])
+        landed = tip === null || tip.exitCode !== 0 ? null : hasTaskTrailer(String(tip.stdout), f.epic ? f.epic + '-' + t.id : t.id)
+      }
     }
-    const m = mergeState(t, states, isAncestor)
+    const m = mergeState(t, states, landed)
     if (m !== null) out[t.id] = m
   }
   return Object.keys(out).length ? out : undefined
+}
+
+// The last commit of each task branch still running (in-progress, not merged), for the live strip.
+async function commitsOf(io: Io, f: Feature | null): Promise<Record<string, Commit>> {
+  const out: Record<string, Commit> = {}
+  const running = (f?.tasks ?? []).filter((t) => t.status === 'in-progress' && t.branch).slice(0, 8)
+  for (const t of running) {
+    const r = await io.run(['git', 'log', '-1', '--format=%ct%x09%s', t.branch])
+    const m = r && r.exitCode === 0 ? /^(\d+)\t(.*)$/.exec(String(r.stdout).trim()) : null
+    if (m) out[t.id] = { at: Number(m[1]) * 1000, subject: m[2] }
+  }
+  return out
 }
 
 // Reads specs/ and rebuilds the feature list. Returns true when anything changed. A scan that fails
@@ -153,9 +200,11 @@ async function scan($: any, isForced = false): Promise<boolean> {
 }
 
 async function scanOnce($: any, isForced: boolean): Promise<boolean> {
+  const home = await rootOf($)
+  const inHome = home ? { cwd: home } : undefined
   let next = branch
   try {
-    const r = await $.process.run(['git', 'branch', '--show-current'])
+    const r = await $.process.run(['git', 'branch', '--show-current'], inHome)
     if (r.exitCode === 0) next = String(r.stdout).trim()
   } catch {
     // not a git repo: keep the branch we had
@@ -166,17 +215,17 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
   const base = taskBranchBase(next)
   if (base) {
     try {
-      const r = await $.process.run(['git', 'worktree', 'list', '--porcelain'])
+      const r = await $.process.run(['git', 'worktree', 'list', '--porcelain'], inHome)
       if (r.exitCode === 0) root = worktreeOf(String(r.stdout), base)
     } catch {
       // read this checkout
     }
   }
-  specsRoot = root
+  specsRoot = root ?? home
   const found: Feature[] = []
   let any: boolean
   let cfg: Config | null = null
-  const io = ioOf($, { strict: true, root: root ?? undefined })
+  const io = ioOf($, { strict: true, root: specsRoot ?? undefined })
   const at = await now($)
   try {
     any = await io.exists('specs')
@@ -195,17 +244,47 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
     return false
   }
   for (const f of found) {
-    const merges = await mergesOf(io, f, isForced, at)
+    // Every task PR, recorded ones too, so an expanded row can link it and say whether it merged.
+    const withPr = (f.tasks ?? []).some((t) => t.pr)
+    const prs = withPr && f.spec.branch ? await prListOf(io, f.spec.branch, isForced, at) : null
+    const merges = await mergesOf(io, f, prs)
     if (merges) f.merges = merges
+    if (withPr) f.prs = taskPrs(f.tasks ?? [], prs)
+    if (f.tasks !== null) {
+      const r = await io.run(['git', 'log', '-1', '--format=%H', '--', 'specs/' + f.slug + '/tasks.md'])
+      if (r && r.exitCode === 0) f.tasksCommitted = String(r.stdout).trim() !== ''
+      const flow = implFlow(cfg)
+      if (flow) f.flow = flow
+    }
   }
-  const sig = JSON.stringify([any, next, root, found, cfg])
+  const shown = found.find((f) => f.slug === currentSlug(found, next, pinned)) ?? null
+  const rflow = reviewFlow(cfg)
+  if (shown && rflow) shown.reviewFlow = rflow
+  // How old the review's verdict is: when review.md was written, and the commits made after it.
+  if (shown && shown.review !== null) {
+    const written = await modifiedOf($, featurePath(shown.slug, 'review'))
+    if (written) {
+      shown.reviewAt = written
+      // One record per commit since, with its `Task:` trailers: how many landed, and which tasks they fixed.
+      const r = await io.run(['git', 'log', '--since=' + new Date(written).toISOString(), '--format=%x1e%(trailers:key=Task,valueonly,separator=%x2C)', 'HEAD'])
+      if (r && r.exitCode === 0) {
+        const commits = String(r.stdout).split('\x1e').slice(1)
+        shown.reviewCommits = commits.length
+        shown.fixedSince = [...new Set(commits.flatMap((c) => c.split(/[,\s]+/)).map((id) => id.match(/T\d+$/)?.[0] ?? '').filter(Boolean))]
+      }
+    }
+  }
+  const last = await commitsOf(io, shown)
+  const sig = JSON.stringify([any, next, root, found, cfg, last])
   const isChanged = sig !== signature
   signature = sig
   hasSpecs = any
+  hasScanned = true
   branch = next
   source = root === null ? null : base
   features = found
   config = cfg
+  commits = last
   updatedAt = at
   return isChanged
 }
@@ -215,6 +294,12 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
 // it opens the panel when the project has specs/; /sdd-dashboard opens it either way.
 export async function startBoard($: any, isAutoOpen: boolean): Promise<void> {
   isPolling = false
+  mainTurns = []
+  try {
+    startRoot = String(await $.session.cwd())
+  } catch {
+    startRoot = null
+  }
   try {
     const saved = await $.store.get('prefs')
     if (saved && typeof saved === 'object') {
@@ -253,10 +338,46 @@ export function registerBoard(on) {
   on('skill.prompt', async ($, e, next) => {
     if (e.pluginName === 'sdd') {
       running = '/sdd:' + String(e.skill).replace(/^sdd:/, '')
+      live = onCommand(live, running)
       $.ui.invalidate('ui.render')
     }
     return next(e)
   })
+
+  // The live strip: the main loop's turn, its tool calls and its subagents.
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId === undefined) {
+      // A main-loop turn that starts while another runs (an engine fork) does not replace the running one.
+      if (mainTurns.length === 0) {
+        live = onTurnStart(live, e.turnId, await now($), String(e.text ?? ''))
+        running = live.command
+      }
+      mainTurns = [...mainTurns.filter((id) => id !== e.turnId), e.turnId]
+      $.ui.invalidate('ui.render')
+    }
+    return next(e)
+  })
+
+  on('tool.call', async ($, e, next) => {
+    try {
+      live = onTool(live, String(e.tool), toolDetail(e as Record<string, unknown>), e.agentId, await now($))
+      $.ui.invalidate('ui.render')
+    } catch {
+      // the strip misses one step
+    }
+    return next(e)
+  })
+
+  on('agent.spawn', async ($, e, next) => {
+    const result = await next(e)
+    if (result && result.agentId) {
+      const at = await now($)
+      live = onSpawn({ ...live, agents: prune(live.agents, at) }, result.agentId, String(e.subagentType || 'agent'), String(e.description || ''), at, e.background === true)
+      $.ui.invalidate('ui.render')
+    }
+    return result
+  })
+
 
   // Claude wrote a spec artifact: refresh right away instead of waiting for the poll.
   on('tool.call', { tool: ['Edit', 'Write'] }, async ($, e, next) => {
@@ -283,13 +404,34 @@ export function registerBoard(on) {
   })
 
   on('turn.complete', async ($, e, next) => {
-    if (e.agentId === undefined) {
+    // A subagent's loop ends with its own turn.complete: its lane stops.
+    if (e.agentId !== undefined) {
+      live = onReport(live, e.agentId, e.reason === 'answer' ? 'completed' : e.reason === 'aborted' ? 'stopped' : 'failed', await now($))
+      $.ui.invalidate('ui.render')
+    }
+    // The main loop's turn ends when every turn it heard start has ended: the end of an overlapping turn
+    // does not stop the running command. An end whose start was not heard ends what runs.
+    const isOwn = mainTurns.includes(e.turnId)
+    if (e.agentId === undefined) mainTurns = mainTurns.filter((id) => id !== e.turnId)
+    if (e.agentId === undefined && (!isOwn || mainTurns.length === 0)) {
+      mainTurns = []
       running = null
+      live = onTurnComplete(live, await now($), String(e.reason))
       try {
         await scan($, true)
       } catch {
         // keep the last data
       }
+      $.ui.invalidate('ui.render')
+    }
+    return next(e)
+  })
+
+  // A task row on Desktop (board/task-row.ts) posts { toggle: <task id> } when pressed anywhere on it.
+  on('ui.message', async ($, e, next) => {
+    const id = (e.data as { toggle?: unknown } | null)?.toggle
+    if (e.module.endsWith('task-row.ts') && typeof id === 'string' && /^[A-Za-z0-9-]{1,40}$/.test(id)) {
+      openKeys = toggled(openKeys, 'task-' + id)
       $.ui.invalidate('ui.render')
     }
     return next(e)
@@ -335,11 +477,26 @@ export function registerBoard(on) {
     const current = features.find((f) => f.slug === slug) ?? null
     const at = await now($)
     drawnFreshness = freshness(updatedAt, checkedAt, at)
+    const session = sessionOf(current, branch)
+    // A task session opens on its Ticket tab once; after that the person's choice stands.
+    if (session.kind === 'task' && ticketShownFor !== branch) {
+      ticketShownFor = branch
+      tab = 'ticket'
+    }
+    const lanes = lanesOf(live, current?.tasks ?? null, current?.epic ?? '', current?.merges, commits, session.kind === 'task' ? session.taskId : null)
     const actions = {
       tab: (t) => {
         tab = t
         redraw()
-        $.store.set('prefs', { tab, filter })
+        if (t !== 'ticket') $.store.set('prefs', { tab, filter })
+      },
+      toggle: (key) => {
+        openKeys = toggled(openKeys, key)
+        redraw()
+      },
+      taskFilter: (v) => {
+        taskFilter = v
+        redraw()
       },
       fill: (text) => {
         $.prompt.fill({ text })
@@ -390,9 +547,15 @@ export function registerBoard(on) {
       running,
       filter,
       hasSpecs,
+      isLoading: !hasScanned,
       now: at,
       freshness: drawnFreshness,
       source,
+      session,
+      live,
+      lanes,
+      open: openKeys,
+      taskFilter,
       actions,
     })
   })
