@@ -11,6 +11,10 @@ The board is the side panel of the [sdd mod](/spec-driven-development/mod/overvi
 
 At session start it opens by itself when the project has `specs/` and the window has room for it; otherwise a toast says to type `/sdd-dashboard`. A board you close stays closed until you run `/sdd-dashboard`. To open it only by hand, turn off the `show_board` option. Try it without installing: `claude --plugin-dir plugins/sdd`.
 
+## Design
+
+The [SDD Board Redesign](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW) mock is the source of truth for the board's design: layout, colors, glyphs, states and every scenario (implement, task session, review running, review not ready, done), with a hook-event simulator and the element each part maps to. Change the design there first, then port it to `hooks/board/{view,svg}.ts`.
+
 ## What it shows
 
 - **Session strip:** on the spec's branch the board names the **main SDD session**; on a task branch (`<spec-branch>--<EPIC>-T<n>`) it names the **task session** and says the statuses come from the spec branch's checkout.
