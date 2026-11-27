@@ -202,6 +202,18 @@ test('the review card lists the configured checks with their review.md results',
   expect(v.blockers.length).toBe(2)
   // The must-fix blocker names its task: that is the next command.
   expect(derive(f).next?.command).toBe('/sdd:implement T2')
+  // T2 committed after review.md: fixed, so the review runs again.
+  const fixed = { ...f, fixedSince: ['T2'], reviewCommits: 2 }
+  expect(derive(fixed).next?.command).toBe('/sdd:review')
+  expect(derive(fixed).next?.why).toContain('Fixed since the last review: T2')
+  expect(gate(fixed)!.checks.find((c) => c.key === 'verdict')).toEqual({ key: 'verdict', label: 'Last review findings fixed', ok: true, hint: 'committed since: T2' })
+  // A commit of another task leaves T2 owed.
+  expect(derive({ ...f, fixedSince: ['T3'] }).next?.command).toBe('/sdd:implement T2')
+  expect(parseReviewDetail('## Blockers\n- must fix: open redirect — code-reviewer · ULOG-T5\n').blockers[0].task).toBe('T5')
+  // A must-fix blocker with no task stays open whatever was committed.
+  const untasked = { ...fixed, reviewDetail: { ...fixed.reviewDetail!, blockers: [...fixed.reviewDetail!.blockers, { mustFix: true, text: 'coverage below target', check: 'tests', task: '' }] } }
+  expect(derive(untasked).next?.why).toContain('fix the findings')
+  expect(gate(untasked)!.checks.find((c) => c.key === 'verdict')!.ok).toBe(false)
 })
 
 test('while /sdd:review runs, the card follows its agents and the strip leaves them out', () => {

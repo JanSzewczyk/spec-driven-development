@@ -230,8 +230,9 @@ export function parseReviewDetail(text: string): ReviewDetail {
     }
   }
   const blockers = top('Blockers').flatMap((b) => {
-    const m = b.match(/^(must fix|acceptable):\s*(.+?)(?:\s+[—–]\s+(.+?))?(?:\s+·\s+(T\d+|none))?\s*$/i)
-    return m ? [{ mustFix: m[1].toLowerCase() === 'must fix', text: m[2].trim(), check: (m[3] ?? '').trim(), task: m[4] && m[4] !== 'none' ? m[4] : '' }] : []
+    // The task is T<n>, also written with its Epic (`ULOG-T3`).
+    const m = b.match(/^(must fix|acceptable):\s*(.+?)(?:\s+[—–]\s+(.+?))?(?:\s+·\s+(?:[A-Z][A-Z0-9]*-)?(T\d+|none))?\s*$/i)
+    return m ? [{ mustFix: m[1].toLowerCase() === 'must fix', text: m[2].trim(), check: (m[3] ?? '').trim(), task: m[4] && m[4].toLowerCase() !== 'none' ? m[4] : '' }] : []
   })
   const accepted = top('Accepted').filter((a) => !/<[^>]+>/.test(a))
   return { verdict: parseReview(text), ac: ac ? { met: Number(ac[1]), total: Number(ac[2]) } : null, tests, rules, audits, blockers, accepted }

@@ -499,7 +499,10 @@ function blockersBlock(el: any, ctx: Ctx, rv: ReviewView) {
                 children: [
                   Text({ size: 'caption', color, children: ['●'] }),
                   Box({ ...SHRINK, columnGap: 1, children: [Text({ size: 'footnote', wrap: 'truncate-end', children: [b.text] }), b.check ? Text({ size: 'caption', dimColor: true, wrap: 'truncate-end', children: [b.check] }) : null].filter(Boolean) }),
-                  b.task ? Button({ key: 'blk-run-' + title + i, label: b.task, plain: true, onPress: () => ctx.actions.fill('/sdd:implement ' + b.task) }) : null,
+                  // A must-fix task committed after the review was re-run; the next review says whether it is fixed.
+                  b.mustFix && b.task && rv.fixed.includes(b.task)
+                    ? Text({ size: 'caption', color: 'success', children: [b.task + ' re-run'] })
+                    : b.task ? Button({ key: 'blk-run-' + title + i, label: b.task, plain: true, onPress: () => ctx.actions.fill('/sdd:implement ' + b.task) }) : null,
                 ].filter(Boolean),
               }),
             ),

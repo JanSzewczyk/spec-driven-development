@@ -24,6 +24,7 @@ export type Feature = {
   reviewFlow?: ReviewFlow // the review: section of capabilities.yml; absent while unknown
   reviewAt?: number // when review.md was last written
   reviewCommits?: number // commits on the branch after review.md was written
+  fixedSince?: string[] // task ids (T<n>) whose `Task:` commits landed after review.md was written
 }
 
 // One line on how /sdd:implement runs tasks: the implementer, then the isolation and its options.
@@ -127,6 +128,18 @@ export function unrecorded(f: Feature): string[] {
   return (f.tasks ?? []).filter((t) => !taskDone(t) && isMerged(t, f.merges)).map((t) => t.id)
 }
 
+// Tasks the last NOT READY review sent back with a must-fix blocker: still owed, or committed since.
+// `untasked` counts must-fix blockers that name no task of tasks.md: no commit can show them fixed.
+export function mustFix(f: Feature): { owed: string[]; fixed: string[]; untasked: number } {
+  if (f.review !== 'NOT READY') return { owed: [], fixed: [], untasked: 0 }
+  const tasks = f.tasks ?? []
+  const since = new Set(f.fixedSince ?? [])
+  const must = (f.reviewDetail?.blockers ?? []).filter((b) => b.mustFix)
+  const named = [...new Set(must.filter((b) => b.task && tasks.some((t) => t.id === b.task)).map((b) => b.task))]
+  const untasked = must.filter((b) => !b.task || !tasks.some((t) => t.id === b.task)).length
+  return { owed: named.filter((id) => !since.has(id)), fixed: named.filter((id) => since.has(id)), untasked }
+}
+
 // `running` is the /sdd:* command of the turn running now for this feature: only its step is
 // 'current' (animated). With nothing running no step is, except a review that was not ready (red).
 export function derive(f: Feature, running: string | null = null): Derived {
@@ -146,10 +159,11 @@ export function derive(f: Feature, running: string | null = null): Derived {
   } else if (allDone) {
     idx = 5
     // A review that was not ready names the tasks to re-run for its must-fix blockers.
-    const fix = f.review === 'NOT READY' ? [...new Set((f.reviewDetail?.blockers ?? []).filter((b) => b.mustFix && b.task && tasks.some((t) => t.id === b.task)).map((b) => b.task))] : []
-    next = fix.length
-      ? { command: '/sdd:implement ' + fix[0], model: 'Sonnet', why: 'The last review was not ready: ' + fix.join(', ') + (fix.length === 1 ? ' has' : ' have') + ' must-fix blockers. Re-run ' + (fix.length === 1 ? 'it' : 'each') + ', then /sdd:review again.' + recorded }
-      : { command: '/sdd:review', model: 'Opus', why: (f.review === 'NOT READY' ? 'The last review was not ready: fix the findings, then review again.' : 'All tasks are implemented. Run the final audit before the PR.') + recorded }
+    // A task committed after review.md was written counts as fixed: the next step is the review again.
+    const { owed, fixed, untasked } = mustFix(f)
+    next = owed.length
+      ? { command: '/sdd:implement ' + owed[0], model: 'Sonnet', why: 'The last review was not ready: ' + owed.join(', ') + (owed.length === 1 ? ' has' : ' have') + ' must-fix blockers. Re-run ' + (owed.length === 1 ? 'it' : 'each') + ', then /sdd:review again.' + (fixed.length ? ' Fixed since: ' + fixed.join(', ') + '.' : '') + recorded }
+      : { command: '/sdd:review', model: 'Opus', why: (f.review !== 'NOT READY' ? 'All tasks are implemented. Run the final audit before the PR.' : fixed.length && !untasked ? 'Fixed since the last review: ' + fixed.join(', ') + '. Review again to replace the NOT READY verdict.' : 'The last review was not ready: fix the findings, then review again.') + recorded }
   } else if (hasTasks) {
     idx = 4
     // First task not yet implemented whose dependencies are done; else the first unfinished one.
@@ -256,7 +270,9 @@ export function gate(f: Feature): Gate | null {
     if (prs.length) checks.push({ key: 'merge', label: 'Task pull requests merged', ok: false, hint: prs.map((t) => t.id + ' ' + t.pr).join(', ') })
     else checks.push({ key: 'tasks', label: 'All tasks implemented', ok: true })
     questions()
-    checks.push({ key: 'verdict', label: 'Last review findings fixed', ok: f.review !== 'NOT READY', hint: f.review === 'NOT READY' ? 'the last review was not ready' : undefined })
+    const { owed, fixed, untasked } = mustFix(f)
+    const isFixed = f.review !== 'NOT READY' || (fixed.length > 0 && owed.length === 0 && untasked === 0)
+    checks.push({ key: 'verdict', label: 'Last review findings fixed', ok: isFixed, hint: f.review !== 'NOT READY' ? undefined : isFixed ? 'committed since: ' + fixed.join(', ') : 'the last review was not ready' })
   }
   return { command, checks, open: checks.filter((c) => !c.ok).length }
 }
@@ -399,7 +415,7 @@ export function reviewFlow(cfg: Config | null): ReviewFlow | undefined {
 // skill audits), then publish. `ran` = finished in this run, its result not written to review.md yet.
 export type CheckState = 'pass' | 'fail' | 'warn' | 'running' | 'ran' | 'queued' | 'skipped' | 'unknown'
 export type ReviewCheck = { key: string; stage: 1 | 2 | 3; name: string; source: string; state: CheckState; summary: string; findings: Finding[]; since?: number }
-export type ReviewView = { checks: ReviewCheck[]; isRunning: boolean; verdict: Verdict | null; blockers: Blocker[]; accepted: string[]; at?: number; commitsSince?: number }
+export type ReviewView = { checks: ReviewCheck[]; isRunning: boolean; verdict: Verdict | null; blockers: Blocker[]; accepted: string[]; at?: number; commitsSince?: number; fixed: string[] }
 
 const lastPart = (v: string) => v.replace(/^(agent|skill|command):/, '').split(':').pop() ?? v
 const sameAgent = (type: string, flow: string) => lastPart(type) === lastPart(flow)
@@ -520,5 +536,5 @@ export function reviewView(f: Feature, live: Live | null, running: string | null
     else if (d?.verdict === 'NOT READY') add(c, 'skipped', 'not run: NOT READY')
     else add(c, 'queued', 'after READY')
   }
-  return { checks, isRunning, verdict: isRunning ? null : (d?.verdict ?? null), blockers: isRunning ? [] : (d?.blockers ?? []), accepted: d?.accepted ?? [], at: f.reviewAt, commitsSince: f.reviewCommits }
+  return { checks, isRunning, verdict: isRunning ? null : (d?.verdict ?? null), blockers: isRunning ? [] : (d?.blockers ?? []), accepted: d?.accepted ?? [], at: f.reviewAt, commitsSince: f.reviewCommits, fixed: f.fixedSince ?? [] }
 }

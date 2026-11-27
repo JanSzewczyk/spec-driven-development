@@ -265,8 +265,13 @@ async function scanOnce($: any, isForced: boolean): Promise<boolean> {
     const written = await modifiedOf($, featurePath(shown.slug, 'review'))
     if (written) {
       shown.reviewAt = written
-      const r = await io.run(['git', 'rev-list', '--count', '--since=' + new Date(written).toISOString(), 'HEAD'])
-      if (r && r.exitCode === 0) shown.reviewCommits = Number(String(r.stdout).trim()) || 0
+      // One record per commit since, with its `Task:` trailers: how many landed, and which tasks they fixed.
+      const r = await io.run(['git', 'log', '--since=' + new Date(written).toISOString(), '--format=%x1e%(trailers:key=Task,valueonly,separator=%x2C)', 'HEAD'])
+      if (r && r.exitCode === 0) {
+        const commits = String(r.stdout).split('\x1e').slice(1)
+        shown.reviewCommits = commits.length
+        shown.fixedSince = [...new Set(commits.flatMap((c) => c.split(/[,\s]+/)).map((id) => id.match(/T\d+$/)?.[0] ?? '').filter(Boolean))]
+      }
     }
   }
   const last = await commitsOf(io, shown)

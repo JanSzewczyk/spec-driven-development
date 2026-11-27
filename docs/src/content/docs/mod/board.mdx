@@ -13,7 +13,7 @@ At session start it opens by itself when the project has `specs/` and the window
 
 ## Design
 
-The [SDD Board Redesign](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW) mock is the source of truth for the board's design: layout, colors, glyphs, states and every scenario (implement, task session, review running, review not ready, done), with a hook-event simulator and the element each part maps to. Change the design there first, then port it to `hooks/board/{view,svg}.ts`.
+The [SDD Board Redesign](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW) mock is the source of truth for the board's design: layout, colors, glyphs and states, with a hook-event simulator and the element each part maps to. Its **Flows, step by step** section documents every flow frame by frame, each with its trigger, the files it changes, what the panel shows and the next command: [Setup](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-setup), [Spec to tasks](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-plan), [Implement in this session](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-in-session), [Implement in worktrees](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-worktrees), [Task session](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-task-session), [Review to PR](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-review) and [NOT READY, fix, review again](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-fix). Change the design there first, then port it to `hooks/board/{view,svg}.ts`.
 
 ## What it shows
 
@@ -40,5 +40,5 @@ The [SDD Board Redesign](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW) mock
 | tasks exist, some not implemented | `/sdd:implement T<n>` for the first unfinished task whose dependencies are done and that does not run in its own worktree |
 | the rest run in their task worktrees (`branch:`) or wait for task PRs (`pr:`), and unfinished tasks depend on them | `/sdd:implement`: a running one continues by itself as tasks land, else run it again |
 | only task PRs (`pr:`) are left | `/sdd:review` after the merge (it marks the merged tasks `review` first) |
-| every task in `review` or `done` | `/sdd:review`; after a NOT READY review whose must-fix blockers name a task, `/sdd:implement <task>` |
+| every task in `review` or `done` | `/sdd:review`; after a NOT READY review whose must-fix blockers name a task, `/sdd:implement <task>` until that task has commits (`Task:` trailer) newer than `review.md`, then `/sdd:review` again |
 | spec `done` or review verdict READY | nothing, open the PR |

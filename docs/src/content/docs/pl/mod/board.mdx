@@ -13,7 +13,7 @@ Na starcie sesji otwiera się sam, gdy projekt ma `specs/`, a w oknie jest na ni
 
 ## Design
 
-Makieta [SDD Board Redesign](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW) jest źródłem prawdy dla designu tablicy: układ, kolory, glify, stany i każdy scenariusz (implement, sesja zadania, review w trakcie, review not ready, done), z symulatorem zdarzeń hooków i elementem, któremu odpowiada każda część. Zmiany designu najpierw w makiecie, potem w `hooks/board/{view,svg}.ts`.
+Makieta [SDD Board Redesign](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW) jest źródłem prawdy dla designu tablicy: układ, kolory, glify i stany, z symulatorem zdarzeń hooków i elementem, któremu odpowiada każda część. Sekcja **Flows, step by step** dokumentuje każdy flow klatka po klatce: wyzwalacz, zmienione pliki, co pokazuje panel i następną komendę: [Setup](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-setup), [Spec to tasks](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-plan), [Implement in this session](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-in-session), [Implement in worktrees](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-worktrees), [Task session](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-task-session), [Review to PR](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-review) i [NOT READY, fix, review again](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW#flow-fix). Zmiany designu najpierw w makiecie, potem w `hooks/board/{view,svg}.ts`.
 
 ## Co pokazuje
 
@@ -40,5 +40,5 @@ Makieta [SDD Board Redesign](https://claude.ai/artifact/1ffratWvTm6vTAUvE6xuzW) 
 | zadania istnieją, część niezaimplementowana | `/sdd:implement T<n>` dla pierwszego nieukończonego zadania, którego zależności są gotowe i które nie działa we własnym worktree |
 | reszta działa we własnych worktree zadań (`branch:`) albo czeka na PR-y zadań (`pr:`), a niedokończone zadania od nich zależą | `/sdd:implement`: działające kontynuuje samo, gdy zadania wracają, inaczej uruchom je ponownie |
 | zostały tylko PR-y zadań (`pr:`) | `/sdd:review` po merge'u (najpierw oznacza zmergowane zadania jako `review`) |
-| każde zadanie w `review` lub `done` | `/sdd:review`; po review NOT READY, którego blokery „must fix” wskazują zadanie, `/sdd:implement <zadanie>` |
+| każde zadanie w `review` lub `done` | `/sdd:review`; po review NOT READY, którego blokery „must fix” wskazują zadanie, `/sdd:implement <zadanie>`, dopóki to zadanie nie ma commitów (trailer `Task:`) nowszych niż `review.md`, potem znowu `/sdd:review` |
 | spec `done` lub werdykt review READY | nic, otwórz PR |
